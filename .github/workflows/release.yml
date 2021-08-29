@@ -4,7 +4,7 @@ on:
     branches: [main]
 
 env:
-  IMAGE_NAME: myjettools/my-servicebus
+  IMAGE_NAME: myjettools/my-service-bus
   VERSION: 2.0.3
 
 
