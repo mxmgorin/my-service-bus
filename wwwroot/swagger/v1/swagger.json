@@ -1,0 +1,709 @@
+{
+  "x-generator": "NSwag v13.11.3.0 (NJsonSchema v10.4.4.0 (Newtonsoft.Json v13.0.0.0))",
+  "swagger": "2.0",
+  "info": {
+    "title": "MyServiceBus",
+    "version": "1.0.0"
+  },
+  "host": "***HOST***",
+  "schemes": [
+    "***SCHEME***"
+  ],
+  "paths": {
+    "/Connections/KickTcpConnection": {
+      "delete": {
+        "tags": [
+          "Connections"
+        ],
+        "operationId": "Connections_KickTcpConnection",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "id",
+            "in": "query",
+            "format": "int64",
+            "x-nullable": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": true,
+            "description": "",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    },
+    "/Greeting": {
+      "post": {
+        "tags": [
+          "Greeting"
+        ],
+        "operationId": "Greeting_Index",
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "formData",
+            "x-nullable": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      }
+    },
+    "/Greeting/Ping": {
+      "post": {
+        "tags": [
+          "Greeting"
+        ],
+        "operationId": "Greeting_Index2",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "sessionId",
+            "in": "formData",
+            "format": "int64",
+            "x-nullable": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": true,
+            "description": "",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "Home"
+        ],
+        "operationId": "Home_Index",
+        "responses": {
+          "200": {
+            "x-nullable": true,
+            "description": "",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    },
+    "/api/isalive": {
+      "get": {
+        "tags": [
+          "IsAlive"
+        ],
+        "operationId": "IsAlive_IsAlive",
+        "responses": {
+          "200": {
+            "x-nullable": true,
+            "description": "",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    },
+    "/Messages/ReplayMessage": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "operationId": "Messages_ReplayMessage",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "topicId",
+            "in": "query",
+            "x-nullable": true
+          },
+          {
+            "type": "string",
+            "name": "queueId",
+            "in": "query",
+            "x-nullable": true
+          },
+          {
+            "type": "integer",
+            "name": "messageId",
+            "in": "query",
+            "format": "int64",
+            "x-nullable": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": true,
+            "description": "",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    },
+    "/Monitoring": {
+      "get": {
+        "tags": [
+          "Monitoring"
+        ],
+        "operationId": "Monitoring_Index",
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/MonitoringModel"
+            }
+          }
+        }
+      }
+    },
+    "/ActivePages": {
+      "get": {
+        "tags": [
+          "Monitoring"
+        ],
+        "operationId": "Monitoring_GetActivePages",
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Monitoring/Snapshots": {
+      "get": {
+        "tags": [
+          "Monitoring"
+        ],
+        "operationId": "Monitoring_Snapshots",
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/SnapshotsContract"
+            }
+          }
+        }
+      }
+    },
+    "/Queues": {
+      "delete": {
+        "tags": [
+          "Queues"
+        ],
+        "operationId": "Queues_Delete",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "topicId",
+            "in": "query",
+            "x-nullable": true
+          },
+          {
+            "type": "string",
+            "name": "queueId",
+            "in": "query",
+            "x-nullable": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": true,
+            "description": "",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    },
+    "/Queues/SetMessageId": {
+      "post": {
+        "tags": [
+          "Queues"
+        ],
+        "operationId": "Queues_SetMessageId",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "topicId",
+            "in": "query",
+            "x-nullable": true
+          },
+          {
+            "type": "string",
+            "name": "queueId",
+            "in": "query",
+            "x-nullable": true
+          },
+          {
+            "type": "integer",
+            "name": "messageId",
+            "in": "query",
+            "format": "int64",
+            "x-nullable": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": true,
+            "description": "",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    },
+    "/Topics": {
+      "get": {
+        "tags": [
+          "Topics"
+        ],
+        "operationId": "Topics_GetAll",
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TopicInfoModel"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Topics/Create": {
+      "post": {
+        "tags": [
+          "Topics"
+        ],
+        "operationId": "Topics_Create",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "topicId",
+            "in": "formData",
+            "x-nullable": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": true,
+            "description": "",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    },
+    "/Topics/NewMessage": {
+      "post": {
+        "tags": [
+          "Topics"
+        ],
+        "operationId": "Topics_NewMessage",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "sessionId",
+            "in": "formData",
+            "format": "int64",
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "topicId",
+            "in": "formData",
+            "x-nullable": true
+          },
+          {
+            "type": "string",
+            "name": "messageBase64",
+            "in": "formData",
+            "x-nullable": true
+          },
+          {
+            "type": "boolean",
+            "name": "persistImmediately",
+            "in": "formData",
+            "x-nullable": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": true,
+            "description": "",
+            "schema": {
+              "type": "file"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "MonitoringModel": {
+      "type": "object",
+      "required": [
+        "tcpConnections"
+      ],
+      "properties": {
+        "topics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TopicMonitoringModel"
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ConnectionModel"
+          }
+        },
+        "queueToPersist": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/QueueToPersist"
+          }
+        },
+        "tcpConnections": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "TopicMonitoringModel": {
+      "type": "object",
+      "required": [
+        "msgPerSec",
+        "requestsPerSec",
+        "size",
+        "messageId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "msgPerSec": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "requestsPerSec": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "messageId": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "consumers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ConsumerModel"
+          }
+        },
+        "publishers": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "cachedPages": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "messagesPerSecond": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      }
+    },
+    "ConsumerModel": {
+      "type": "object",
+      "required": [
+        "queueType",
+        "connections",
+        "queueSize",
+        "leasedAmount"
+      ],
+      "properties": {
+        "queueId": {
+          "type": "string"
+        },
+        "queueType": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "connections": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "queueSize": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "readySlices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/QueueSlice"
+          }
+        },
+        "leasedAmount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "executionDuration": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      }
+    },
+    "QueueSlice": {
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "to": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "ConnectionModel": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/UnknownConnectionModel"
+        },
+        {
+          "type": "object",
+          "required": [
+            "protocolVersion",
+            "publishPacketsPerSecond",
+            "deliveryPacketsPerSecond"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "protocolVersion": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "publishPacketsPerSecond": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "deliveryPacketsPerSecond": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "topics": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TopicConnectionHubModel"
+              }
+            },
+            "queues": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConnectionQueueInfoModel"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "TopicConnectionHubModel": {
+      "type": "object",
+      "required": [
+        "light"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "light": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "ConnectionQueueInfoModel": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "leased": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/QueueSlice"
+          }
+        }
+      }
+    },
+    "UnknownConnectionModel": {
+      "type": "object",
+      "required": [
+        "sentBytes",
+        "receivedBytes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "connectedTimeStamp": {
+          "type": "string"
+        },
+        "sentBytes": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "lastSendDuration": {
+          "type": "string"
+        },
+        "receivedBytes": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sentTimeStamp": {
+          "type": "string"
+        },
+        "receiveTimeStamp": {
+          "type": "string"
+        }
+      }
+    },
+    "QueueToPersist": {
+      "type": "object",
+      "required": [
+        "count"
+      ],
+      "properties": {
+        "topicId": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "SnapshotsContract": {
+      "type": "object",
+      "required": [
+        "topicSnapshotId",
+        "tcpConnections"
+      ],
+      "properties": {
+        "topicSnapshotId": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "tcpConnections": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "TopicInfoModel": {
+      "type": "object",
+      "required": [
+        "messageId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "messageId": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    }
+  }
+}
