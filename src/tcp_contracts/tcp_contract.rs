@@ -178,17 +178,10 @@ impl TcpContract {
 
                 let queue_type = TopicQueueType::parse(queue_type_src);
 
-                if queue_type.is_none() {
-                    return Err(MySbSocketError::InvalidPacket(format!(
-                        "Can not parse queuetype with no {} for the Subscribe packet",
-                        queue_type_src
-                    )));
-                }
-
                 let result = TcpContract::Subscribe {
                     topic_id,
                     queue_id,
-                    queue_type: queue_type.unwrap(),
+                    queue_type,
                 };
 
                 Ok(result)

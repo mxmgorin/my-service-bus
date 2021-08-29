@@ -17,7 +17,6 @@ pub enum MySbSocketError {
     ParsingUtf8StringError(FromUtf8Error),
     IoError(Error),
     OperationFailResult(OperationFailResult),
-    InvalidPacket(String),
 }
 
 impl From<OperationFailResult> for MySbSocketError {

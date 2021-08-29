@@ -61,6 +61,7 @@ impl TopicsList {
             write_access.snapshot_id += 1;
         }
 
+        //Safety: This unwrap is handeled - since we create topic by all means during previous if statement.
         let result = write_access.topics.get(topic_id).unwrap();
 
         return result.clone();

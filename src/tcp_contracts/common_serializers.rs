@@ -61,12 +61,12 @@ impl Into<u8> for TopicQueueType {
 }
 
 impl TopicQueueType {
-    pub fn parse(src: u8) -> Option<TopicQueueType> {
+    pub fn parse(src: u8) -> TopicQueueType {
         match src {
-            0 => Some(TopicQueueType::Permanent),
-            1 => Some(TopicQueueType::DeleteOnDisconnect),
-            2 => Some(TopicQueueType::PermanentWithSingleConnection),
-            _ => None,
+            0 => TopicQueueType::Permanent,
+            1 => TopicQueueType::DeleteOnDisconnect,
+            2 => TopicQueueType::PermanentWithSingleConnection,
+            _ => TopicQueueType::DeleteOnDisconnect,
         }
     }
 }

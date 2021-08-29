@@ -34,3 +34,19 @@ impl StopWatch {
         duration_to_string(duration)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_negative_duration() {
+        let mut sw = StopWatch::new();
+
+        sw.start();
+        sw.pause();
+
+        println!("{:?}", sw.duration_as_string());
+    }
+}

@@ -1,9 +1,4 @@
-use crate::{operations::OperationFailResult, persistence::PersistenceError};
-
-pub enum AppError {
-    OperationFail(OperationFailResult),
-    PersistenceFail(PersistenceError),
-}
+use crate::operations::OperationFailResult;
 
 impl From<prost::DecodeError> for OperationFailResult {
     fn from(src: prost::DecodeError) -> Self {

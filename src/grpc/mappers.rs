@@ -52,7 +52,7 @@ impl From<QueueSnapshotGrpcModel> for TopicQueueSnapshot {
     fn from(src: QueueSnapshotGrpcModel) -> Self {
         Self {
             queue_id: src.queue_id.to_string(),
-            queue_type: TopicQueueType::parse(src.queue_type as u8).unwrap(), //TDOD - remove unwrap
+            queue_type: TopicQueueType::parse(src.queue_type as u8),
             ranges: src.ranges.into_iter().map(|itm| itm.into()).collect(),
         }
     }

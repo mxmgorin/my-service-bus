@@ -35,7 +35,23 @@ pub async fn start(addr: SocketAddr, app: Arc<AppContext>) {
     let mut socket_id: ConnectionId = 0;
 
     while !app.states.is_shutting_down() {
-        let (tcp_stream, addr) = listener.accept().await.unwrap();
+        let accepted_socket_result = listener.accept().await;
+
+        if let Err(err) = &accepted_socket_result {
+            app.logs
+                .add_error(
+                    None,
+                    crate::app::logs::SystemProcess::TcpSocket,
+                    "Accept tcp socket".to_string(),
+                    "Error occured".to_string(),
+                    Some(format!("{:?}", err)),
+                )
+                .await;
+            continue;
+        }
+
+        //Safety: We can use unwrap -since we previously checked Err status.
+        let (tcp_stream, addr) = accepted_socket_result.unwrap();
 
         let (read_socket, mut write_socket) = io::split(tcp_stream);
 

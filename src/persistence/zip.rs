@@ -39,7 +39,7 @@ pub fn compress_payload(payload: &[u8]) -> Result<Vec<u8>, ZipError> {
         let options =
             zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-        zip.start_file("d", options).unwrap();
+        zip.start_file("d", options)?;
 
         let mut pos = 0;
         while pos < payload.len() {
