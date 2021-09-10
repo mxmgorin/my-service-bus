@@ -1,10 +1,10 @@
 use std::{sync::Arc, time::Duration};
 
-use my_service_bus_shared::page_id::{get_page_id, PageId};
+use my_service_bus_shared::page_id::{get_last_message_id_of_the_page, get_page_id, PageId};
 
 use crate::{
-    app::{AppContext, TEST_QUEUE},
-    message_pages::MessagesPage,
+    app::{logs::SystemProcess, AppContext, TEST_QUEUE},
+    message_pages::{MessageSize, MessagesPage},
     messages_bucket::{MessagesBucket, MessagesBucketPage},
     queues::QueueData,
     sessions::MyServiceBusSession,
@@ -19,15 +19,9 @@ pub async fn try_to_deliver_next_messages_for_the_queue(
     topic: &Topic,
     queue: &mut QueueData,
 ) -> Result<(), OperationFailResult> {
-    loop {
-        let subscriber_id = queue.subscribers.get_next_subscriber_ready_to_deliver();
-
-        if subscriber_id.is_none() {
-            return Ok(());
-        }
-
-        let (subscriber_id, session) = subscriber_id.unwrap();
-
+    while let Some((subscriber_id, session)) =
+        queue.subscribers.get_next_subscriber_ready_to_deliver()
+    {
         let result =
             try_to_deliver_next_messages(app, topic, queue, subscriber_id, session.as_ref())
                 .await?;
@@ -36,6 +30,8 @@ pub async fn try_to_deliver_next_messages_for_the_queue(
             return Ok(());
         }
     }
+
+    Ok(())
 }
 
 async fn try_to_deliver_next_messages(
@@ -112,21 +108,24 @@ async fn try_to_compile_next_messages<'t>(
 async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -> MessagesBucket {
     let mut result = MessagesBucket::new();
 
-    //BUG - I found the bug.
     while let Some(next_message) = queue.peek_next_message() {
         let page_id = get_page_id(next_message.message_id);
 
+        let all_messages_size = result.total_size;
+
+        if all_messages_size > app.max_delivery_size {}
+        let all_messages_count = result.messages_count();
+
+        let mut bucket_page = get_messages_bucket_page(app, &mut result, topic, page_id).await;
+
         loop {
-            let all_messages_size = result.total_size;
-            let all_messages_count = result.messages_count();
+            let mut next_message_size_result = bucket_page
+                .page
+                .get_message_size(&next_message.message_id)
+                .await;
 
-            if let Some(bucket_page) = result.get_last_page_with_id(page_id) {
-                let next_message_size_result = bucket_page
-                    .page
-                    .get_message_size(&next_message.message_id)
-                    .await;
-
-                if let Some(next_msg_size) = next_message_size_result {
+            match next_message_size_result {
+                MessageSize::MessageIsReady(next_msg_size) => {
                     if all_messages_size + next_msg_size > app.max_delivery_size
                         && all_messages_count > 0
                     {
@@ -143,22 +142,56 @@ async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -
 
                     result.add_total_size(next_message.message_id, next_msg_size);
 
+                    let page = get_page(app, topic, page_id).await;
+                    result.add_page(MessagesBucketPage::new(page));
+
                     break;
-                } else {
-                    println!(
-                        "Somehow we did not find message size for the Message {:?}",
-                        next_message
-                    );
+                }
+                MessageSize::NotLoaded => {
+                    super::message_pages::restore_page(app, topic, page_id).await;
+
+                    next_message_size_result = bucket_page
+                        .page
+                        .get_message_size(&next_message.message_id)
+                        .await;
+                }
+                MessageSize::CanNotBeLoaded => {
+                    app.logs
+                        .add_error(
+                            Some(topic.topic_id.to_string()),
+                            SystemProcess::DeliveryOperation,
+                            "fill_messages".to_string(),
+                            "Message can not be loaded. Skipping it".to_string(),
+                            Some(format!("MessageId: {}", next_message.message_id)),
+                        )
+                        .await;
+
                     break;
                 }
             }
-
-            let page = get_page(app, topic, page_id).await;
-            result.add_page(MessagesBucketPage::new(page));
         }
     }
 
     return result;
+}
+
+async fn get_messages_bucket_page<'t>(
+    app: &AppContext,
+    messages_bucket: &'t mut MessagesBucket,
+    topic: &Topic,
+    page_id: PageId,
+) -> &'t mut MessagesBucketPage {
+    loop {
+        if let Some(result) = messages_bucket.get_last_page_with_id(page_id) {
+            if result.page.page_id == page_id {
+                return result;
+            }
+        }
+
+        let page = get_page(app, topic, page_id).await;
+
+        return messages_bucket.get_last_page_with_id(page_id).unwrap();
+    }
 }
 
 async fn get_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Arc<MessagesPage> {

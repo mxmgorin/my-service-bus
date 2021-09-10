@@ -13,6 +13,7 @@ pub enum SystemProcess {
     Init = 4,
     Timer = 5,
     Persistence = 6,
+    DeliveryOperation = 7,
 }
 
 impl SystemProcess {
@@ -26,6 +27,7 @@ impl SystemProcess {
         result.push(SystemProcess::Init);
         result.push(SystemProcess::Timer);
         result.push(SystemProcess::Persistence);
+        result.push(SystemProcess::DeliveryOperation);
 
         return result;
     }
@@ -56,6 +58,10 @@ impl SystemProcess {
 
         if value == "persistence" {
             return Some(SystemProcess::Persistence);
+        }
+
+        if value == "deliveryoperation" {
+            return Some(SystemProcess::DeliveryOperation);
         }
 
         return None;

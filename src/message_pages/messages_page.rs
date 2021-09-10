@@ -8,6 +8,12 @@ use crate::{
 
 use super::MessagesPageData;
 
+pub enum MessageSize {
+    MessageIsReady(usize),
+    NotLoaded,
+    CanNotBeLoaded,
+}
+
 pub struct MessagesPage {
     pub data: RwLock<MessagesPageData>,
     pub page_id: PageId,
@@ -33,9 +39,19 @@ impl MessagesPage {
         write_access.restore(msgs);
     }
 
-    pub async fn get_message_size(&self, message_id: &MessageId) -> Option<usize> {
+    pub async fn get_message_size(&self, message_id: &MessageId) -> MessageSize {
         let read_access = self.data.read().await;
-        let msg = read_access.messages.get(message_id)?;
-        return Some(msg.content_size());
+        let msg = read_access.messages.get(message_id);
+
+        if msg.is_none() {
+            //TODO - Double check
+            return MessageSize::NotLoaded;
+        }
+
+        match msg.unwrap() {
+            MySbMessage::Loaded(msg) => MessageSize::MessageIsReady(msg.content.len()),
+            MySbMessage::CanNotBeLoaded { id: _, err: _ } => MessageSize::CanNotBeLoaded,
+            MySbMessage::NotLoaded { id: _ } => MessageSize::NotLoaded,
+        }
     }
 }

@@ -2,6 +2,27 @@ use std::{sync::Arc, time::Duration};
 
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
 
+#[derive(Debug)]
+pub enum ZipError {
+    Deafult(String),
+}
+
+pub enum ProtobufError {}
+
+pub enum DeserializationErr {
+    ZipError(ZipError),
+    ProtobuffError(ProtobufError),
+}
+
+pub enum HttpError {
+    HyperError,
+    DeserializationError(DeserializationErr),
+}
+
+pub enum AppError {
+    HttpError(HttpError),
+}
+
 use crate::{
     app::{logs::Logs, AppContext},
     bcl_proto::BclDateTime,

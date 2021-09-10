@@ -18,6 +18,7 @@ pub enum OperationFailResult {
     ShuttingDown,
 }
 
+#[inline]
 pub fn into_topic_result(
     src: Option<Arc<Topic>>,
     topic_id: &str,

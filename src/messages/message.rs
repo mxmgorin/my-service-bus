@@ -23,7 +23,7 @@ impl MySbMessageContent {
 pub enum MySbMessage {
     Loaded(MySbMessageContent),
     CanNotBeLoaded { id: MessageId, err: String },
-    // NotLoaded { id: MessageId }, //TODO - Make the cases where we do GC used Messages
+    NotLoaded { id: MessageId },
 }
 
 impl MySbMessage {
@@ -31,7 +31,7 @@ impl MySbMessage {
         match self {
             MySbMessage::Loaded(msg) => msg.content.len(),
             MySbMessage::CanNotBeLoaded { id: _, err: _ } => 0,
-            // MySbMessage::NotLoaded { id: _ } => 0,
+            MySbMessage::NotLoaded { id: _ } => 0,
         }
     }
 
@@ -39,7 +39,7 @@ impl MySbMessage {
         match self {
             MySbMessage::Loaded(msg) => msg.id,
             MySbMessage::CanNotBeLoaded { id, err: _ } => *id,
-            //MySbMessage::NotLoaded { id } => *id,
+            MySbMessage::NotLoaded { id } => *id,
         }
     }
 }
