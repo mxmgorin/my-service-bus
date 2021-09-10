@@ -32,8 +32,7 @@ pub struct SettingsModel {
 }
 
 pub async fn read() -> SettingsModel {
-    let home_path = env!("HOME");
-    let filename = format!("{}/{}", home_path, ".myservicebus");
+    let filename = get_settings_filename();
 
     println!("Reading settings file {}", filename);
 
@@ -61,6 +60,20 @@ pub async fn read() -> SettingsModel {
     let result: SettingsModelJson = serde_yaml::from_slice(file_content.as_slice()).unwrap();
 
     result.into()
+}
+
+#[cfg(target_os = "windows")] 
+fn get_settings_filename() -> String{
+    let home_path = env!("HOME");
+    let filename = format!("{}\\{}", home_path, ".myservicebus");
+    filename
+}
+
+#[cfg(not(target_os = "windows"))] 
+fn get_settings_filename() -> String{
+    let home_path = env!("HOME");
+    let filename = format!("{}/{}", home_path, ".myservicebus");
+    filename
 }
 
 impl Into<SettingsModel> for SettingsModelJson {
