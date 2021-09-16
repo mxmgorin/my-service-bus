@@ -1,15 +1,11 @@
 use std::sync::Arc;
 
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
+use my_service_bus_tcp_shared::{ConnectionAttributes, TcpContract};
 
-use crate::{
-    app::AppContext,
-    operations,
-    sessions::MyServiceBusSession,
-    tcp_contracts::tcp_contract::{ConnectionAttributes, TcpContract},
-};
+use crate::{app::AppContext, operations, sessions::MyServiceBusSession};
 
-use super::MySbSocketError;
+use super::error::MySbSocketError;
 
 pub async fn handle_incoming_payload(
     app: Arc<AppContext>,

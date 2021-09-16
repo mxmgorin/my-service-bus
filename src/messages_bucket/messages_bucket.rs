@@ -4,6 +4,7 @@ use super::MessagesBucketPage;
 
 pub struct MessagesBucket {
     pub pages: Vec<MessagesBucketPage>,
+    pub last_page_id: Option<PageId>,
     found_page_index: usize,
     pub min_id: Option<MessageId>,
     pub total_size: usize,
@@ -16,20 +17,12 @@ impl MessagesBucket {
             min_id: None,
             total_size: 0,
             found_page_index: 0,
+            last_page_id: None,
         }
-    }
-
-    pub fn get_last_page_with_id(&mut self, page_id: PageId) -> Option<&mut MessagesBucketPage> {
-        let last = self.pages.last_mut()?;
-
-        if last.page.page_id == page_id {
-            return Some(last);
-        }
-
-        return None;
     }
 
     pub fn add_page(&mut self, page: MessagesBucketPage) {
+        self.last_page_id = Some(page.page.page_id);
         self.pages.push(page);
     }
 

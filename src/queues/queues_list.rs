@@ -1,14 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
-use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
+use my_service_bus_shared::{queue_with_intervals::QueueWithIntervals, TopicQueueType};
 use tokio::sync::RwLock;
 
 use crate::topics::TopicQueueSnapshot;
 
-use super::{
-    queue::{TopicQueue, TopicQueueMonitoringData},
-    TopicQueueType,
-};
+use super::queue::{TopicQueue, TopicQueueMonitoringData};
 
 pub struct TopicQueueListData {
     queues: HashMap<String, Arc<TopicQueue>>,

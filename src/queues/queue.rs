@@ -1,13 +1,13 @@
 use my_service_bus_shared::{
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
-    MessageId,
+    MessageId, TopicQueueType,
 };
 use tokio::sync::RwLock;
 
 use crate::date_time::MyDateTime;
 use crate::topics::TopicQueueSnapshot;
 
-use super::{QueueData, TopicQueueType};
+use super::QueueData;
 
 pub struct TopicQueueGcData {
     pub subscribers_amount: usize,

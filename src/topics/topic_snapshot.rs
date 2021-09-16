@@ -1,6 +1,4 @@
-use my_service_bus_shared::queue_with_intervals::QueueIndexRange;
-
-use crate::queues::TopicQueueType;
+use my_service_bus_shared::{queue_with_intervals::QueueIndexRange, TopicQueueType};
 
 pub struct TopicQueueSnapshot {
     pub queue_id: String,

@@ -11,4 +11,3 @@ pub use sessions_list::SessionsList;
 
 pub use my_sb_session_statistic::MySbSessionStatistic;
 pub use my_sb_session_subscriber_data::MySbSessionSubscriberData;
-pub use sessions_list::PacketProtVer;

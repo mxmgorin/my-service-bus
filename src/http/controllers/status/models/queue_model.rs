@@ -23,7 +23,7 @@ impl QueuesJsonResult {
             for mon_data in monitoring_datas {
                 queues.push(QueueJsonContract {
                     id: mon_data.id,
-                    queue_type: mon_data.queue_type.into(),
+                    queue_type: mon_data.queue_type.into_u8(),
                     size: mon_data.size,
                     data: mon_data
                         .queue

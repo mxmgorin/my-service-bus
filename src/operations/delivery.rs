@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use my_service_bus_shared::page_id::{get_last_message_id_of_the_page, get_page_id, PageId};
+use my_service_bus_shared::page_id::{get_page_id, PageId};
 
 use crate::{
     app::{logs::SystemProcess, AppContext, TEST_QUEUE},
@@ -46,7 +46,7 @@ async fn try_to_deliver_next_messages(
 
     if let Some(subscriber) = subscriber {
         if let Some(messages) = &subscriber.messages_on_delivery {
-            let contract = crate::tcp_contracts::tcp_contract::compile_messages_delivery_contract(
+            let contract = crate::tcp::tcp_contracts::compile_messages_delivery_contract(
                 app,
                 messages,
                 topic,
@@ -116,7 +116,7 @@ async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -
         if all_messages_size > app.max_delivery_size {}
         let all_messages_count = result.messages_count();
 
-        let mut bucket_page = get_messages_bucket_page(app, &mut result, topic, page_id).await;
+        let bucket_page = get_messages_bucket_page(&mut result, topic, page_id).await;
 
         loop {
             let mut next_message_size_result = bucket_page
@@ -176,22 +176,23 @@ async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -
 }
 
 async fn get_messages_bucket_page<'t>(
-    app: &AppContext,
     messages_bucket: &'t mut MessagesBucket,
     topic: &Topic,
     page_id: PageId,
 ) -> &'t mut MessagesBucketPage {
-    loop {
-        if let Some(result) = messages_bucket.get_last_page_with_id(page_id) {
-            if result.page.page_id == page_id {
-                return result;
-            }
+    if let Some(last_page_id) = messages_bucket.last_page_id {
+        if last_page_id == page_id {
+            return messages_bucket.pages.last_mut().unwrap();
         }
-
-        let page = get_page(app, topic, page_id).await;
-
-        return messages_bucket.get_last_page_with_id(page_id).unwrap();
     }
+
+    let page = topic.messages.get(page_id).await.unwrap(); //TODO - Remove unwrap
+
+    let page = MessagesBucketPage::new(page);
+
+    messages_bucket.add_page(page);
+
+    return messages_bucket.pages.last_mut().unwrap();
 }
 
 async fn get_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Arc<MessagesPage> {

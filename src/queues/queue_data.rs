@@ -2,20 +2,13 @@ use std::collections::HashMap;
 
 use my_service_bus_shared::{
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
-    MessageId,
+    MessageId, TopicQueueType,
 };
 
 use crate::{
     date_time::MyDateTime, messages_bucket::MessagesBucket, operations::OperationFailResult,
     subscribers::SubscribersList,
 };
-
-#[derive(Debug, Clone, Copy)]
-pub enum TopicQueueType {
-    Permanent = 0,
-    DeleteOnDisconnect = 1,
-    PermanentWithSingleConnection = 2,
-}
 
 #[derive(Debug)]
 pub struct NextMessage {

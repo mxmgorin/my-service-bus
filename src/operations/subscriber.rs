@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
+use my_service_bus_shared::{queue_with_intervals::QueueWithIntervals, TopicQueueType};
 
 use crate::{
     app::{AppContext, TEST_QUEUE},
     date_time::MyDateTime,
-    queues::{QueueData, TopicQueueType},
+    queues::QueueData,
     sessions::MyServiceBusSession,
     subscribers::SubscriberId,
 };

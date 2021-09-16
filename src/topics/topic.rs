@@ -1,13 +1,13 @@
 use my_service_bus_shared::page_id::{get_page_id, PageId};
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
-use my_service_bus_shared::MessageId;
+use my_service_bus_shared::{MessageId, TopicQueueType};
 use tokio::sync::RwLock;
 
 use crate::date_time::MyDateTime;
 use crate::message_pages::MessagesPagesCache;
 use crate::messages::MySbMessageContent;
+use crate::queues::TopicQueue;
 use crate::queues::TopicQueuesList;
-use crate::queues::{TopicQueue, TopicQueueType};
 use std::collections::HashMap;
 use std::{collections::VecDeque, sync::Arc};
 

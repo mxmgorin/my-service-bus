@@ -29,7 +29,7 @@ var HtmlSessions = /** @class */ (function () {
         for (var _i = 0, _a = session.subscribers; _i < _a.length; _i++) {
             var subscriber = _a[_i];
             var badgeType = subscriber.active > 0 ? "badge-success" : "badge-light";
-            result += '<span class="badge ' + badgeType + '">' + subscriber.topicId + " -> " + subscriber.queueId + '</span>';
+            result += '<span class="badge ' + badgeType + '">' + subscriber.topicId + " -> " + subscriber.queueId + '</span> ';
         }
         return result;
     };

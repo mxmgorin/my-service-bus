@@ -1,9 +1,7 @@
 use my_service_bus_shared::queue_with_intervals::QueueIndexRange;
+use my_service_bus_shared::TopicQueueType;
 
-use crate::{
-    queues::TopicQueueType,
-    topics::{TopicQueueSnapshot, TopicSnapshot},
-};
+use crate::topics::{TopicQueueSnapshot, TopicSnapshot};
 
 use crate::persistence_grpc::*;
 
@@ -42,7 +40,7 @@ impl From<&TopicQueueSnapshot> for QueueSnapshotGrpcModel {
     fn from(src: &TopicQueueSnapshot) -> Self {
         Self {
             queue_id: src.queue_id.to_string(),
-            queue_type: src.queue_type.into(),
+            queue_type: src.queue_type.into_u8() as i32,
             ranges: src.ranges.iter().map(|itm| itm.into()).collect(),
         }
     }
@@ -52,7 +50,7 @@ impl From<QueueSnapshotGrpcModel> for TopicQueueSnapshot {
     fn from(src: QueueSnapshotGrpcModel) -> Self {
         Self {
             queue_id: src.queue_id.to_string(),
-            queue_type: TopicQueueType::parse(src.queue_type as u8),
+            queue_type: TopicQueueType::from_u8(src.queue_type as u8),
             ranges: src.ranges.into_iter().map(|itm| itm.into()).collect(),
         }
     }
@@ -73,12 +71,5 @@ impl From<QueueIndexRangeGrpcModel> for QueueIndexRange {
             from_id: src.from_id,
             to_id: src.to_id,
         }
-    }
-}
-
-impl Into<i32> for TopicQueueType {
-    fn into(self) -> i32 {
-        let res: u8 = self.into();
-        res as i32
     }
 }

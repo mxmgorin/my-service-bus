@@ -1,16 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
+use my_service_bus_tcp_shared::PacketProtVer;
 use tokio::sync::RwLock;
 
 use crate::subscribers::SubscriberId;
 
 use super::{my_sb_session::ConnectionId, MyServiceBusSession};
-
-#[derive(Debug)]
-pub struct PacketProtVer {
-    pub packet_version: i32,
-    pub protocol_version: i32,
-}
 
 pub struct SessionsListData {
     snapshot_id: usize,

@@ -9,7 +9,7 @@ pub async fn execute(app: &AppContext, topic: &Topic) {
         let gc_data = queue.get_gc_data().await;
 
         match gc_data.queue_type {
-            crate::queues::TopicQueueType::DeleteOnDisconnect => {
+            my_service_bus_shared::TopicQueueType::DeleteOnDisconnect => {
                 if gc_data.subscribers_amount == 0
                     && now.get_duration_from(gc_data.last_subscriber_disconnect)
                         > app.empty_queue_gc_timeout

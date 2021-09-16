@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{subscribers::SubscriberId, tcp_contracts::tcp_contract::ConnectionAttributes};
+use my_service_bus_tcp_shared::ConnectionAttributes;
+
+use crate::subscribers::SubscriberId;
 
 use super::my_sb_session_subscriber_data::MySbSessionSubscriberData;
 

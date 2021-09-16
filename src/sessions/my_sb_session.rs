@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use my_service_bus_tcp_shared::TcpContract;
 use tokio::{
     io::{AsyncWriteExt, WriteHalf},
     net::TcpStream,
@@ -11,7 +12,6 @@ use crate::{
     date_time::{AtomicDateTime, MyDateTime},
     operations::OperationFailResult,
     subscribers::SubscriberId,
-    tcp_contracts::tcp_contract::TcpContract,
 };
 
 use super::{MySbSessionStatistic, MySbSessionSubscriberData, MyServiceBusSessionData};

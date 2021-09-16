@@ -1,18 +1,15 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
+use my_service_bus_tcp_shared::{ConnectionAttributes, SocketReader, TcpContract};
+
 use tokio::{
     io::{self, AsyncWriteExt, ReadHalf},
     net::{TcpListener, TcpStream},
 };
 
-use crate::{
-    app::AppContext,
-    date_time::MyDateTime,
-    sessions::MyServiceBusSession,
-    tcp_contracts::tcp_contract::{ConnectionAttributes, TcpContract},
-};
+use crate::{app::AppContext, date_time::MyDateTime, sessions::MyServiceBusSession};
 
-use super::{MySbSocketError, SocketReader};
+use super::error::MySbSocketError;
 
 pub type ConnectionId = i64;
 
@@ -136,6 +133,7 @@ async fn socket_loop(
     loop {
         socket_reader.start_calculating_read_size();
         let deserialize_result = TcpContract::deserialize(&mut socket_reader, &attr).await;
+
         session.increase_read_size(socket_reader.read_size).await;
 
         let now = MyDateTime::utc_now();
@@ -143,24 +141,22 @@ async fn socket_loop(
 
         match deserialize_result {
             Ok(tcp_contract) => {
-                let packet_name = tcp_contract.to_string();
-                let result = super::connection::handle_incoming_payload(
+                super::connection::handle_incoming_payload(
                     app.clone(),
                     tcp_contract,
                     session.as_ref(),
                     &mut attr,
                 )
-                .await;
-
-                if let Err(err) = result {
-                    session
-                        .send(TcpContract::Reject {
-                            message: format!("Handling message {}: {:?}", packet_name, err),
-                        })
-                        .await;
-                }
+                .await?;
             }
-            Err(err) => return Err(err),
+
+            Err(err) => {
+                session
+                    .send(TcpContract::Reject {
+                        message: format!("Error handling message {:?}", err),
+                    })
+                    .await;
+            }
         }
     }
 }

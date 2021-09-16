@@ -21,7 +21,6 @@ mod sessions;
 mod settings;
 mod subscribers;
 mod tcp;
-mod tcp_contracts;
 mod timers;
 mod topics;
 mod utils;
