@@ -1,11 +1,10 @@
 name: Release App
 on:
   push:
-    branches: [main]
+    tags: "*"
 
 env:
   IMAGE_NAME: myjettools/my-service-bus
-  VERSION: 2.0.3
 
 
 jobs:
@@ -23,10 +22,11 @@ jobs:
           DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASS: ${{ secrets.DOCKER_PASSWORD }}
         run: |
+          ver=${GITHUB_REF#refs/tags/Server-}
           echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
 
       - name: Docker Build
-        run: docker build -t ${IMAGE_NAME}:${VERSION} .
+        run: docker build -t ${IMAGE_NAME}:${ver} .
 
       - name: Docker Push
-        run: docker push ${IMAGE_NAME}:${VERSION}
+        run: docker push ${IMAGE_NAME}:${ver}
