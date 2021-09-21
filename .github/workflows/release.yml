@@ -24,11 +24,9 @@ jobs:
         run: |          
           echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
 
-      - name: Docker Build  
+      - name: Docker Build and Publish
         run: |
           ver=$(cat Cargo.toml | grep -m1 version | grep  -Eo '["\047].*["\047]' | tr -d '"')
           echo $ver
           docker build -t ${IMAGE_NAME}:$ver .
-
-      - name: Docker Push
-        run: docker push ${IMAGE_NAME}:$ver
+          docker push ${IMAGE_NAME}:$ver
