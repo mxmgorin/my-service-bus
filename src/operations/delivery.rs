@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use my_service_bus_shared::page_id::{get_page_id, PageId};
 
@@ -6,7 +6,7 @@ use crate::{
     app::{logs::SystemProcess, AppContext, TEST_QUEUE},
     message_pages::{MessageSize, MessagesPage},
     messages_bucket::{MessagesBucket, MessagesBucketPage},
-    queues::QueueData,
+    queues::{NextMessage, QueueData},
     sessions::MyServiceBusSession,
     subscribers::{Subscriber, SubscriberId},
     topics::Topic,
@@ -118,61 +118,100 @@ async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -
 
         let bucket_page = get_messages_bucket_page(&mut result, topic, page_id).await;
 
-        loop {
-            let mut next_message_size_result = bucket_page
-                .page
-                .get_message_size(&next_message.message_id)
-                .await;
+        let msg_size = get_message_size(app, topic, &bucket_page, &next_message, page_id).await;
 
-            match next_message_size_result {
-                MessageSize::MessageIsReady(next_msg_size) => {
-                    if all_messages_size + next_msg_size > app.max_delivery_size
-                        && all_messages_count > 0
-                    {
-                        return result;
-                    }
-
-                    queue.dequeue_next_message();
-
-                    bucket_page.add(
-                        next_message.message_id,
-                        next_message.attempt_no,
-                        next_msg_size,
-                    );
-
-                    result.add_total_size(next_message.message_id, next_msg_size);
-
-                    let page = get_page(app, topic, page_id).await;
-                    result.add_page(MessagesBucketPage::new(page));
-
-                    break;
-                }
-                MessageSize::NotLoaded => {
-                    super::message_pages::restore_page(app, topic, page_id).await;
-
-                    next_message_size_result = bucket_page
-                        .page
-                        .get_message_size(&next_message.message_id)
-                        .await;
-                }
-                MessageSize::CanNotBeLoaded => {
-                    app.logs
-                        .add_error(
-                            Some(topic.topic_id.to_string()),
-                            SystemProcess::DeliveryOperation,
-                            "fill_messages".to_string(),
-                            "Message can not be loaded. Skipping it".to_string(),
-                            Some(format!("MessageId: {}", next_message.message_id)),
-                        )
-                        .await;
-
-                    break;
-                }
+        if let Some(next_msg_size) = msg_size {
+            if all_messages_size + next_msg_size > app.max_delivery_size && all_messages_count > 0 {
+                return result;
             }
+
+            queue.dequeue_next_message();
+
+            bucket_page.add(
+                next_message.message_id,
+                next_message.attempt_no,
+                next_msg_size,
+            );
+
+            result.add_total_size(next_message.message_id, next_msg_size);
+
+            let page = get_page(app, topic, page_id).await;
+            result.add_page(MessagesBucketPage::new(page));
         }
     }
 
     return result;
+}
+
+#[inline]
+async fn get_message_size(
+    app: &AppContext,
+    topic: &Topic,
+    msg_bucket_page: &MessagesBucketPage,
+    next_message: &NextMessage,
+    page_id: PageId,
+) -> Option<usize> {
+    let first_time =
+        get_message_size_first_time(app, topic, msg_bucket_page, next_message, page_id).await;
+
+    if let Some(result) = first_time {
+        return Some(result);
+    }
+
+    return get_message_size_second_time(msg_bucket_page, next_message).await;
+}
+
+async fn get_message_size_first_time(
+    app: &AppContext,
+    topic: &Topic,
+    bucket_page: &MessagesBucketPage,
+    next_message: &NextMessage,
+    page_id: PageId,
+) -> Option<usize> {
+    let next_message_size_result = bucket_page
+        .page
+        .get_message_size(&next_message.message_id)
+        .await;
+
+    match next_message_size_result {
+        MessageSize::MessageIsReady(next_msg_size) => {
+            return Some(next_msg_size);
+        }
+        MessageSize::NotLoaded => {
+            super::message_pages::restore_page(app, topic, page_id).await;
+            return None;
+        }
+        MessageSize::CanNotBeLoaded => {
+            app.logs
+                .add_error(
+                    Some(topic.topic_id.to_string()),
+                    SystemProcess::DeliveryOperation,
+                    "fill_messages".to_string(),
+                    "Message can not be loaded. Skipping it".to_string(),
+                    Some(format!("MessageId: {}", next_message.message_id)),
+                )
+                .await;
+
+            return None;
+        }
+    }
+}
+
+async fn get_message_size_second_time(
+    bucket_page: &MessagesBucketPage,
+    next_message: &NextMessage,
+) -> Option<usize> {
+    let next_message_size_result = bucket_page
+        .page
+        .get_message_size(&next_message.message_id)
+        .await;
+
+    match next_message_size_result {
+        MessageSize::MessageIsReady(next_msg_size) => {
+            return Some(next_msg_size);
+        }
+        _ => return None,
+    }
 }
 
 async fn get_messages_bucket_page<'t>(
@@ -203,41 +242,6 @@ async fn get_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Arc<Messa
             return result;
         }
 
-        load_page_to_cache(app, topic, page_id).await;
-    }
-}
-
-async fn load_page_to_cache(app: &AppContext, topic: &Topic, page_id: PageId) {
-    let mut attempt_no = 0;
-    loop {
-        let result = app
-            .messages_pages_repo
-            .load_page(topic.topic_id.as_str(), page_id)
-            .await;
-
-        if let Ok(page) = result {
-            topic.messages.restore_page(page).await;
-            return;
-        }
-
-        //TODO - Handle Situation - if we do not have page at all - we load empty page
-
-        let err = result.err().unwrap();
-
-        app.logs
-            .add_error(
-                Some(topic.topic_id.to_string()),
-                crate::app::logs::SystemProcess::Init,
-                "get_page".to_string(),
-                format!(
-                    "Can not load page #{} from persistence storage. Attempt #{}",
-                    page_id, attempt_no
-                ),
-                Some(format!("{:?}", err)),
-            )
-            .await;
-
-        attempt_no += 1;
-        tokio::time::sleep(Duration::from_secs(1)).await
+        super::load_page_to_cache::do_it(app, topic, page_id).await;
     }
 }

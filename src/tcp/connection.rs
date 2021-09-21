@@ -7,6 +7,23 @@ use crate::{app::AppContext, operations, sessions::MyServiceBusSession};
 
 use super::error::MySbSocketError;
 
+pub async fn on_disconnect(
+    app: Arc<AppContext>,
+    my_sb_session: Arc<MyServiceBusSession>,
+) -> Result<(), String> {
+    let result = tokio::task::spawn(on_disconnect_process(app.clone(), my_sb_session)).await;
+
+    if let Err(err) = result {
+        return Err(format!("{:?}", err));
+    }
+
+    Ok(())
+}
+
+async fn on_disconnect_process(app: Arc<AppContext>, my_sb_session: Arc<MyServiceBusSession>) {
+    crate::operations::sessions::disconnect(app.as_ref(), my_sb_session.id).await;
+}
+
 pub async fn handle_incoming_payload(
     app: Arc<AppContext>,
     tcp_contract: TcpContract,

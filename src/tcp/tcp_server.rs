@@ -7,7 +7,11 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
-use crate::{app::AppContext, date_time::MyDateTime, sessions::MyServiceBusSession};
+use crate::{
+    app::{logs::SystemProcess, AppContext},
+    date_time::MyDateTime,
+    sessions::MyServiceBusSession,
+};
 
 use super::error::MySbSocketError;
 
@@ -72,8 +76,8 @@ pub async fn start(addr: SocketAddr, app: Arc<AppContext>) {
             .add_info(
                 None,
                 crate::app::logs::SystemProcess::TcpSocket,
-                "Accept sockets loop".to_string(),
-                format!("Connected socket {}. IP: {}", socket_id, addr),
+                "Accepted sockets loop".to_string(),
+                format!("Connected socket {}. IP: {}", my_sb_session.id, addr),
             )
             .await;
 
@@ -95,9 +99,10 @@ async fn process_socket(
     app: Arc<AppContext>,
     my_sb_session: Arc<MyServiceBusSession>,
 ) {
-    let socket_result = socket_loop(read_socket, app.clone(), my_sb_session.clone()).await;
+    let socket_loop_result =
+        tokio::task::spawn(socket_loop(read_socket, app.clone(), my_sb_session.clone())).await;
 
-    if let Err(err) = socket_result {
+    if let Err(err) = socket_loop_result {
         app.logs
             .add_error(
                 None,
@@ -109,8 +114,7 @@ async fn process_socket(
             .await;
     } else {
         app.logs
-            .add_info(
-                None,
+            .add_fatal_error(
                 crate::app::logs::SystemProcess::TcpSocket,
                 "tcp_socket_process".to_string(),
                 "Socket disconnected".to_string(),
@@ -118,7 +122,17 @@ async fn process_socket(
             .await;
     }
 
-    crate::operations::sessions::disconnect(app.as_ref(), my_sb_session.id).await;
+    let on_disconnect_result = super::connection::on_disconnect(app.clone(), my_sb_session).await;
+
+    if let Err(err) = on_disconnect_result {
+        app.logs
+            .add_fatal_error(
+                SystemProcess::TcpSocket,
+                "OnDisconnect Handler".to_string(),
+                err,
+            )
+            .await;
+    }
 }
 
 async fn socket_loop(

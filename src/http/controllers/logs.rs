@@ -196,7 +196,8 @@ fn compile_result(
 fn get_log_level_color(item: &LogItem) -> &str {
     match &item.level {
         crate::app::logs::LogLevel::Info => "green",
-        crate::app::logs::LogLevel::Error => "red",
+        crate::app::logs::LogLevel::Error => "orange",
+        crate::app::logs::LogLevel::FatalError => "red",
     }
 }
 

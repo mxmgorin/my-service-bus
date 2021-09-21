@@ -1,5 +1,6 @@
 pub mod delivery;
 mod fail_result;
+mod load_page_to_cache;
 pub mod message_pages;
 
 pub mod publisher;

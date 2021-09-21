@@ -77,6 +77,7 @@ impl SystemProcess {
 pub enum LogLevel {
     Info,
     Error,
+    FatalError,
 }
 #[derive(Debug, Clone)]
 pub struct LogItem {
@@ -189,6 +190,34 @@ impl Logs {
             process,
             message: message,
             err_ctx,
+        };
+
+        println!(
+            "{dt} {level:?} {proces:?}\n Process:{processname}\n Message:{message}",
+            dt = item.date.to_iso_string(),
+            level = item.level,
+            proces = item.process,
+            processname = item.process_name,
+            message = item.message
+        );
+        println!("-------------");
+        self.add(item).await;
+    }
+
+    pub async fn add_fatal_error(
+        &self,
+        process: SystemProcess,
+        process_name: String,
+        message: String,
+    ) {
+        let item = LogItem {
+            date: MyDateTime::utc_now(),
+            level: LogLevel::FatalError,
+            topic: None,
+            process_name,
+            process,
+            message,
+            err_ctx: None,
         };
 
         println!(

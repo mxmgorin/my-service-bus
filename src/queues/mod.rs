@@ -1,5 +1,5 @@
 pub use queue::TopicQueue;
-pub use queue_data::QueueData;
+pub use queue_data::{NextMessage, QueueData};
 
 pub use queues_list::TopicQueuesList;
 
