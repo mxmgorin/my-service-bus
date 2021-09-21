@@ -21,12 +21,14 @@ jobs:
         env:
           DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASS: ${{ secrets.DOCKER_PASSWORD }}
-        run: |
-          ver=$(cat Cargo.toml | grep -m1 version | grep  -Eo '["\047].*["\047]' | tr -d '"')
+        run: |          
           echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
 
-      - name: Docker Build
-        run: docker build -t ${IMAGE_NAME}:$ver .
+      - name: Docker Build  
+        run: |
+          ver=$(cat Cargo.toml | grep -m1 version | grep  -Eo '["\047].*["\047]' | tr -d '"')
+          echo $ver
+          docker build -t ${IMAGE_NAME}:$ver .
 
       - name: Docker Push
         run: docker push ${IMAGE_NAME}:$ver
