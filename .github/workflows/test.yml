@@ -16,7 +16,8 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - run: |
-        ver=$(cat Cargo.toml | grep -m1 version | grep  -Eo '["\047].*["\047]' | tr -d '"')
-        echo $ver
-        cargo test
+      - name: Test Build      
+        run: |
+          ver=$(cat Cargo.toml | grep -m1 version | grep  -Eo '["\047].*["\047]' | tr -d '"')
+          echo $ver
+          cargo test
