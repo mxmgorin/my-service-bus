@@ -117,9 +117,7 @@ pub async fn subscribe_to_queue(
         )
         .await?;
 
-        if let Some(msg) = result {
-            to_send.push(msg);
-        }
+        to_send.extend(result);
     }
 
     //Thread safety - we are doing it beyond scope of the queue lock;
@@ -213,9 +211,7 @@ pub async fn confirm_delivery(
 
         match result {
             Ok(msg) => {
-                if let Some(msg) = msg {
-                    to_send.push(msg);
-                }
+                to_send.extend(msg);
             }
             Err(err) => {
                 app.logs
@@ -308,9 +304,7 @@ pub async fn confirm_non_delivery(
 
         match result {
             Ok(msg) => {
-                if let Some(msg) = msg {
-                    to_send.push(msg);
-                }
+                to_send.extend(msg);
             }
             Err(err) => {
                 app.logs
@@ -400,9 +394,7 @@ pub async fn some_messages_are_confirmed(
 
         match result {
             Ok(msg) => {
-                if let Some(msg) = msg {
-                    to_send.push(msg);
-                }
+                to_send.extend(msg);
             }
             Err(err) => {
                 app.logs
@@ -481,9 +473,7 @@ pub async fn some_messages_are_not_confirmed(
 
         match result {
             Ok(msg) => {
-                if let Some(msg) = msg {
-                    to_send.push(msg);
-                }
+                to_send.extend(msg);
             }
             Err(err) => {
                 app.logs

@@ -70,9 +70,8 @@ pub async fn publish(
             )
             .await?;
 
-        if let Some(msg) = msg_to_deliver {
-            to_send.push(msg);
-        }
+        to_send.extend(msg_to_deliver);
+
         println!("Publish UnLock Queue {}", queue.queue_id);
     }
 

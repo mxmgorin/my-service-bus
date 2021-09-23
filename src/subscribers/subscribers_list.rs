@@ -15,9 +15,9 @@ impl SubscribersList {
         }
     }
 
-    pub fn get_next_subscriber_ready_to_deliver(&mut self) -> Option<SubscriberId> {
-        for subscriber in self.subscribers_by_id.values_mut() {
-            if subscriber.try_rent_me() {
+    pub fn get_next_subscriber_ready_to_deliver(&self) -> Option<SubscriberId> {
+        for subscriber in self.subscribers_by_id.values() {
+            if !subscriber.rented {
                 return Some(subscriber.id);
             }
         }
@@ -54,12 +54,6 @@ impl SubscribersList {
 
     pub fn get_by_id_mut(&mut self, subscriber_id: SubscriberId) -> Option<&mut Subscriber> {
         self.subscribers_by_id.get_mut(&subscriber_id)
-    }
-
-    pub fn unrent_me(&mut self, subscriber_id: SubscriberId) {
-        if let Some(subscriber) = self.subscribers_by_id.get_mut(&subscriber_id) {
-            subscriber.unrent_me();
-        }
     }
 
     pub fn get_amount(&self) -> usize {

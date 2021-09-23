@@ -41,17 +41,4 @@ impl Subscriber {
 
         result
     }
-
-    pub fn try_rent_me(&mut self) -> bool {
-        if self.rented {
-            return false;
-        }
-
-        self.rented = true;
-        return true;
-    }
-
-    pub fn unrent_me(&mut self) {
-        self.rented = false;
-    }
 }

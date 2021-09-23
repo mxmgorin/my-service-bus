@@ -19,12 +19,14 @@ pub async fn try_to_complie_next_messages_from_the_queue(
     app: &AppContext,
     topic: &Topic,
     queue: &mut QueueData,
-) -> Result<Option<(TcpContract, Arc<MyServiceBusSession>, SubscriberId)>, OperationFailResult> {
+) -> Result<Vec<(TcpContract, Arc<MyServiceBusSession>, SubscriberId)>, OperationFailResult> {
+    let mut result = Vec::new();
     while let Some(subscriber_id) = queue.subscribers.get_next_subscriber_ready_to_deliver() {
         let messages = fill_messages(app, topic, queue).await;
 
         if messages.pages.len() > 0 {
             if let Some(subscriber) = queue.subscribers.get_by_id_mut(subscriber_id) {
+                subscriber.rented = true;
                 let contract = crate::tcp::tcp_contracts::compile_messages_delivery_contract(
                     app,
                     &messages,
@@ -36,16 +38,15 @@ pub async fn try_to_complie_next_messages_from_the_queue(
 
                 subscriber.set_messages_on_delivery(messages);
 
-                return Ok(Some((contract, subscriber.session.clone(), subscriber_id)));
+                result.push((contract, subscriber.session.clone(), subscriber_id));
             }
             //subscriber.session.set_on_delivery_flag(subscriber.id).await;
         } else {
-            queue.subscribers.unrent_me(subscriber_id);
-            return Ok(None);
+            return Ok(result);
         }
     }
 
-    Ok(None)
+    Ok(result)
 }
 
 async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -> MessagesBucket {
