@@ -105,12 +105,15 @@ pub async fn subscribe_to_queue(
             }
         }
 
+        println!("Compiling messages for subscribe {}/{}", topic_id, queue_id);
         let result = super::delivery::try_to_complie_next_messages_from_the_queue(
             app.as_ref(),
             topic.as_ref(),
             &mut write_access,
         )
         .await?;
+
+        println!("Compiled messages {}", result.len());
 
         to_send.extend(result);
         println!("UnLock Subscribe  Queue {}", write_access.queue_id);

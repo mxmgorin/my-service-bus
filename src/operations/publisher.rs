@@ -67,6 +67,8 @@ pub async fn publish(
             )
             .await?;
 
+        println!("Compiled messages for publish {}", msg_to_deliver.len());
+
         to_send.extend(msg_to_deliver);
 
         println!("UnLock Publish {}/{}", topic_id, queue.queue_id);
