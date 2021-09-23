@@ -41,6 +41,7 @@ pub async fn try_to_complie_next_messages_from_the_queue(
             //subscriber.session.set_on_delivery_flag(subscriber.id).await;
         } else {
             queue.subscribers.unrent_me(subscriber_id);
+            return Ok(None);
         }
     }
 

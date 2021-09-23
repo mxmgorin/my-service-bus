@@ -31,16 +31,16 @@ impl StatusJsonResult {
 
         sys_info.refresh_all();
 
-        print!("Reading Topics");
+        println!("Reading Topics");
         let topics = TopicsJsonResult::new(app, all_topics.as_slice()).await;
 
-        print!("Reading Queues");
+        println!("Reading Queues");
         let queues = QueuesJsonResult::new(all_topics.as_slice()).await;
 
-        print!("Reading Sessions");
+        println!("Reading Sessions");
         let sessions = SessionsJsonResult::new(app).await;
 
-        print!("Compling status model");
+        println!("Compling status model");
 
         Self {
             topics,
