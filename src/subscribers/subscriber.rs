@@ -50,4 +50,8 @@ impl Subscriber {
         self.rented = true;
         return true;
     }
+
+    pub fn unrent_me(&mut self) {
+        self.rented = false;
+    }
 }

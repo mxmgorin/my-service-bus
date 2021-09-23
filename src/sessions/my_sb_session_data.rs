@@ -123,4 +123,12 @@ impl MyServiceBusSessionData {
             .await
         }
     }
+
+    pub fn set_on_delivery_flag(&mut self, subscriber_id: SubscriberId) {
+        let subscriber = self.statistic.subscribers.get_mut(&subscriber_id);
+
+        if let Some(subscriber) = subscriber {
+            subscriber.active = 2;
+        }
+    }
 }

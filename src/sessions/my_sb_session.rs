@@ -99,6 +99,19 @@ impl MyServiceBusSession {
         write_access.send(buf.as_ref(), self.logs.as_ref()).await;
     }
 
+    pub async fn send_and_set_on_delivery(
+        &self,
+        tcp_contract: TcpContract,
+        subscriber_id: SubscriberId,
+    ) {
+        let buf = self.serialize_tcp_contract(tcp_contract).await;
+
+        let mut write_access = self.data.write().await;
+        write_access.send(buf.as_ref(), self.logs.as_ref()).await;
+
+        write_access.set_on_delivery_flag(subscriber_id);
+    }
+
     pub async fn add_publisher(&self, topic: &str) {
         let mut data = self.data.write().await;
 
@@ -184,18 +197,5 @@ impl MyServiceBusSession {
         write_access.disconnect(self.logs.as_ref()).await;
 
         return Some(write_access.get_subscribers());
-    }
-
-    pub async fn set_on_delivery_flag(&self, subscriber_id: SubscriberId) {
-        let mut statistic_write_access = self.data.write().await;
-
-        let subscriber = statistic_write_access
-            .statistic
-            .subscribers
-            .get_mut(&subscriber_id);
-
-        if let Some(subscriber) = subscriber {
-            subscriber.active = 2;
-        }
     }
 }

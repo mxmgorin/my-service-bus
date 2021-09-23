@@ -1,108 +1,50 @@
 use std::sync::Arc;
 
 use my_service_bus_shared::page_id::{get_page_id, PageId};
+use my_service_bus_tcp_shared::TcpContract;
 
 use crate::{
-    app::{logs::SystemProcess, AppContext, TEST_QUEUE},
+    app::{logs::SystemProcess, AppContext},
     message_pages::{MessageSize, MessagesPage},
     messages_bucket::{MessagesBucket, MessagesBucketPage},
     queues::{NextMessage, QueueData},
     sessions::MyServiceBusSession,
-    subscribers::{Subscriber, SubscriberId},
+    subscribers::SubscriberId,
     topics::Topic,
 };
 
-use super::{fail_result::*, OperationFailResult};
+use super::OperationFailResult;
 
-pub async fn try_to_deliver_next_messages_for_the_queue(
+pub async fn try_to_complie_next_messages_from_the_queue(
     app: &AppContext,
     topic: &Topic,
     queue: &mut QueueData,
-) -> Result<(), OperationFailResult> {
-    while let Some((subscriber_id, session)) =
-        queue.subscribers.get_next_subscriber_ready_to_deliver()
-    {
-        let result =
-            try_to_deliver_next_messages(app, topic, queue, subscriber_id, session.as_ref())
-                .await?;
+) -> Result<Option<(TcpContract, Arc<MyServiceBusSession>, SubscriberId)>, OperationFailResult> {
+    while let Some(subscriber_id) = queue.subscribers.get_next_subscriber_ready_to_deliver() {
+        let messages = fill_messages(app, topic, queue).await;
 
-        if !result {
-            return Ok(());
-        }
-    }
+        if messages.pages.len() > 0 {
+            if let Some(subscriber) = queue.subscribers.get_by_id_mut(subscriber_id) {
+                let contract = crate::tcp::tcp_contracts::compile_messages_delivery_contract(
+                    app,
+                    &messages,
+                    topic,
+                    subscriber.queue_id.as_str(),
+                    subscriber.id,
+                )
+                .await;
 
-    Ok(())
-}
+                subscriber.set_messages_on_delivery(messages);
 
-async fn try_to_deliver_next_messages(
-    app: &AppContext,
-    topic: &Topic,
-    queue: &mut QueueData,
-    subscriber_id: SubscriberId,
-    session: &MyServiceBusSession,
-) -> Result<bool, OperationFailResult> {
-    let subscriber =
-        try_to_compile_next_messages(app, topic, queue, session, subscriber_id).await?;
-
-    if let Some(subscriber) = subscriber {
-        if let Some(messages) = &subscriber.messages_on_delivery {
-            let contract = crate::tcp::tcp_contracts::compile_messages_delivery_contract(
-                app,
-                messages,
-                topic,
-                subscriber.queue_id.as_str(),
-                subscriber_id,
-            )
-            .await;
-
-            session.send(contract).await;
-
-            return Ok(true);
+                return Ok(Some((contract, subscriber.session.clone(), subscriber_id)));
+            }
+            //subscriber.session.set_on_delivery_flag(subscriber.id).await;
         } else {
-            println!("Somehow there are no messages to deliver. Bug...");
-
-            return Ok(false);
+            queue.subscribers.unrent_me(subscriber_id);
         }
     }
 
-    return Ok(false);
-}
-
-async fn try_to_compile_next_messages<'t>(
-    app: &AppContext,
-    topic: &Topic,
-    queue: &'t mut QueueData,
-    session: &MyServiceBusSession,
-    subscriber_id: SubscriberId,
-) -> Result<Option<&'t mut Subscriber>, OperationFailResult> {
-    let messages = fill_messages(app, topic, queue).await;
-
-    if messages.pages.len() > 0 {
-        let subscriber = queue
-            .subscribers
-            .get_by_id_mut(subscriber_id)
-            .ok_or(OperationFailResult::SubscriberNotFound { id: subscriber_id })?;
-
-        if queue.queue_id == TEST_QUEUE {
-            println!(
-                "Has package with {} messages. First Id: {:?}",
-                messages.messages_count(),
-                messages.min_id
-            );
-        }
-
-        subscriber.set_messages_on_delivery(messages);
-
-        session.set_on_delivery_flag(subscriber_id).await;
-        return Ok(Some(subscriber));
-    } else {
-        let subscriber = queue.subscribers.get_by_id_mut(subscriber_id);
-        let subscriber = into_subscriber_result_mut(subscriber, subscriber_id)?;
-
-        subscriber.reset();
-
-        Ok(None)
-    }
+    Ok(None)
 }
 
 async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -> MessagesBucket {

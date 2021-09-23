@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    subscribers::{Subscriber, SubscriberId},
-    topics::Topic,
-};
+use crate::{subscribers::SubscriberId, topics::Topic};
 
 #[derive(Debug)]
 pub enum OperationFailResult {
@@ -53,7 +50,7 @@ pub fn into_subscriber_result(
         None => Err(OperationFailResult::SubscriberNotFound { id }),
     }
 }
-*/
+
 
 pub fn into_subscriber_result_mut(
     src: Option<&mut Subscriber>,
@@ -64,3 +61,4 @@ pub fn into_subscriber_result_mut(
         None => Err(OperationFailResult::SubscriberNotFound { id }),
     }
 }
+*/

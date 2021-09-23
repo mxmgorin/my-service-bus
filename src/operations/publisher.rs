@@ -54,17 +54,30 @@ pub async fn publish(
 
     let queues = topic.get_all_queues().await;
 
+    let mut to_send = Vec::new();
+
     for queue in queues {
         let mut write_access = queue.data.write().await;
 
         write_access.enqueue_messages(msg_ids.as_slice());
 
-        crate::operations::delivery::try_to_deliver_next_messages_for_the_queue(
-            app.as_ref(),
-            topic.as_ref(),
-            &mut write_access,
-        )
-        .await?;
+        let msg_to_deliver =
+            crate::operations::delivery::try_to_complie_next_messages_from_the_queue(
+                app.as_ref(),
+                topic.as_ref(),
+                &mut write_access,
+            )
+            .await?;
+
+        if let Some(msg) = msg_to_deliver {
+            to_send.push(msg);
+        }
+    }
+
+    for (tcp_contract, session, subscriber_id) in to_send {
+        session
+            .send_and_set_on_delivery(tcp_contract, subscriber_id)
+            .await;
     }
 
     Ok(())
