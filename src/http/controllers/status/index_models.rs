@@ -25,16 +25,27 @@ pub struct StatusJsonResult {
 
 impl StatusJsonResult {
     pub async fn new(app: &AppContext) -> Self {
-        let topics = app.topic_list.get_all().await;
+        let all_topics = app.topic_list.get_all().await;
 
         let mut sys_info = sysinfo::System::new_all();
 
         sys_info.refresh_all();
 
+        print!("Reading Topics");
+        let topics = TopicsJsonResult::new(app, all_topics.as_slice()).await;
+
+        print!("Reading Queues");
+        let queues = QueuesJsonResult::new(all_topics.as_slice()).await;
+
+        print!("Reading Sessions");
+        let sessions = SessionsJsonResult::new(app).await;
+
+        print!("Compling status model");
+
         Self {
-            topics: TopicsJsonResult::new(app, topics.as_slice()).await,
-            queues: QueuesJsonResult::new(topics.as_slice()).await,
-            sessions: SessionsJsonResult::new(app).await,
+            topics,
+            queues,
+            sessions,
             system: SystemStatusModel {
                 totalmem: sys_info.total_memory(),
                 usedmem: sys_info.used_memory(),
