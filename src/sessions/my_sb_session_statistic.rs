@@ -39,6 +39,16 @@ impl MySbSessionStatistic {
         }
     }
 
+    pub async fn increase_read_size(&mut self, read_size: usize) {
+        self.read_size += read_size;
+        self.read_per_sec_going.increase(read_size);
+    }
+
+    pub async fn increase_written_size(&mut self, written_size: usize) {
+        self.written_size += written_size;
+        self.written_per_sec_going.increase(written_size);
+    }
+
     pub fn one_second_tick(&mut self) {
         self.read_per_sec = self.read_per_sec_going.get_and_reset();
         self.written_per_sec = self.written_per_sec_going.get_and_reset();
