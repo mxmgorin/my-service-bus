@@ -29,3 +29,32 @@ pub async fn delete(app: &AppContext, ctx: HttpContext) -> Result<HttpOkResult, 
 
     Ok(HttpOkResult::Ok)
 }
+
+pub async fn get_queues(
+    app: &AppContext,
+    ctx: HttpContext,
+) -> Result<HttpOkResult, HttpFailResult> {
+    let query = ctx.get_query_string();
+    let topic_id = query.get_query_required_string_parameter("topicId")?;
+
+    let topic = app.topic_list.get(topic_id).await;
+
+    if topic.is_none() {
+        return Err(HttpFailResult::as_not_found(format!(
+            "Topic {} not found",
+            topic_id
+        )));
+    }
+
+    let topic = topic.unwrap();
+
+    let queues = topic.queues.get_queues().await;
+
+    let mut result = Vec::new();
+
+    for queue in queues {
+        result.push(queue.queue_id.clone());
+    }
+
+    return HttpOkResult::create_json_response(result);
+}

@@ -19,6 +19,7 @@ pub async fn handle_request(ctx: HttpContext) -> Result<HttpOkResult, HttpFailRe
         placehloders.insert("SCHEME", ctx.get_scheme());
 
         placehloders.insert("HOST", host.to_string());
+        placehloders.insert("VERSION", crate::app::APP_VERSION.to_string());
 
         return super::files::serve_file_with_placeholders(path.as_str(), None, &placehloders)
             .await;

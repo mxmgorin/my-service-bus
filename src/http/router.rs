@@ -29,6 +29,10 @@ pub async fn route_requests(
             return super::controllers::metrics::get(app.as_ref()).await;
         }
 
+        (&Method::GET, "/queues") => {
+            return super::controllers::queues::get_queues(app.as_ref(), ctx).await;
+        }
+
         (&Method::DELETE, "/connections/kicktcpconnection") => {
             return super::controllers::connections::delete(app.as_ref(), ctx).await;
         }
