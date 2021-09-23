@@ -53,7 +53,12 @@ pub async fn subscribe_to_queue(
 
         let subscriber_id = app.subscriber_id_generator.get_next_subsriber_id();
 
+        session
+            .add_subscriber(subscriber_id, topic_id, queue_id)
+            .await?;
+
         let mut write_access = topic_queue.data.write().await;
+        println!("Subscribe Lock Queue {}", write_access.queue_id);
 
         write_access.queue_type = queue_type;
 
@@ -77,10 +82,6 @@ pub async fn subscribe_to_queue(
                 ),
             )
             .await;
-
-        session
-            .add_subscriber(subscriber_id, topic_id, queue_id)
-            .await?;
 
         if matches!(
             write_access.queue_type,
@@ -107,6 +108,7 @@ pub async fn subscribe_to_queue(
                 }
             }
         }
+        println!("Subscribe UnLock Queue {}", write_access.queue_id);
 
         let result = super::delivery::try_to_complie_next_messages_from_the_queue(
             app.as_ref(),

@@ -57,6 +57,7 @@ pub async fn publish(
     let mut to_send = Vec::new();
 
     for queue in queues {
+        println!("Publish Lock Queue {}", queue.queue_id);
         let mut write_access = queue.data.write().await;
 
         write_access.enqueue_messages(msg_ids.as_slice());
@@ -72,6 +73,7 @@ pub async fn publish(
         if let Some(msg) = msg_to_deliver {
             to_send.push(msg);
         }
+        println!("Publish UnLock Queue {}", queue.queue_id);
     }
 
     for (tcp_contract, session, subscriber_id) in to_send {
