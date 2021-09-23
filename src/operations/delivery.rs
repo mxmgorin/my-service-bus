@@ -40,7 +40,6 @@ pub async fn try_to_complie_next_messages_from_the_queue(
 
                 result.push((contract, subscriber.session.clone(), subscriber_id));
             }
-            //subscriber.session.set_on_delivery_flag(subscriber.id).await;
         } else {
             return Ok(result);
         }

@@ -52,8 +52,9 @@ pub async fn subscribe_to_queue(
 
     let subscriber_id = app.subscriber_id_generator.get_next_subsriber_id();
     {
+        println!("Locking SubscribeQueue {}", queue_id);
         let mut write_access = topic_queue.data.write().await;
-        println!("Subscribe Lock Queue {}", write_access.queue_id);
+        println!("Lock SubscribeQueue {}", queue_id);
 
         write_access.queue_type = queue_type;
 
@@ -112,7 +113,7 @@ pub async fn subscribe_to_queue(
         .await?;
 
         to_send.extend(result);
-        println!("Subscribe UnLock Queue {}", write_access.queue_id);
+        println!("UnLock Subscribe  Queue {}", write_access.queue_id);
     }
 
     session

@@ -27,7 +27,6 @@ pub async fn create_topic_if_not_exists(
 
 pub async fn publish(
     app: Arc<AppContext>,
-    session: &MyServiceBusSession,
     topic_id: &str,
     messages: Vec<Vec<u8>>,
     persist_immediately: bool,
@@ -39,8 +38,6 @@ pub async fn publish(
     let topic = app.topic_list.get(topic_id).await;
 
     let topic = super::fail_result::into_topic_result(topic, topic_id)?;
-
-    session.add_publisher(topic.topic_id.as_str()).await;
 
     let messages = topic.publish_messages(messages).await;
 
@@ -57,9 +54,9 @@ pub async fn publish(
     let mut to_send = Vec::new();
 
     for queue in queues {
-        println!("Publish Lock Queue {}", queue.queue_id);
+        println!("Locking Publish {}/{}", topic_id, queue.queue_id);
         let mut write_access = queue.data.write().await;
-
+        println!("Locked Publish {}/{}", topic_id, queue.queue_id);
         write_access.enqueue_messages(msg_ids.as_slice());
 
         let msg_to_deliver =
@@ -72,7 +69,7 @@ pub async fn publish(
 
         to_send.extend(msg_to_deliver);
 
-        println!("Publish UnLock Queue {}", queue.queue_id);
+        println!("UnLock Publish {}/{}", topic_id, queue.queue_id);
     }
 
     for (tcp_contract, session, subscriber_id) in to_send {

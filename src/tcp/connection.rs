@@ -63,11 +63,10 @@ pub async fn handle_incoming_payload(
             persist_immediately,
             data_to_publish,
         } => {
-            session.topic_has_activity(topic_id.as_str()).await;
+            session.add_publisher(topic_id.as_str()).await;
 
             let result = operations::publisher::publish(
                 app,
-                session,
                 topic_id.as_str(),
                 data_to_publish,
                 persist_immediately,

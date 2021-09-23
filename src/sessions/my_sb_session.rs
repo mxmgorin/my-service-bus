@@ -110,18 +110,15 @@ impl MyServiceBusSession {
     pub async fn add_publisher(&self, topic: &str) {
         let mut data = self.data.write().await;
 
+        data.statistic
+            .publishers
+            .insert(topic.to_string(), BADGE_HIGHLIGHT_TIMOUT);
+
         if !data.statistic.publishers.contains_key(topic) {
             data.statistic
                 .publishers
                 .insert(topic.to_string(), BADGE_HIGHLIGHT_TIMOUT);
         }
-    }
-
-    pub async fn topic_has_activity(&self, topic: &str) {
-        let mut data = self.data.write().await;
-        data.statistic
-            .publishers
-            .insert(topic.to_string(), BADGE_HIGHLIGHT_TIMOUT);
     }
 
     pub async fn add_subscriber(
