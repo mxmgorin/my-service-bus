@@ -14,7 +14,7 @@ pub struct MyServiceBusSessionData {
     pub name: Option<String>,
     pub client_version: Option<String>,
 
-    subscribers: HashMap<SubscriberId, MySbSessionSubscriberData>,
+    pub subscribers: HashMap<SubscriberId, MySbSessionSubscriberData>,
 
     pub attr: ConnectionAttributes,
 

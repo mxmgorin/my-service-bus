@@ -21,42 +21,37 @@ pub async fn subscribe_to_queue(
 ) -> Result<(), OperationFailResult> {
     let mut to_send = Vec::new();
 
-    {
-        let topic =
-            app.topic_list
-                .get(topic_id)
-                .await
-                .ok_or(OperationFailResult::TopicNotFound {
-                    topic_id: topic_id.to_string(),
-                })?;
+    let topic = app
+        .topic_list
+        .get(topic_id)
+        .await
+        .ok_or(OperationFailResult::TopicNotFound {
+            topic_id: topic_id.to_string(),
+        })?;
 
-        let topic_queue = topic
-            .queues
-            .add_queue_if_not_exists(topic.topic_id.as_str(), queue_id, queue_type.clone())
+    let topic_queue = topic
+        .queues
+        .add_queue_if_not_exists(topic.topic_id.as_str(), queue_id, queue_type.clone())
+        .await;
+
+    let the_session = app.as_ref().sessions.get_by_id(session.id).await;
+
+    if the_session.is_none() {
+        app.logs
+            .add_error(
+                Some(topic_id.to_string()),
+                crate::app::logs::SystemProcess::QueueOperation,
+                format!("subscribe_to_queue {}", queue_id),
+                format!("Somehow subscriber {} is not found anymore", session.id),
+                None,
+            )
             .await;
+    }
 
-        let the_session = app.as_ref().sessions.get_by_id(session.id).await;
+    let the_session = the_session.unwrap();
 
-        if the_session.is_none() {
-            app.logs
-                .add_error(
-                    Some(topic_id.to_string()),
-                    crate::app::logs::SystemProcess::QueueOperation,
-                    format!("subscribe_to_queue {}", queue_id),
-                    format!("Somehow subscriber {} is not found anymore", session.id),
-                    None,
-                )
-                .await;
-        }
-
-        let the_session = the_session.unwrap();
-
-        let subscriber_id = app.subscriber_id_generator.get_next_subsriber_id();
-
-        session
-            .add_subscriber(subscriber_id, topic_id, queue_id)
-            .await?;
-
+    let subscriber_id = app.subscriber_id_generator.get_next_subsriber_id();
+    {
         let mut write_access = topic_queue.data.write().await;
         println!("Subscribe Lock Queue {}", write_access.queue_id);
 
@@ -108,7 +103,6 @@ pub async fn subscribe_to_queue(
                 }
             }
         }
-        println!("Subscribe UnLock Queue {}", write_access.queue_id);
 
         let result = super::delivery::try_to_complie_next_messages_from_the_queue(
             app.as_ref(),
@@ -118,7 +112,12 @@ pub async fn subscribe_to_queue(
         .await?;
 
         to_send.extend(result);
+        println!("Subscribe UnLock Queue {}", write_access.queue_id);
     }
+
+    session
+        .add_subscriber(subscriber_id, topic_id, queue_id)
+        .await?;
 
     //Thread safety - we are doing it beyond scope of the queue lock;
     for (tcp_contract, session, subscriber_id) in to_send {

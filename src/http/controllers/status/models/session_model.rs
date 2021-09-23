@@ -34,15 +34,15 @@ pub struct SessionJsonResult {
 impl SessionJsonResult {
     pub async fn new(session: &MyServiceBusSession) -> Self {
         let last_incoming = session.last_incoming_package.get();
-        let session_statistic = session.get_statistic().await;
+
+        let session_read = session.data.read().await;
 
         let now = MyDateTime::utc_now();
-        let session_read = session.data.read().await;
 
         let mut subscribers_json = Vec::new();
 
-        for (_, subscriber) in session_statistic.subscribers {
-            let item = SessionSubscriberJsonContract::new(&subscriber);
+        for (_, subscriber) in &session_read.statistic.subscribers {
+            let item = SessionSubscriberJsonContract::new(subscriber);
 
             subscribers_json.push(item);
         }
@@ -54,11 +54,11 @@ impl SessionJsonResult {
             version: session_read.get_version(),
             connected: duration_to_string(now.get_duration_from(session.connected)),
             last_incoming: duration_to_string(now.get_duration_from_micros(last_incoming)),
-            read_size: session_statistic.read_size,
-            written_size: session_statistic.written_size,
-            read_per_sec: session_statistic.read_per_sec,
-            written_per_sec: session_statistic.written_per_sec,
-            publishers: session_statistic.publishers,
+            read_size: session_read.statistic.read_size,
+            written_size: session_read.statistic.written_size,
+            read_per_sec: session_read.statistic.read_per_sec,
+            written_per_sec: session_read.statistic.written_per_sec,
+            publishers: session_read.statistic.publishers.clone(),
             subscribers: subscribers_json,
         }
     }

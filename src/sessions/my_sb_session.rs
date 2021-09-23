@@ -10,7 +10,7 @@ use crate::{
     subscribers::SubscriberId,
 };
 
-use super::{MySbSessionStatistic, MySbSessionSubscriberData, MyServiceBusSessionData};
+use super::{MySbSessionSubscriberData, MyServiceBusSessionData};
 
 pub type ConnectionId = i64;
 
@@ -66,11 +66,6 @@ impl MyServiceBusSession {
     pub async fn update_packet_versions(&self, packet_versions: &HashMap<u8, i32>) {
         let mut data = self.data.write().await;
         data.attr.versions.update(packet_versions);
-    }
-
-    pub async fn get_statistic(&self) -> MySbSessionStatistic {
-        let read_access = self.data.read().await;
-        read_access.statistic.clone()
     }
 
     pub async fn one_second_tick(&self) {
