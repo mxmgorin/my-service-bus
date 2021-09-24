@@ -115,7 +115,6 @@ pub async fn subscribe_to_queue(
             }
         }
 
-        println!("Compiling messages for subscribe {}/{}", topic_id, queue_id);
         let result = super::delivery::try_to_complie_next_messages_from_the_queue(
             process_id,
             app.as_ref(),
