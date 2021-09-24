@@ -2,13 +2,17 @@ use std::sync::Arc;
 
 use crate::{app::AppContext, sessions::MyServiceBusSession};
 
-pub async fn disconnect(app: &AppContext, id: i64) -> Option<Arc<MyServiceBusSession>> {
+pub async fn disconnect(
+    process_id: i64,
+    app: &AppContext,
+    id: i64,
+) -> Option<Arc<MyServiceBusSession>> {
     let session = app.sessions.remove(&id).await?;
 
-    let session_name = session.get_name().await;
+    let session_name = session.get_name(process_id).await;
     println!("We have a disconnect. Session: {}", session_name);
 
-    let subscribers = session.disconnect().await;
+    let subscribers = session.disconnect(process_id).await;
 
     if subscribers.is_none() {
         return Some(session);
@@ -33,6 +37,7 @@ pub async fn disconnect(app: &AppContext, id: i64) -> Option<Arc<MyServiceBusSes
                 let mut write_access = queue.data.write().await;
 
                 let result = crate::operations::subscriber::unsubscribe(
+                    process_id,
                     session.as_ref(),
                     &mut write_access,
                     *subscriber_id,

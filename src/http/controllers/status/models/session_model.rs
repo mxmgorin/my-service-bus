@@ -32,12 +32,12 @@ pub struct SessionJsonResult {
 }
 
 impl SessionJsonResult {
-    pub async fn new(session: &MyServiceBusSession) -> Self {
+    pub async fn new(session: &MyServiceBusSession, process_id: i64) -> Self {
         let last_incoming = session.last_incoming_package.get();
 
-        let lock_id = session
+        session
             .app
-            .enter_lock("MySbSession.SessionJsonResult.new".to_string())
+            .enter_lock(process_id, "MySbSession.SessionJsonResult.new".to_string())
             .await;
         let session_read = session.data.read().await;
 
@@ -51,7 +51,7 @@ impl SessionJsonResult {
             subscribers_json.push(item);
         }
 
-        session.app.exit_lock(lock_id).await;
+        session.app.exit_lock(process_id).await;
 
         Self {
             id: session.id,
@@ -78,14 +78,14 @@ pub struct SessionsJsonResult {
 }
 
 impl SessionsJsonResult {
-    pub async fn new(app: &AppContext) -> SessionsJsonResult {
+    pub async fn new(app: &AppContext, process_id: i64) -> SessionsJsonResult {
         let mut items = Vec::new();
 
         let (snapshot_id, sessions) = app.sessions.get_snapshot().await;
 
         for session in sessions {
             println!("Compiling Status Session {}", session.id);
-            let session = SessionJsonResult::new(session.as_ref()).await;
+            let session = SessionJsonResult::new(session.as_ref(), process_id).await;
 
             items.push(session);
         }

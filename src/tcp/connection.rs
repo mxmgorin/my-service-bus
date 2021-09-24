@@ -21,7 +21,8 @@ pub async fn on_disconnect(
 }
 
 async fn on_disconnect_process(app: Arc<AppContext>, my_sb_session: Arc<MyServiceBusSession>) {
-    crate::operations::sessions::disconnect(app.as_ref(), my_sb_session.id).await;
+    let process_id = app.process_id_generator.get_process_id().await;
+    crate::operations::sessions::disconnect(process_id, app.as_ref(), my_sb_session.id).await;
 }
 
 pub async fn handle_incoming_payload(
@@ -29,10 +30,11 @@ pub async fn handle_incoming_payload(
     tcp_contract: TcpContract,
     session: &MyServiceBusSession,
     attr: &mut ConnectionAttributes,
+    process_id: i64,
 ) -> Result<(), MySbSocketError> {
     match tcp_contract {
         TcpContract::Ping {} => {
-            session.send(TcpContract::Pong).await;
+            session.send(process_id, TcpContract::Pong).await;
             Ok(())
         }
         TcpContract::Pong {} => Ok(()),
@@ -48,13 +50,19 @@ pub async fn handle_incoming_payload(
 
             if splited.len() == 2 {
                 session
-                    .set_socket_name(splited[0].to_string(), Some(splited[1].to_string()))
+                    .set_socket_name(
+                        process_id,
+                        splited[0].to_string(),
+                        Some(splited[1].to_string()),
+                    )
                     .await;
             } else {
-                session.set_socket_name(name, None).await;
+                session.set_socket_name(process_id, name, None).await;
             }
 
-            session.set_protocol_version(protocol_version).await;
+            session
+                .set_protocol_version(process_id, protocol_version)
+                .await;
             Ok(())
         }
         TcpContract::Publish {
@@ -63,9 +71,10 @@ pub async fn handle_incoming_payload(
             persist_immediately,
             data_to_publish,
         } => {
-            session.add_publisher(topic_id.as_str()).await;
+            session.add_publisher(process_id, topic_id.as_str()).await;
 
             let result = operations::publisher::publish(
+                process_id,
                 app,
                 topic_id.as_str(),
                 data_to_publish,
@@ -75,13 +84,16 @@ pub async fn handle_incoming_payload(
 
             if let Err(err) = result {
                 session
-                    .send(TcpContract::Reject {
-                        message: format!("{:?}", err),
-                    })
+                    .send(
+                        process_id,
+                        TcpContract::Reject {
+                            message: format!("{:?}", err),
+                        },
+                    )
                     .await;
             } else {
                 session
-                    .send(TcpContract::PublishResponse { request_id })
+                    .send(process_id, TcpContract::PublishResponse { request_id })
                     .await;
             }
 
@@ -98,6 +110,7 @@ pub async fn handle_incoming_payload(
             queue_type,
         } => {
             operations::subscriber::subscribe_to_queue(
+                process_id,
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
@@ -124,6 +137,7 @@ pub async fn handle_incoming_payload(
             confirmation_id,
         } => {
             operations::subscriber::confirm_delivery(
+                process_id,
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
@@ -134,8 +148,13 @@ pub async fn handle_incoming_payload(
             Ok(())
         }
         TcpContract::CreateTopicIfNotExists { topic_id } => {
-            operations::publisher::create_topic_if_not_exists(app, session, topic_id.as_str())
-                .await;
+            operations::publisher::create_topic_if_not_exists(
+                process_id,
+                app,
+                session,
+                topic_id.as_str(),
+            )
+            .await;
             Ok(())
         }
         TcpContract::ConfirmMessagesByNotDelivery {
@@ -146,6 +165,7 @@ pub async fn handle_incoming_payload(
             not_delivered,
         } => {
             operations::subscriber::some_messages_are_not_confirmed(
+                process_id,
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
@@ -158,7 +178,9 @@ pub async fn handle_incoming_payload(
         }
         TcpContract::PacketVersions { packet_versions } => {
             attr.versions.update(&packet_versions);
-            session.update_packet_versions(&packet_versions).await;
+            session
+                .update_packet_versions(process_id, &packet_versions)
+                .await;
             Ok(())
         }
         TcpContract::Reject { message: _ } => {
@@ -171,6 +193,7 @@ pub async fn handle_incoming_payload(
             confirmation_id,
         } => {
             operations::subscriber::confirm_non_delivery(
+                process_id,
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
@@ -189,6 +212,7 @@ pub async fn handle_incoming_payload(
             delivered,
         } => {
             operations::subscriber::some_messages_are_confirmed(
+                process_id,
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),

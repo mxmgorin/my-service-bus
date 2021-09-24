@@ -15,17 +15,19 @@ use crate::{
 use super::OperationFailResult;
 
 pub async fn create_topic_if_not_exists(
+    process_id: i64,
     app: Arc<AppContext>,
     session: &MyServiceBusSession,
     topic_id: &str,
 ) -> Arc<Topic> {
     let topic = app.topic_list.add_if_not_exists(topic_id).await;
     tokio::task::spawn(crate::timers::persist::sync_topics_and_queues(app));
-    session.add_publisher(topic_id).await;
+    session.add_publisher(process_id, topic_id).await;
     return topic;
 }
 
 pub async fn publish(
+    process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     messages: Vec<Vec<u8>>,
@@ -54,29 +56,33 @@ pub async fn publish(
     let mut to_send = Vec::new();
 
     for queue in queues {
-        println!("Locking Publish {}/{}", topic_id, queue.queue_id);
+        app.enter_lock(
+            process_id,
+            format!("Publisher[{}/{}].publish", topic_id, queue.queue_id),
+        )
+        .await;
+
         let mut write_access = queue.data.write().await;
-        println!("Locked Publish {}/{}", topic_id, queue.queue_id);
+
         write_access.enqueue_messages(msg_ids.as_slice());
 
         let msg_to_deliver =
             crate::operations::delivery::try_to_complie_next_messages_from_the_queue(
+                process_id,
                 app.as_ref(),
                 topic.as_ref(),
                 &mut write_access,
             )
             .await?;
 
-        println!("Compiled messages for publish {}", msg_to_deliver.len());
-
         to_send.extend(msg_to_deliver);
 
-        println!("UnLock Publish {}/{}", topic_id, queue.queue_id);
+        app.exit_lock(process_id).await;
     }
 
     for (tcp_contract, session, subscriber_id) in to_send {
         session
-            .send_and_set_on_delivery(tcp_contract, subscriber_id)
+            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
             .await;
     }
 

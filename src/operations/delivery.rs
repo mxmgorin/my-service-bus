@@ -16,6 +16,7 @@ use crate::{
 use super::OperationFailResult;
 
 pub async fn try_to_complie_next_messages_from_the_queue(
+    process_id: i64,
     app: &AppContext,
     topic: &Topic,
     queue: &mut QueueData,
@@ -28,6 +29,7 @@ pub async fn try_to_complie_next_messages_from_the_queue(
             if let Some(subscriber) = queue.subscribers.get_by_id_mut(subscriber_id) {
                 subscriber.rented = true;
                 let contract = crate::tcp::tcp_contracts::compile_messages_delivery_contract(
+                    process_id,
                     app,
                     &messages,
                     topic,

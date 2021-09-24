@@ -9,7 +9,9 @@ pub async fn delete(app: &AppContext, ctx: HttpContext) -> Result<HttpOkResult, 
 
     let id: i64 = query.get_query_required_parameter("id")?;
 
-    let session_result = operations::sessions::disconnect(app, id).await;
+    let process_id = app.process_id_generator.get_process_id().await;
+
+    let session_result = operations::sessions::disconnect(process_id, app, id).await;
 
     match session_result {
         Some(_) => {

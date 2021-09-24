@@ -13,6 +13,7 @@ use crate::{
 use super::OperationFailResult;
 
 pub async fn subscribe_to_queue(
+    process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
@@ -52,7 +53,11 @@ pub async fn subscribe_to_queue(
 
     let subscriber_id = app.subscriber_id_generator.get_next_subsriber_id();
     {
-        println!("Locking SubscribeQueue {}", queue_id);
+        app.enter_lock(
+            process_id,
+            format!("Subscriber[{}/{}].subscribe_to_queue", topic_id, queue_id),
+        )
+        .await;
         let mut write_access = topic_queue.data.write().await;
         println!("Lock SubscribeQueue {}", queue_id);
 
@@ -72,7 +77,7 @@ pub async fn subscribe_to_queue(
                 ),
                 format!(
                     "Session {} is subscribing to the {}/{} ",
-                    session.get_name().await,
+                    session.get_name(process_id,).await,
                     topic_id,
                     queue_id
                 ),
@@ -88,8 +93,13 @@ pub async fn subscribe_to_queue(
                 .get_all_except_this_one(subscriber_id);
 
             for subscriber_to_unsubscribe_id in subscribers_to_unsubscribe {
-                let result =
-                    unsubscribe(session, &mut write_access, subscriber_to_unsubscribe_id).await;
+                let result = unsubscribe(
+                    process_id,
+                    session,
+                    &mut write_access,
+                    subscriber_to_unsubscribe_id,
+                )
+                .await;
 
                 if let Err(err) = result {
                     app.logs
@@ -107,26 +117,25 @@ pub async fn subscribe_to_queue(
 
         println!("Compiling messages for subscribe {}/{}", topic_id, queue_id);
         let result = super::delivery::try_to_complie_next_messages_from_the_queue(
+            process_id,
             app.as_ref(),
             topic.as_ref(),
             &mut write_access,
         )
         .await?;
 
-        println!("Compiled messages {}", result.len());
-
         to_send.extend(result);
-        println!("UnLock Subscribe  Queue {}", write_access.queue_id);
+        app.exit_lock(process_id).await;
     }
 
     session
-        .add_subscriber(subscriber_id, topic_id, queue_id)
+        .add_subscriber(process_id, subscriber_id, topic_id, queue_id)
         .await?;
 
     //Thread safety - we are doing it beyond scope of the queue lock;
     for (tcp_contract, session, subscriber_id) in to_send {
         session
-            .send_and_set_on_delivery(tcp_contract, subscriber_id)
+            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
             .await;
     }
 
@@ -134,6 +143,7 @@ pub async fn subscribe_to_queue(
 }
 
 pub async fn unsubscribe(
+    process_id: i64,
     session: &MyServiceBusSession,
     queue: &mut QueueData,
     subscriber_id: SubscriberId,
@@ -146,7 +156,7 @@ pub async fn unsubscribe(
 
     let removed_subscriber = removed_subscriber.unwrap();
 
-    session.remove_subscriber(subscriber_id).await;
+    session.remove_subscriber(process_id, subscriber_id).await;
 
     if queue.queue_id == TEST_QUEUE {
         if let Some(message_bucket) = removed_subscriber.messages_on_delivery {
@@ -160,6 +170,7 @@ pub async fn unsubscribe(
 }
 
 pub async fn confirm_delivery(
+    process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
@@ -206,6 +217,7 @@ pub async fn confirm_delivery(
         }
 
         let result = super::delivery::try_to_complie_next_messages_from_the_queue(
+            process_id,
             app.as_ref(),
             topic.as_ref(),
             &mut write_access,
@@ -237,6 +249,7 @@ pub async fn confirm_delivery(
         let dur = MyDateTime::utc_now().get_duration_from(start_time);
         session
             .set_delivered_statistic(
+                process_id,
                 subscriber_id,
                 delivered_messages as usize,
                 dur.as_micros() as usize,
@@ -247,7 +260,7 @@ pub async fn confirm_delivery(
     //Thread safety - we are doing it beyond scope of the queue lock;
     for (tcp_contract, session, subscriber_id) in to_send {
         session
-            .send_and_set_on_delivery(tcp_contract, subscriber_id)
+            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
             .await;
     }
 
@@ -255,6 +268,7 @@ pub async fn confirm_delivery(
 }
 
 pub async fn confirm_non_delivery(
+    process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
@@ -299,6 +313,7 @@ pub async fn confirm_non_delivery(
         }
 
         let result = super::delivery::try_to_complie_next_messages_from_the_queue(
+            process_id,
             app.as_ref(),
             topic.as_ref(),
             &mut write_access,
@@ -329,6 +344,7 @@ pub async fn confirm_non_delivery(
     if let Some(delivered_messages) = delivered_messages_amount {
         session
             .set_not_delivered_statistic(
+                process_id,
                 subscriber_id,
                 delivered_messages as i32,
                 MyDateTime::utc_now()
@@ -341,7 +357,7 @@ pub async fn confirm_non_delivery(
     //Thread safety - we are doing it beyond scope of the queue lock;
     for (tcp_contract, session, subscriber_id) in to_send {
         session
-            .send_and_set_on_delivery(tcp_contract, subscriber_id)
+            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
             .await;
     }
 
@@ -350,6 +366,7 @@ pub async fn confirm_non_delivery(
 
 //TODO - Plug partialy metrics
 pub async fn some_messages_are_confirmed(
+    process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
@@ -389,6 +406,7 @@ pub async fn some_messages_are_confirmed(
         }
 
         let result = super::delivery::try_to_complie_next_messages_from_the_queue(
+            process_id,
             app.as_ref(),
             topic.as_ref(),
             &mut write_access,
@@ -419,7 +437,7 @@ pub async fn some_messages_are_confirmed(
     //Thread safety - we are doing it beyond scope of the queue lock;
     for (tcp_contract, session, subscriber_id) in to_send {
         session
-            .send_and_set_on_delivery(tcp_contract, subscriber_id)
+            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
             .await;
     }
 
@@ -428,6 +446,7 @@ pub async fn some_messages_are_confirmed(
 
 //TODO - Plug partialy metrics
 pub async fn some_messages_are_not_confirmed(
+    process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
@@ -468,6 +487,7 @@ pub async fn some_messages_are_not_confirmed(
         }
 
         let result = super::delivery::try_to_complie_next_messages_from_the_queue(
+            process_id,
             app.as_ref(),
             topic.as_ref(),
             &mut write_access,
@@ -498,7 +518,7 @@ pub async fn some_messages_are_not_confirmed(
     //Thread safety - we are doing it beyond scope of the queue lock;
     for (tcp_contract, session, subscriber_id) in to_send {
         session
-            .send_and_set_on_delivery(tcp_contract, subscriber_id)
+            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
             .await;
     }
 

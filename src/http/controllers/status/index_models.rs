@@ -24,7 +24,7 @@ pub struct StatusJsonResult {
 }
 
 impl StatusJsonResult {
-    pub async fn new(app: &AppContext) -> Self {
+    pub async fn new(app: &AppContext, process_id: i64) -> Self {
         let all_topics = app.topic_list.get_all().await;
 
         let mut sys_info = sysinfo::System::new_all();
@@ -38,7 +38,7 @@ impl StatusJsonResult {
         let queues = QueuesJsonResult::new(all_topics.as_slice()).await;
 
         println!("Reading Sessions");
-        let sessions = SessionsJsonResult::new(app).await;
+        let sessions = SessionsJsonResult::new(app, process_id).await;
 
         println!("Compling status model");
 

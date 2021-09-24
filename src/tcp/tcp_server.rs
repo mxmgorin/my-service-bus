@@ -103,11 +103,15 @@ async fn process_socket(
         tokio::task::spawn(socket_loop(read_socket, app.clone(), my_sb_session.clone())).await;
 
     if let Err(err) = socket_loop_result {
+        let process_id = app.process_id_generator.get_process_id().await;
         app.logs
             .add_error(
                 None,
                 crate::app::logs::SystemProcess::TcpSocket,
-                format!("Socket {} Processing", my_sb_session.get_name().await),
+                format!(
+                    "Socket {} Processing",
+                    my_sb_session.get_name(process_id).await
+                ),
                 "Socket disconnected".to_string(),
                 Some(format!("{:?}", err)),
             )
@@ -147,8 +151,11 @@ async fn socket_loop(
     loop {
         socket_reader.start_calculating_read_size();
         let deserialize_result = TcpContract::deserialize(&mut socket_reader, &attr).await;
+        let process_id = app.process_id_generator.get_process_id().await;
 
-        session.increase_read_size(socket_reader.read_size).await;
+        session
+            .increase_read_size(process_id, socket_reader.read_size)
+            .await;
 
         let now = MyDateTime::utc_now();
         session.last_incoming_package.update(now);
@@ -160,15 +167,19 @@ async fn socket_loop(
                     tcp_contract,
                     session.as_ref(),
                     &mut attr,
+                    process_id,
                 )
                 .await?;
             }
 
             Err(err) => {
                 session
-                    .send(TcpContract::Reject {
-                        message: format!("Error handling message {:?}", err),
-                    })
+                    .send(
+                        process_id,
+                        TcpContract::Reject {
+                            message: format!("Error handling message {:?}", err),
+                        },
+                    )
                     .await;
             }
         }

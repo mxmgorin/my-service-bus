@@ -11,7 +11,10 @@ use crate::{
     topics::TopicsList,
 };
 
-use super::{logs::Logs, prometheus_metrics::PrometheusMetrics, GlobalStates};
+use super::{
+    logs::Logs, process_id_generator::ProcessIdGenerator, prometheus_metrics::PrometheusMetrics,
+    GlobalStates,
+};
 
 pub const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -32,6 +35,8 @@ pub struct AppContext {
     pub prometheus: PrometheusMetrics,
 
     pub locks: Mutex<Locks>,
+
+    pub process_id_generator: ProcessIdGenerator,
 }
 
 impl AppContext {
@@ -50,17 +55,18 @@ impl AppContext {
             subscriber_id_generator: SubscriberIdGenerator::new(),
             prometheus: PrometheusMetrics::new(),
             locks: Mutex::new(Locks::new()),
+            process_id_generator: ProcessIdGenerator::new(),
         }
     }
 
-    pub async fn enter_lock(&self, lock_name: String) -> i64 {
+    pub async fn enter_lock(&self, process_id: i64, lock_name: String) {
         let mut write_access = self.locks.lock().await;
-        write_access.new_lock(lock_name)
+        write_access.new_lock(process_id, lock_name)
     }
 
     pub async fn exit_lock(&self, id: i64) {
         let mut write_access = self.locks.lock().await;
-        write_access.remove(id);
+        write_access.exit(id);
     }
 
     pub async fn get_locks(&self) -> Vec<LockItem> {
