@@ -20,7 +20,7 @@ fn compile_result(items: &[LockItem]) -> String {
 
     for itm in items {
         let date = MyDateTime::new(itm.date);
-        result.append_line(format!("{} {}", date.to_iso_string(), itm.data).as_str());
+        result.append_line(format!("{} {} [{}]", date.to_iso_string(), itm.data, itm.id,).as_str());
     }
 
     result.to_string_utf8().unwrap()
