@@ -53,6 +53,10 @@ pub async fn route_requests(
             return super::controllers::topics::get(app.as_ref()).await;
         }
 
+        (&Method::POST, "/topics/create") => {
+            return super::controllers::topics::create(app.clone(), ctx).await;
+        }
+
         _ => {}
     };
 

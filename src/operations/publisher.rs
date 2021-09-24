@@ -17,12 +17,16 @@ use super::OperationFailResult;
 pub async fn create_topic_if_not_exists(
     process_id: i64,
     app: Arc<AppContext>,
-    session: &MyServiceBusSession,
+    session: Option<&MyServiceBusSession>,
     topic_id: &str,
 ) -> Arc<Topic> {
     let topic = app.topic_list.add_if_not_exists(topic_id).await;
     tokio::task::spawn(crate::timers::persist::sync_topics_and_queues(app));
-    session.add_publisher(process_id, topic_id).await;
+
+    if let Some(session) = session {
+        session.add_publisher(process_id, topic_id).await;
+    }
+
     return topic;
 }
 

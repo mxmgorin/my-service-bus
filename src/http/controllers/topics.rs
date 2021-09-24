@@ -1,4 +1,6 @@
-use crate::topics::Topic;
+use std::sync::Arc;
+
+use crate::{http::http_ctx::HttpContext, topics::Topic};
 
 use serde::{Deserialize, Serialize};
 
@@ -43,4 +45,24 @@ impl JsonTopicResult {
             message_id: topic.get_message_id().await,
         }
     }
+}
+
+pub async fn create(
+    app: Arc<AppContext>,
+    ctx: HttpContext,
+) -> Result<HttpOkResult, HttpFailResult> {
+    let query = ctx.get_query_string();
+
+    let topics_id = query.get_query_required_string_parameter("topicId")?;
+
+    let process_id = app.process_id_generator.get_process_id().await;
+
+    crate::operations::publisher::create_topic_if_not_exists(process_id, app, None, topics_id)
+        .await;
+
+    let result = HttpOkResult::Text {
+        text: "Topic is created".to_string(),
+    };
+
+    Ok(result)
 }

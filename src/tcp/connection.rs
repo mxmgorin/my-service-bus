@@ -151,7 +151,7 @@ pub async fn handle_incoming_payload(
             operations::publisher::create_topic_if_not_exists(
                 process_id,
                 app,
-                session,
+                Some(session),
                 topic_id.as_str(),
             )
             .await;
