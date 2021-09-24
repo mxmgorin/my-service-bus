@@ -102,26 +102,28 @@ async fn process_socket(
     let socket_loop_result =
         tokio::task::spawn(socket_loop(read_socket, app.clone(), my_sb_session.clone())).await;
 
+    let process_id = app.process_id_generator.get_process_id().await;
+
+    let name = my_sb_session.get_name(process_id).await;
+
     if let Err(err) = socket_loop_result {
-        let process_id = app.process_id_generator.get_process_id().await;
-        app.logs
-            .add_error(
-                None,
-                crate::app::logs::SystemProcess::TcpSocket,
-                format!(
-                    "Socket {} Processing",
-                    my_sb_session.get_name(process_id).await
-                ),
-                "Socket disconnected".to_string(),
-                Some(format!("{:?}", err)),
-            )
-            .await;
-    } else {
         app.logs
             .add_fatal_error(
                 crate::app::logs::SystemProcess::TcpSocket,
                 "tcp_socket_process".to_string(),
-                "Socket disconnected".to_string(),
+                format!("Socket {} disconnected error: {:?}", name, err),
+            )
+            .await;
+    } else {
+        app.logs
+            .add_info(
+                None,
+                crate::app::logs::SystemProcess::TcpSocket,
+                format!("Socket {} Processing", name),
+                format!(
+                    "Socket with Id:{} and name {} is disconnected",
+                    my_sb_session.id, my_sb_session.ip
+                ),
             )
             .await;
     }
