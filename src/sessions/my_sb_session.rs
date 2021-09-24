@@ -220,16 +220,15 @@ impl MyServiceBusSession {
             )
             .await;
 
-        let mut statistic_write_access = self.data.write().await;
-        if statistic_write_access.is_disconnected() {
+        let mut data = self.data.write().await;
+        if data.is_disconnected() {
             return Err(OperationFailResult::SessionIsDisconnected);
         }
-        statistic_write_access.statistic.subscribers.insert(
+        data.statistic.subscribers.insert(
             subscriber_id,
             MySbSessionSubscriberData::new(topic_id, queue_id, 0),
         );
 
-        let mut data = self.data.write().await;
         data.add_subscriber(&subscriber_id, topic_id, queue_id);
 
         self.app.exit_lock(process_id).await;
