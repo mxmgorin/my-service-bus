@@ -35,7 +35,7 @@ impl MyServiceBusSession {
     ) -> Self {
         let now = MyDateTime::utc_now();
 
-        let data = MyServiceBusSessionData::new(tcp_stream);
+        let data = MyServiceBusSessionData::new(tcp_stream, app.clone());
 
         Self {
             id,
@@ -144,19 +144,56 @@ impl MyServiceBusSession {
         tcp_contract.serialize(&data.attr)
     }
 
-    pub async fn send(&self, process_id: i64, tcp_contract: TcpContract) {
-        let buf = self.serialize_tcp_contract(tcp_contract).await;
-
+    async fn send_and_hadle_error(
+        &self,
+        process_id: i64,
+        buf: &[u8],
+        set_on_delivery: Option<SubscriberId>,
+    ) -> bool {
         self.app
             .enter_lock(process_id, format!("MySbSession[{}].send", self.id))
             .await;
 
         let mut write_access = self.data.write().await;
-        write_access
-            .send(buf.as_ref(), self.app.logs.as_ref())
-            .await;
+        let result = write_access.send(buf).await;
+
+        if let Some(subscriber_id) = set_on_delivery {
+            write_access.set_on_delivery_flag(subscriber_id);
+        }
 
         self.app.exit_lock(process_id).await;
+
+        if let Err(err) = result {
+            if write_access.logged_send_error_on_disconnected < 5 {
+                self.app
+                    .logs
+                    .add_error(
+                        None,
+                        crate::app::logs::SystemProcess::TcpSocket,
+                        format!("Send data to socket {:?}", write_access.name),
+                        format!("Can not send data to the socket {:?}", write_access.name),
+                        Some(err),
+                    )
+                    .await;
+            }
+
+            write_access.logged_send_error_on_disconnected += 1;
+
+            return false;
+        }
+
+        true
+    }
+
+    pub async fn send(&self, process_id: i64, tcp_contract: TcpContract) {
+        let buf = self.serialize_tcp_contract(tcp_contract).await;
+
+        if self
+            .send_and_hadle_error(process_id, buf.as_slice(), None)
+            .await
+        {
+            self.disconnect(process_id).await;
+        }
     }
 
     pub async fn send_and_set_on_delivery(
@@ -167,21 +204,12 @@ impl MyServiceBusSession {
     ) {
         let buf = self.serialize_tcp_contract(tcp_contract).await;
 
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].send_and_set_on_delivery", self.id),
-            )
-            .await;
-
-        let mut write_access = self.data.write().await;
-        write_access
-            .send(buf.as_ref(), self.app.logs.as_ref())
-            .await;
-
-        write_access.set_on_delivery_flag(subscriber_id);
-
-        self.app.exit_lock(process_id).await;
+        if self
+            .send_and_hadle_error(process_id, buf.as_slice(), Some(subscriber_id))
+            .await
+        {
+            self.disconnect(process_id).await;
+        }
     }
 
     pub async fn add_publisher(&self, process_id: i64, topic: &str) {
@@ -313,7 +341,7 @@ impl MyServiceBusSession {
 
         let mut write_access = self.data.write().await;
 
-        write_access.disconnect(self.app.logs.as_ref()).await;
+        write_access.disconnect().await;
 
         self.app.exit_lock(process_id).await;
         return Some(write_access.get_subscribers());

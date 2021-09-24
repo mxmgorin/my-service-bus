@@ -13,6 +13,7 @@ pub struct Subscriber {
     pub rented: bool,
     pub messages_on_delivery: Option<MessagesBucket>,
     pub start_delivering: MyDateTime,
+    pub disconnected: bool,
 }
 
 impl Subscriber {
@@ -24,6 +25,7 @@ impl Subscriber {
             rented: false,
             messages_on_delivery: None,
             start_delivering: MyDateTime::utc_now(),
+            disconnected: false,
         }
     }
 

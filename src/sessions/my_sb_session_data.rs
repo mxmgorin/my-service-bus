@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use my_service_bus_tcp_shared::ConnectionAttributes;
 use tokio::{
@@ -6,7 +6,7 @@ use tokio::{
     net::TcpStream,
 };
 
-use crate::{app::logs::Logs, subscribers::SubscriberId};
+use crate::{app::AppContext, subscribers::SubscriberId};
 
 use super::{my_sb_session_subscriber_data::MySbSessionSubscriberData, MySbSessionStatistic};
 
@@ -21,10 +21,14 @@ pub struct MyServiceBusSessionData {
     pub tcp_stream: Option<WriteHalf<TcpStream>>,
 
     pub statistic: MySbSessionStatistic,
+
+    pub app: Arc<AppContext>,
+
+    pub logged_send_error_on_disconnected: i32,
 }
 
 impl MyServiceBusSessionData {
-    pub fn new(tcp_stream: WriteHalf<TcpStream>) -> Self {
+    pub fn new(tcp_stream: WriteHalf<TcpStream>, app: Arc<AppContext>) -> Self {
         Self {
             name: None,
             client_version: None,
@@ -32,6 +36,8 @@ impl MyServiceBusSessionData {
             attr: ConnectionAttributes::new(),
             tcp_stream: Some(tcp_stream),
             statistic: MySbSessionStatistic::new(),
+            app,
+            logged_send_error_on_disconnected: 0,
         }
     }
 
@@ -68,40 +74,28 @@ impl MyServiceBusSessionData {
         return self.subscribers.clone();
     }
 
-    pub async fn send(&mut self, buf: &[u8], logs: &Logs) {
+    pub async fn send(&mut self, buf: &[u8]) -> Result<(), String> {
         match self.tcp_stream.as_mut() {
             Some(tcp_stream) => {
                 let result = tcp_stream.write_all(buf).await;
 
                 if let Err(err) = result {
-                    logs.add_error(
-                        None,
-                        crate::app::logs::SystemProcess::TcpSocket,
-                        "MyServiceBusSession.send".to_string(),
-                        format!("Can not send to the socket {:?}", self.name),
-                        Some(format!("{:?}", err)),
-                    )
-                    .await;
-
-                    self.disconnect(logs).await;
+                    return Err(format!(
+                        "Can not send to the socket {:?}. Err:{}",
+                        self.name, err
+                    ));
                 } else {
                     self.statistic.increase_written_size(buf.len()).await;
+                    return Ok(());
                 }
             }
             None => {
-                logs.add_error(
-                    None,
-                    crate::app::logs::SystemProcess::TcpSocket,
-                    "MyServiceBusSession.send".to_string(),
-                    format!("Socket {:?} is disconnected", self.name),
-                    None,
-                )
-                .await;
+                return Err(format!("Socket {:?} is disconnected", self.name));
             }
         }
     }
 
-    pub async fn disconnect(&mut self, logs: &Logs) {
+    pub async fn disconnect(&mut self) {
         if self.tcp_stream.is_none() {
             return;
         }
@@ -110,17 +104,15 @@ impl MyServiceBusSessionData {
 
         std::mem::swap(&mut tcp_stream, &mut self.tcp_stream);
 
+        self.statistic.disconnected = true;
+
         let result = tcp_stream.unwrap().shutdown().await;
 
         if let Err(err) = result {
-            logs.add_error(
-                None,
-                crate::app::logs::SystemProcess::TcpSocket,
-                "my_sb_session_data.disconnect()".to_string(),
-                "Disconnect Error".to_string(),
-                Some(format!("{:?}", err)),
-            )
-            .await
+            return println!(
+                "Can nod disconnect tcp socket{:?}. Err: {:?}",
+                self.name, err
+            );
         }
     }
 

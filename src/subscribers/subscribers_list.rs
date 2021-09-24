@@ -17,7 +17,7 @@ impl SubscribersList {
 
     pub fn get_next_subscriber_ready_to_deliver(&self) -> Option<SubscriberId> {
         for subscriber in self.subscribers_by_id.values() {
-            if !subscriber.rented {
+            if !subscriber.rented && !subscriber.disconnected {
                 return Some(subscriber.id);
             }
         }
