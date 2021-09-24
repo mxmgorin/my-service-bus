@@ -1,6 +1,8 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use my_service_bus_tcp_shared::{ConnectionAttributes, SocketReader, TcpContract};
+use my_service_bus_tcp_shared::{
+    ConnectionAttributes, ReadingTcpContractFail, SocketReader, TcpContract,
+};
 
 use tokio::{
     io::{self, AsyncWriteExt, ReadHalf},
@@ -146,7 +148,7 @@ async fn socket_loop(
     read_socket: ReadHalf<TcpStream>,
     app: Arc<AppContext>,
     session: Arc<MyServiceBusSession>,
-) -> Result<(), MySbSocketError> {
+) -> Result<(), ReadingTcpContractFail> {
     let mut socket_reader = SocketReader::new(read_socket);
 
     let mut attr = ConnectionAttributes::new();
@@ -163,13 +165,42 @@ async fn socket_loop(
         let now = MyDateTime::utc_now();
         session.last_incoming_package.update(now);
 
-        super::connection::handle_incoming_payload(
+        let result = super::connection::handle_incoming_payload(
             app.clone(),
             tcp_contract,
             session.as_ref(),
             &mut attr,
             process_id,
         )
-        .await?;
+        .await;
+
+        if let Err(err) = result {
+            match err {
+                MySbSocketError::ReadingTcpContractFail(err) => {
+                    return Err(err);
+                }
+                MySbSocketError::OperationFailResult(err) => {
+                    let name = session.get_name(process_id).await;
+                    app.logs
+                        .add_error(
+                            None,
+                            SystemProcess::TcpSocket,
+                            "socket_loop".to_string(),
+                            format!("Sending reject to the socket: {}", name),
+                            Some(format!("{:?}", err)),
+                        )
+                        .await;
+
+                    session
+                        .send(
+                            process_id,
+                            TcpContract::Reject {
+                                message: format!("{:?}", err),
+                            },
+                        )
+                        .await;
+                }
+            }
+        }
     }
 }
