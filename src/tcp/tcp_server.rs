@@ -151,7 +151,7 @@ async fn socket_loop(
 
     loop {
         socket_reader.start_calculating_read_size();
-        let deserialize_result = TcpContract::deserialize(&mut socket_reader, &attr).await;
+        let tcp_contract = TcpContract::deserialize(&mut socket_reader, &attr).await?;
         let process_id = app.process_id_generator.get_process_id().await;
 
         session
@@ -161,28 +161,13 @@ async fn socket_loop(
         let now = MyDateTime::utc_now();
         session.last_incoming_package.update(now);
 
-        match deserialize_result {
-            Ok(tcp_contract) => {
-                super::connection::handle_incoming_payload(
-                    app.clone(),
-                    tcp_contract,
-                    session.as_ref(),
-                    &mut attr,
-                    process_id,
-                )
-                .await?;
-            }
-
-            Err(err) => {
-                session
-                    .send(
-                        process_id,
-                        TcpContract::Reject {
-                            message: format!("Error handling message {:?}", err),
-                        },
-                    )
-                    .await;
-            }
-        }
+        super::connection::handle_incoming_payload(
+            app.clone(),
+            tcp_contract,
+            session.as_ref(),
+            &mut attr,
+            process_id,
+        )
+        .await?;
     }
 }
