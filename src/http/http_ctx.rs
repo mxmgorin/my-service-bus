@@ -13,6 +13,16 @@ impl HttpContext {
         Self { req, path }
     }
 
+    pub async fn get_form_data(self) -> QueryString {
+        let body = self.req.into_body();
+        let full_body = hyper::body::to_bytes(body).await.unwrap();
+
+        let result = full_body.iter().cloned().collect::<Vec<u8>>();
+        let a = String::from_utf8(result).unwrap();
+
+        return QueryString::new(Some(a.as_str()));
+    }
+
     pub fn get_method(&self) -> &Method {
         self.req.method()
     }

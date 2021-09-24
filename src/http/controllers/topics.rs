@@ -51,9 +51,8 @@ pub async fn create(
     app: Arc<AppContext>,
     ctx: HttpContext,
 ) -> Result<HttpOkResult, HttpFailResult> {
-    let query = ctx.get_query_string();
-
-    let topics_id = query.get_query_required_string_parameter("topicId")?;
+    let form_data = ctx.get_form_data().await;
+    let topics_id = form_data.get_query_required_string_parameter("topicId")?;
 
     let process_id = app.process_id_generator.get_process_id().await;
 
