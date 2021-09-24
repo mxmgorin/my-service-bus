@@ -48,7 +48,10 @@ impl MyServiceBusSession {
     }
 
     pub async fn increase_read_size(&self, read_size: usize) {
-        let lock_id = self.app.enter_lock("MySbSession.increase_read_size").await;
+        let lock_id = self
+            .app
+            .enter_lock(format!("MySbSession[{}].increase_read_size", self.id))
+            .await;
         let mut data = self.data.write().await;
         data.statistic.increase_read_size(read_size).await;
 
@@ -56,7 +59,10 @@ impl MyServiceBusSession {
     }
 
     pub async fn set_socket_name(&self, set_socket_name: String, client_version: Option<String>) {
-        let lock_id = self.app.enter_lock("MySbSession.set_socket_name").await;
+        let lock_id = self
+            .app
+            .enter_lock(format!("MySbSession[{}].set_socket_name", self.id))
+            .await;
 
         let mut data = self.data.write().await;
         data.name = Some(set_socket_name);
@@ -68,7 +74,7 @@ impl MyServiceBusSession {
     pub async fn set_protocol_version(&self, protocol_version: i32) {
         let lock_id = self
             .app
-            .enter_lock("MySbSession.set_protocol_version")
+            .enter_lock(format!("MySbSession[{}].set_protocol_version", self.id))
             .await;
 
         let mut data = self.data.write().await;
@@ -80,7 +86,7 @@ impl MyServiceBusSession {
     pub async fn update_packet_versions(&self, packet_versions: &HashMap<u8, i32>) {
         let lock_id = self
             .app
-            .enter_lock("MySbSession.update_packet_versions")
+            .enter_lock(format!("MySbSession[{}].update_packet_versions", self.id))
             .await;
         let mut data = self.data.write().await;
         data.attr.versions.update(packet_versions);
@@ -88,14 +94,20 @@ impl MyServiceBusSession {
     }
 
     pub async fn one_second_tick(&self) {
-        let lock_id = self.app.enter_lock("MySbSession.one_second_tick").await;
+        let lock_id = self
+            .app
+            .enter_lock(format!("MySbSession[{}].one_second_tick", self.id))
+            .await;
         let mut write_access = self.data.write().await;
         write_access.statistic.one_second_tick();
         self.app.exit_lock(lock_id).await;
     }
 
     pub async fn get_name(&self) -> String {
-        let lock_id = self.app.enter_lock("MySbSession.get_name").await;
+        let lock_id = self
+            .app
+            .enter_lock(format!("MySbSession[{}].get_name", self.id))
+            .await;
 
         let data = self.data.read().await;
 
@@ -117,7 +129,10 @@ impl MyServiceBusSession {
     pub async fn send(&self, tcp_contract: TcpContract) {
         let buf = self.serialize_tcp_contract(tcp_contract).await;
 
-        let lock_id = self.app.enter_lock("MySbSession.send").await;
+        let lock_id = self
+            .app
+            .enter_lock(format!("MySbSession[{}].send", self.id))
+            .await;
 
         let mut write_access = self.data.write().await;
         write_access
@@ -136,7 +151,7 @@ impl MyServiceBusSession {
 
         let lock_id = self
             .app
-            .enter_lock("MySbSession.send_and_set_on_delivery")
+            .enter_lock(format!("MySbSession[{}].send_and_set_on_delivery", self.id))
             .await;
 
         let mut write_access = self.data.write().await;
@@ -150,7 +165,10 @@ impl MyServiceBusSession {
     }
 
     pub async fn add_publisher(&self, topic: &str) {
-        let lock_id = self.app.enter_lock("MySbSession.add_publisher").await;
+        let lock_id = self
+            .app
+            .enter_lock(format!("MySbSession[{}].add_publisher", self.id))
+            .await;
         let mut data = self.data.write().await;
 
         data.statistic
@@ -172,7 +190,10 @@ impl MyServiceBusSession {
         topic_id: &str,
         queue_id: &str,
     ) -> Result<(), OperationFailResult> {
-        let lock_id = self.app.enter_lock("MySbSession.add_subscriber").await;
+        let lock_id = self
+            .app
+            .enter_lock(format!("MySbSession[{}].add_subscriber", self.id))
+            .await;
 
         let mut statistic_write_access = self.data.write().await;
         if statistic_write_access.is_disconnected() {
@@ -198,7 +219,7 @@ impl MyServiceBusSession {
     ) {
         let lock_id = self
             .app
-            .enter_lock("MySbSession.set_delivered_statistic")
+            .enter_lock(format!("MySbSession[{}].set_delivered_statistic", self.id))
             .await;
 
         let mut write_access = self.data.write().await;
@@ -221,7 +242,10 @@ impl MyServiceBusSession {
     ) {
         let lock_id = self
             .app
-            .enter_lock("MySbSession.set_not_delivered_statistic")
+            .enter_lock(format!(
+                "MySbSession[{}].set_not_delivered_statistic",
+                self.id
+            ))
             .await;
 
         let mut write_access = self.data.write().await;
@@ -236,7 +260,10 @@ impl MyServiceBusSession {
     }
 
     pub async fn remove_subscriber(&self, subscriber_id: SubscriberId) {
-        let lock_id = self.app.enter_lock("MySbSession.remove_subscriber").await;
+        let lock_id = self
+            .app
+            .enter_lock(format!("MySbSession[{}].remove_subscriber", self.id))
+            .await;
         let mut statistic_write_access = self.data.write().await;
         statistic_write_access
             .statistic
@@ -248,7 +275,10 @@ impl MyServiceBusSession {
     }
 
     pub async fn disconnect(&self) -> Option<HashMap<SubscriberId, MySbSessionSubscriberData>> {
-        let lock_id = self.app.enter_lock("MySbSession.disconnect").await;
+        let lock_id = self
+            .app
+            .enter_lock(format!("MySbSession[{}].disconnect", self.id))
+            .await;
 
         let mut write_access = self.data.write().await;
 

@@ -37,7 +37,7 @@ impl SessionJsonResult {
 
         let lock_id = session
             .app
-            .enter_lock("MySbSession.SessionJsonResult.new")
+            .enter_lock("MySbSession.SessionJsonResult.new".to_string())
             .await;
         let session_read = session.data.read().await;
 

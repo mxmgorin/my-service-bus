@@ -53,9 +53,9 @@ impl AppContext {
         }
     }
 
-    pub async fn enter_lock(&self, lock_name: &str) -> i64 {
+    pub async fn enter_lock(&self, lock_name: String) -> i64 {
         let mut write_access = self.locks.lock().await;
-        write_access.new_lock(lock_name.to_string())
+        write_access.new_lock(lock_name)
     }
 
     pub async fn exit_lock(&self, id: i64) {

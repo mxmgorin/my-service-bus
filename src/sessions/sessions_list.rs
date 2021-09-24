@@ -86,7 +86,10 @@ impl SessionsList {
         for session in read_access.sessions.values() {
             let lock_id = session
                 .app
-                .enter_lock("SessionsList.get_packet_and_protocol_version")
+                .enter_lock(format!(
+                    "SessionsList[{}].get_packet_and_protocol_version",
+                    subscriber_id
+                ))
                 .await;
             let read_access = session.data.read().await;
             if read_access.has_subscriber(&subscriber_id) {
