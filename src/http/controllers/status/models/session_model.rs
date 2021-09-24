@@ -84,9 +84,7 @@ impl SessionsJsonResult {
         let (snapshot_id, sessions) = app.sessions.get_snapshot().await;
 
         for session in sessions {
-            println!("Compiling Status Session {}", session.id);
             let session = SessionJsonResult::new(session.as_ref(), process_id).await;
-
             items.push(session);
         }
 
