@@ -188,7 +188,7 @@ impl MyServiceBusSession {
     pub async fn send(&self, process_id: i64, tcp_contract: TcpContract) {
         let buf = self.serialize_tcp_contract(tcp_contract).await;
 
-        if self
+        if !self
             .send_and_hadle_error(process_id, buf.as_slice(), None)
             .await
         {
@@ -204,7 +204,7 @@ impl MyServiceBusSession {
     ) {
         let buf = self.serialize_tcp_contract(tcp_contract).await;
 
-        if self
+        if !self
             .send_and_hadle_error(process_id, buf.as_slice(), Some(subscriber_id))
             .await
         {
