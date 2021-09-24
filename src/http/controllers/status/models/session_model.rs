@@ -35,6 +35,10 @@ impl SessionJsonResult {
     pub async fn new(session: &MyServiceBusSession) -> Self {
         let last_incoming = session.last_incoming_package.get();
 
+        let lock_id = session
+            .app
+            .enter_lock("MySbSession.SessionJsonResult.new")
+            .await;
         let session_read = session.data.read().await;
 
         let now = MyDateTime::utc_now();
@@ -46,6 +50,8 @@ impl SessionJsonResult {
 
             subscribers_json.push(item);
         }
+
+        session.app.exit_lock(lock_id).await;
 
         Self {
             id: session.id,

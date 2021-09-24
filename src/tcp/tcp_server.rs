@@ -67,7 +67,7 @@ pub async fn start(addr: SocketAddr, app: Arc<AppContext>) {
             socket_id,
             format! {"{}", addr},
             write_socket,
-            app.logs.clone(),
+            app.clone(),
         ));
 
         app.sessions.add(my_sb_session.clone()).await;

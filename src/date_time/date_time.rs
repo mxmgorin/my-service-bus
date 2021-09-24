@@ -14,6 +14,10 @@ impl MyDateTime {
         Self { micros }
     }
 
+    pub fn new(micros: i64) -> Self {
+        Self { micros }
+    }
+
     pub fn to_iso_string(&self) -> String {
         let d = UNIX_EPOCH + Duration::from_micros(self.micros as u64);
 

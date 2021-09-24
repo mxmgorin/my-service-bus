@@ -84,11 +84,17 @@ impl SessionsList {
         let read_access = self.data.read().await;
 
         for session in read_access.sessions.values() {
+            let lock_id = session
+                .app
+                .enter_lock("SessionsList.get_packet_and_protocol_version")
+                .await;
             let read_access = session.data.read().await;
             if read_access.has_subscriber(&subscriber_id) {
                 packet_version = read_access.attr.versions.get_packet_version(packet);
                 protocol_version = read_access.attr.protocol_version;
             }
+
+            session.app.exit_lock(lock_id).await;
         }
 
         return PacketProtVer {

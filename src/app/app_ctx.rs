@@ -1,5 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
+use my_service_bus_shared::debug::{LockItem, Locks};
+use tokio::sync::Mutex;
+
 use crate::{
     persistence::{MessagesPagesRepo, TopcsAndQueuesSnapshotRepo},
     sessions::SessionsList,
@@ -27,6 +30,8 @@ pub struct AppContext {
 
     pub empty_queue_gc_timeout: Duration,
     pub prometheus: PrometheusMetrics,
+
+    pub locks: Mutex<Locks>,
 }
 
 impl AppContext {
@@ -44,6 +49,22 @@ impl AppContext {
             empty_queue_gc_timeout: settings.queue_gc_timeout,
             subscriber_id_generator: SubscriberIdGenerator::new(),
             prometheus: PrometheusMetrics::new(),
+            locks: Mutex::new(Locks::new()),
         }
+    }
+
+    pub async fn enter_lock(&self, lock_name: &str) -> i64 {
+        let mut write_access = self.locks.lock().await;
+        write_access.new_lock(lock_name.to_string())
+    }
+
+    pub async fn exit_lock(&self, id: i64) {
+        let mut write_access = self.locks.lock().await;
+        write_access.remove(id);
+    }
+
+    pub async fn get_locks(&self) -> Vec<LockItem> {
+        let read_access = self.locks.lock().await;
+        read_access.get_all()
     }
 }
