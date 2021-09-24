@@ -46,8 +46,6 @@ pub async fn handle_incoming_payload(
 
             let splited: Vec<&str> = name.split(";").collect();
 
-            println!("{:?}", splited);
-
             if splited.len() == 2 {
                 session
                     .set_socket_name(

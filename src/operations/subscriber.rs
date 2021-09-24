@@ -59,7 +59,6 @@ pub async fn subscribe_to_queue(
         )
         .await;
         let mut write_access = topic_queue.data.write().await;
-        println!("Lock SubscribeQueue {}", queue_id);
 
         write_access.queue_type = queue_type;
 

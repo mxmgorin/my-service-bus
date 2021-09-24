@@ -147,8 +147,6 @@ impl Logs {
         process_name: String,
         message: String,
     ) {
-        let topic_str = format!("{:?}", &topic);
-
         let item = LogItem {
             date: MyDateTime::utc_now(),
             level: LogLevel::Info,
