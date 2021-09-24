@@ -22,7 +22,7 @@ pub async fn on_disconnect(
 
 async fn on_disconnect_process(app: Arc<AppContext>, my_sb_session: Arc<MyServiceBusSession>) {
     let process_id = app.process_id_generator.get_process_id().await;
-    crate::operations::sessions::disconnect(process_id, app.as_ref(), my_sb_session.id).await;
+    crate::operations::sessions::disconnect(process_id, app.as_ref(), my_sb_session).await;
 }
 
 pub async fn handle_incoming_payload(

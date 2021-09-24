@@ -2,20 +2,14 @@ use std::sync::Arc;
 
 use crate::{app::AppContext, sessions::MyServiceBusSession};
 
-pub async fn disconnect(
-    process_id: i64,
-    app: &AppContext,
-    id: i64,
-) -> Option<Arc<MyServiceBusSession>> {
-    let session = app.sessions.remove(&id).await?;
-
+pub async fn disconnect(process_id: i64, app: &AppContext, session: Arc<MyServiceBusSession>) {
     let session_name = session.get_name(process_id).await;
     println!("We have a disconnect. Session: {}", session_name);
 
     let subscribers = session.disconnect(process_id).await;
 
     if subscribers.is_none() {
-        return Some(session);
+        return;
     }
 
     let subscribers = subscribers.unwrap();
@@ -62,6 +56,4 @@ pub async fn disconnect(
             }
         }
     }
-
-    return Some(session);
 }

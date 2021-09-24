@@ -11,17 +11,20 @@ pub async fn delete(app: &AppContext, ctx: HttpContext) -> Result<HttpOkResult, 
 
     let process_id = app.process_id_generator.get_process_id().await;
 
-    let session_result = operations::sessions::disconnect(process_id, app, id).await;
+    let session = app.sessions.remove(&id).await;
 
-    match session_result {
-        Some(_) => {
-            return Ok(HttpOkResult::Ok);
-        }
-        None => {
-            return Err(HttpFailResult::as_not_found(format!(
-                "Session {} is not found",
-                &id
-            )));
-        }
+    if session.is_none() {
+        return Err(HttpFailResult::as_not_found(format!(
+            "Session {} is not found",
+            &id
+        )));
     }
+
+    operations::sessions::disconnect(process_id, app, session.unwrap()).await;
+
+    let result = HttpOkResult::Text {
+        text: "Session is removed".to_string(),
+    };
+
+    Ok(result)
 }
