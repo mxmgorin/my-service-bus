@@ -159,18 +159,6 @@ impl Logs {
             err_ctx: None,
         };
 
-        println!(
-            "{dt} {level:?} Process:{proces:?}\n Topic:{topic}\n Process:{processname}\n Message:{message}",
-            dt = item.date.to_iso_string(),
-            level = item.level,
-            proces = item.process,
-            processname = item.process_name,
-            message = item.message,
-            topic = topic_str
-        );
-
-        println!("-------------");
-
         self.add(item).await;
     }
 

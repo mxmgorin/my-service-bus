@@ -27,38 +27,3 @@ pub fn into_topic_result(
         }),
     }
 }
-
-/*
-pub fn into_queue_result(
-    src: Option<Arc<TopicQueue>>,
-    queue_id: &str,
-) -> Result<Arc<TopicQueue>, OperationFailResult> {
-    match src {
-        Some(queue) => Ok(queue),
-        None => Err(OperationFailResult::QueueNotFound {
-            queue_id: queue_id.to_string(),
-        }),
-    }
-}
-
-pub fn into_subscriber_result(
-    src: Option<&Subscriber>,
-    id: SubscriberId,
-) -> Result<&Subscriber, OperationFailResult> {
-    match src {
-        Some(subscriber) => Ok(subscriber),
-        None => Err(OperationFailResult::SubscriberNotFound { id }),
-    }
-}
-
-
-pub fn into_subscriber_result_mut(
-    src: Option<&mut Subscriber>,
-    id: SubscriberId,
-) -> Result<&mut Subscriber, OperationFailResult> {
-    match src {
-        Some(subscriber) => Ok(subscriber),
-        None => Err(OperationFailResult::SubscriberNotFound { id }),
-    }
-}
-*/
