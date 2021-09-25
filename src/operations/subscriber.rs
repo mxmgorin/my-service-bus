@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use my_service_bus_shared::{queue_with_intervals::QueueWithIntervals, TopicQueueType};
+use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWithIntervals};
 
 use crate::{
     app::{AppContext, TEST_QUEUE},

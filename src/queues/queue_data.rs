@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use my_service_bus_shared::{
+    queue::TopicQueueType,
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
-    MessageId, TopicQueueType,
+    MessageId,
 };
 
 use crate::{

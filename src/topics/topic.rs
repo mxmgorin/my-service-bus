@@ -1,6 +1,6 @@
 use my_service_bus_shared::page_id::{get_page_id, PageId};
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
-use my_service_bus_shared::{MessageId, TopicQueueType};
+use my_service_bus_shared::{queue::TopicQueueType, MessageId};
 use tokio::sync::RwLock;
 
 use crate::date_time::MyDateTime;

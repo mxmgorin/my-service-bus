@@ -1,4 +1,4 @@
-use my_service_bus_shared::{queue_with_intervals::QueueIndexRange, TopicQueueType};
+use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueIndexRange};
 
 pub struct TopicQueueSnapshot {
     pub queue_id: String,

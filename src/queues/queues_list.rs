@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use my_service_bus_shared::{queue_with_intervals::QueueWithIntervals, TopicQueueType};
+use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWithIntervals};
 use tokio::sync::RwLock;
 
 use crate::topics::TopicQueueSnapshot;
