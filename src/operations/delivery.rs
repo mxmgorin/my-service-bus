@@ -170,9 +170,16 @@ async fn get_messages_bucket_page<'t>(
         }
     }
 
-    let page = topic.messages.get(page_id).await.unwrap(); //TODO - Remove unwrap
+    let page = topic.messages.get(page_id).await;
 
-    let page = MessagesBucketPage::new(page);
+    if page.is_none() {
+        panic!(
+            "Somehow we do not have page {} for the topic {}",
+            page_id, topic.topic_id
+        );
+    }
+
+    let page = MessagesBucketPage::new(page.unwrap());
 
     messages_bucket.add_page(page);
 
