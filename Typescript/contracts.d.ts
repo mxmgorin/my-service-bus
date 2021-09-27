@@ -63,6 +63,7 @@ interface ITopicQueue {
 
 
 interface ISubscriber {
+    id: number,
     topicId: string,
     queueId: string,
     active: number,

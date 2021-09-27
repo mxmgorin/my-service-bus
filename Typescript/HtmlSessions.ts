@@ -38,7 +38,7 @@ class HtmlSessions {
         let result = "";
         for (let subscriber of session.subscribers) {
             let badgeType = subscriber.active > 0 ? "badge-success" : "badge-light";
-            result += '<span class="badge ' + badgeType + '">' + subscriber.topicId + " -> " + subscriber.queueId + '</span> ';
+            result += '<span class="badge ' + badgeType + '">[' + subscriber.id + ']' + subscriber.topicId + " -> " + subscriber.queueId + '</span> ';
         }
 
         return result;

@@ -45,8 +45,8 @@ impl SessionJsonResult {
 
         let mut subscribers_json = Vec::new();
 
-        for (_, subscriber) in &session_read.statistic.subscribers {
-            let item = SessionSubscriberJsonContract::new(subscriber);
+        for (subscriber_id, subscriber) in &session_read.statistic.subscribers {
+            let item = SessionSubscriberJsonContract::new(*subscriber_id, subscriber);
 
             subscribers_json.push(item);
         }
