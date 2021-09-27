@@ -125,7 +125,7 @@ pub async fn handle_incoming_payload(
             //This is a client packet
             Ok(())
         }
-        TcpContract::NewMessages(_) => {
+        TcpContract::NewMessagesServerSide(_) => {
             //This is a client packet
             Ok(())
         }
@@ -218,6 +218,16 @@ pub async fn handle_incoming_payload(
                 QueueWithIntervals::restore(delivered),
             )
             .await?;
+
+            Ok(())
+        }
+        TcpContract::NewMessages {
+            topic_id: _,
+            queue_id: _,
+            confirmation_id: _,
+            messages: _,
+        } => {
+            //this is Client Side Message
 
             Ok(())
         }

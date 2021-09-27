@@ -34,7 +34,7 @@ pub async fn compile_messages_delivery_contract(
 
     serialize_messages(&mut result, &versions, messages_to_deliver).await;
 
-    TcpContract::NewMessages(result)
+    TcpContract::NewMessagesServerSide(result)
 }
 
 async fn serialize_messages(
