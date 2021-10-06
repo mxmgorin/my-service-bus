@@ -55,7 +55,10 @@ async fn load_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Messages
                     app,
                     topic,
                     page_id,
-                    "Can not unzip payload. Creating empty page...",
+                    format!(
+                        "Can not unzip payload. Attempt {}. Creating empty page...",
+                        attempt_no
+                    ),
                     msg.to_string(),
                 )
                 .await;
@@ -68,7 +71,7 @@ async fn load_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Messages
                     app,
                     topic,
                     page_id,
-                    "Some HTTP Level Error. Delayin and retrying",
+                    "Some HTTP Level Error. Delayin and retrying".to_string(),
                     format!("{:?}", status),
                 )
                 .await;
@@ -78,7 +81,7 @@ async fn load_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Messages
                     app,
                     topic,
                     page_id,
-                    "Can not deserialize payload from Protobuf. Creating empty page...",
+                    "Can not deserialize payload from Protobuf. Creating empty page...".to_string(),
                     msg.to_string(),
                 )
                 .await;
@@ -91,7 +94,7 @@ async fn load_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Messages
                     app,
                     topic,
                     page_id,
-                    "PersistenceError Grpc error",
+                    "PersistenceError Grpc error".to_string(),
                     format!("{:?}", err),
                 )
                 .await;
@@ -102,7 +105,7 @@ async fn load_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Messages
                     app,
                     topic,
                     page_id,
-                    "PersistenceError::GrpcClientIsNotInitialized",
+                    "PersistenceError::GrpcClientIsNotInitialized".to_string(),
                     format!("{:?}", err),
                 )
                 .await
@@ -112,7 +115,7 @@ async fn load_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Messages
                     app,
                     topic,
                     page_id,
-                    "PersistenceError::CompressedPageReaderError. Creating empty page",
+                    format!("PersistenceError::CompressedPageReaderError. Attmopt{} Creating empty page", attempt_no),
                     format!("{:?}", err),
                 )
                 .await;
@@ -128,13 +131,13 @@ async fn load_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Messages
     }
 }
 
-async fn log_error(app: &AppContext, topic: &Topic, page_id: PageId, message: &str, err: String) {
+async fn log_error(app: &AppContext, topic: &Topic, page_id: PageId, message: String, err: String) {
     app.logs
         .add_error(
             Some(topic.topic_id.to_string()),
             crate::app::logs::SystemProcess::Persistence,
             format!("Restoring topic page {}", page_id),
-            message.to_string(),
+            message,
             Some(err),
         )
         .await;
