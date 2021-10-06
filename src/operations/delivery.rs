@@ -7,6 +7,7 @@ use crate::{
     app::{logs::SystemProcess, AppContext},
     message_pages::{MessageSize, MessagesPage},
     messages_bucket::{MessagesBucket, MessagesBucketPage},
+    operations,
     queues::{NextMessage, QueueData},
     sessions::MyServiceBusSession,
     subscribers::SubscriberId,
@@ -61,7 +62,7 @@ async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -
         if all_messages_size > app.max_delivery_size {}
         let all_messages_count = result.messages_count();
 
-        let bucket_page = get_messages_bucket_page(&mut result, topic, page_id).await;
+        let bucket_page = get_messages_bucket_page(app, &mut result, topic, page_id).await;
 
         let msg_size = get_message_size(app, topic, &bucket_page, &next_message, page_id).await;
 
@@ -160,6 +161,7 @@ async fn get_message_size_second_time(
 }
 
 async fn get_messages_bucket_page<'t>(
+    app: &AppContext,
     messages_bucket: &'t mut MessagesBucket,
     topic: &Topic,
     page_id: PageId,
@@ -170,13 +172,23 @@ async fn get_messages_bucket_page<'t>(
         }
     }
 
-    let page = topic.messages.get(page_id).await;
+    let mut page = topic.messages.get(page_id).await;
 
     if page.is_none() {
-        panic!(
-            "Somehow we do not have page {} for the topic {}",
+        println!(
+            "Somehow we do not have page {} for the topic {}. Restoring",
             page_id, topic.topic_id
         );
+        crate::operations::message_pages::restore_page(app, topic, page_id).await;
+
+        page = topic.messages.get(page_id).await;
+
+        if page.is_none() {
+            panic!(
+                "Somehow we could not restore page {} for te topic {}",
+                page_id, topic.topic_id
+            );
+        }
     }
 
     let page = MessagesBucketPage::new(page.unwrap());
