@@ -87,13 +87,22 @@ impl MessagesPagesRepo {
 
         let mut reader = CompressedPageReader::new(buffer)?;
 
-        let grpc_model = reader.unzip_messages()?;
+        let grpc_model = reader.unzip_messages();
+
+        if let Err(err) = &grpc_model {
+            print!(
+                "We can not resore page {}/{}. Reason: {:?}. Creating empty page ",
+                topic_id, page_id, err
+            );
+
+            return Ok(MessagesPage::new(page_id));
+        }
 
         let page = MessagesPage::new(page_id);
 
         let mut msgs = Vec::new();
 
-        for message in grpc_model.messages {
+        for message in grpc_model.unwrap().messages {
             let time = parse_date_time_from_bcl(message.message_id, message.created);
 
             let msg = MySbMessage::Loaded(MySbMessageContent::new(
