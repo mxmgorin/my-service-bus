@@ -12,7 +12,12 @@ pub async fn execute(app: &AppContext, topic: &Topic) {
 async fn load_pages(app: &AppContext, topic: &Topic, active_pages: &HashMap<i64, i64>) {
     for page_id in active_pages.keys() {
         if !topic.messages.has_page(page_id).await {
-            crate::operations::message_pages::restore_page(app, topic, *page_id).await;
+            print!(
+                "Loading page {}/{} as warm up process",
+                topic.topic_id, page_id
+            );
+            crate::operations::message_pages::restore_page(app, topic, *page_id, "load_pages")
+                .await;
         }
     }
 }

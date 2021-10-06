@@ -7,7 +7,6 @@ use crate::{
     app::{logs::SystemProcess, AppContext},
     message_pages::{MessageSize, MessagesPage},
     messages_bucket::{MessagesBucket, MessagesBucketPage},
-    operations,
     queues::{NextMessage, QueueData},
     sessions::MyServiceBusSession,
     subscribers::SubscriberId,
@@ -124,7 +123,8 @@ async fn get_message_size_first_time(
             return Some(next_msg_size);
         }
         MessageSize::NotLoaded => {
-            super::message_pages::restore_page(app, topic, page_id).await;
+            super::message_pages::restore_page(app, topic, page_id, "get_message_size_first_time")
+                .await;
             return None;
         }
         MessageSize::CanNotBeLoaded => {
@@ -179,7 +179,13 @@ async fn get_messages_bucket_page<'t>(
             "Somehow we do not have page {} for the topic {}. Restoring",
             page_id, topic.topic_id
         );
-        crate::operations::message_pages::restore_page(app, topic, page_id).await;
+        crate::operations::message_pages::restore_page(
+            app,
+            topic,
+            page_id,
+            "get_messages_bucket_page",
+        )
+        .await;
 
         page = topic.messages.get(page_id).await;
 

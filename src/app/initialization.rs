@@ -64,7 +64,13 @@ pub async fn init(app: Arc<AppContext>) {
 
 async fn restore_topic_pages(app: Arc<AppContext>, topic: Arc<Topic>) {
     let page_id = topic.get_current_page().await;
-    crate::operations::message_pages::restore_page(app.as_ref(), topic.as_ref(), page_id).await
+    crate::operations::message_pages::restore_page(
+        app.as_ref(),
+        topic.as_ref(),
+        page_id,
+        "initialization",
+    )
+    .await
 }
 
 async fn restore_topics_and_queues(app: &AppContext) -> Vec<TopicSnapshot> {
