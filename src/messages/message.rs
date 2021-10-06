@@ -1,16 +1,14 @@
-use my_service_bus_shared::MessageId;
-
-use crate::date_time::MyDateTime;
+use my_service_bus_shared::{date_time::DateTimeAsMicroseconds, MessageId};
 
 #[derive(Debug)]
 pub struct MySbMessageContent {
     pub id: MessageId,
     pub content: Vec<u8>,
-    pub time: MyDateTime,
+    pub time: DateTimeAsMicroseconds,
 }
 
 impl MySbMessageContent {
-    pub fn new(id: MessageId, content: Vec<u8>, time: MyDateTime) -> Self {
+    pub fn new(id: MessageId, content: Vec<u8>, time: DateTimeAsMicroseconds) -> Self {
         Self {
             id,
             content: content,

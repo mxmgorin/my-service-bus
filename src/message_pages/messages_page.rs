@@ -1,10 +1,7 @@
-use my_service_bus_shared::{page_id::PageId, MessageId};
+use my_service_bus_shared::{date_time::DateTimeAsMicroseconds, page_id::PageId, MessageId};
 use tokio::sync::RwLock;
 
-use crate::{
-    date_time::AtomicDateTime,
-    messages::{MySbMessage, MySbMessageContent},
-};
+use crate::messages::{MySbMessage, MySbMessageContent};
 
 use super::MessagesPageData;
 
@@ -17,7 +14,7 @@ pub enum MessageSize {
 pub struct MessagesPage {
     pub data: RwLock<MessagesPageData>,
     pub page_id: PageId,
-    pub last_accessed: AtomicDateTime,
+    pub last_accessed: DateTimeAsMicroseconds,
 }
 
 impl MessagesPage {
@@ -25,7 +22,7 @@ impl MessagesPage {
         MessagesPage {
             data: RwLock::new(MessagesPageData::new()),
             page_id,
-            last_accessed: AtomicDateTime::utc_now(),
+            last_accessed: DateTimeAsMicroseconds::now(),
         }
     }
 

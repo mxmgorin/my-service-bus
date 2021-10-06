@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::{
-    date_time::MyDateTime, messages_bucket::MessagesBucket, sessions::MyServiceBusSession,
-};
+use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
+
+use crate::{messages_bucket::MessagesBucket, sessions::MyServiceBusSession};
 
 use super::SubscriberId;
 
@@ -12,7 +12,7 @@ pub struct Subscriber {
     pub queue_id: String,
     pub rented: bool,
     pub messages_on_delivery: Option<MessagesBucket>,
-    pub start_delivering: MyDateTime,
+    pub start_delivering: DateTimeAsMicroseconds,
     pub disconnected: bool,
 }
 
@@ -24,13 +24,13 @@ impl Subscriber {
             id,
             rented: false,
             messages_on_delivery: None,
-            start_delivering: MyDateTime::utc_now(),
+            start_delivering: DateTimeAsMicroseconds::now(),
             disconnected: false,
         }
     }
 
     pub fn set_messages_on_delivery(&mut self, messages: MessagesBucket) {
-        self.start_delivering = MyDateTime::utc_now();
+        self.start_delivering = DateTimeAsMicroseconds::now();
         self.messages_on_delivery = Some(messages);
     }
 

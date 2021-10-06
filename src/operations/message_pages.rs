@@ -107,6 +107,19 @@ async fn load_page(app: &AppContext, topic: &Topic, page_id: PageId) -> Messages
                 )
                 .await
             }
+            PersistenceError::CompressedPageReaderError(err) => {
+                log_error(
+                    app,
+                    topic,
+                    page_id,
+                    "PersistenceError::CompressedPageReaderError. Creating empty page",
+                    format!("{:?}", err),
+                )
+                .await;
+
+                let page = MessagesPage::new(page_id);
+                return page;
+            }
         }
 
         let duration = Duration::from_secs(1);

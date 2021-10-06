@@ -1,14 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
+use my_service_bus_shared::date_time::{AtomicDateTimeAsMicroseconds, DateTimeAsMicroseconds};
 use my_service_bus_tcp_shared::TcpContract;
 use tokio::{io::WriteHalf, net::TcpStream, sync::RwLock};
 
-use crate::{
-    app::AppContext,
-    date_time::{AtomicDateTime, MyDateTime},
-    operations::OperationFailResult,
-    subscribers::SubscriberId,
-};
+use crate::{app::AppContext, operations::OperationFailResult, subscribers::SubscriberId};
 
 use super::{MySbSessionSubscriberData, MyServiceBusSessionData};
 
@@ -18,8 +14,8 @@ pub struct MyServiceBusSession {
     pub data: RwLock<MyServiceBusSessionData>,
     pub ip: String,
     pub id: ConnectionId,
-    pub connected: MyDateTime,
-    pub last_incoming_package: AtomicDateTime,
+    pub connected: DateTimeAsMicroseconds,
+    pub last_incoming_package: AtomicDateTimeAsMicroseconds,
 
     pub app: Arc<AppContext>,
 }
@@ -33,16 +29,14 @@ impl MyServiceBusSession {
         tcp_stream: WriteHalf<TcpStream>,
         app: Arc<AppContext>,
     ) -> Self {
-        let now = MyDateTime::utc_now();
-
         let data = MyServiceBusSessionData::new(tcp_stream, app.clone());
 
         Self {
             id,
             ip,
             data: RwLock::new(data),
-            connected: now,
-            last_incoming_package: AtomicDateTime::from_date_time(now),
+            connected: DateTimeAsMicroseconds::now(),
+            last_incoming_package: AtomicDateTimeAsMicroseconds::now(),
             app,
         }
     }

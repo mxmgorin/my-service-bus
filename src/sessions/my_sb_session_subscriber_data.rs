@@ -1,14 +1,13 @@
-use crate::{
-    date_time::MyDateTime,
-    metric_data::{MetricOneSecond, MetricsHistory},
-};
+use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
+
+use crate::metric_data::{MetricOneSecond, MetricsHistory};
 
 #[derive(Clone)]
 pub struct MySbSessionSubscriberData {
     pub topic_id: String,
     pub queue_id: String,
     pub active: u8,
-    pub subscribed: MyDateTime,
+    pub subscribed: DateTimeAsMicroseconds,
     pub metrics: MetricsHistory,
 
     pub delivered_amount: MetricOneSecond,
@@ -21,7 +20,7 @@ impl MySbSessionSubscriberData {
             topic_id: topic_id.to_string(),
             queue_id: queue_id.to_string(),
             active,
-            subscribed: MyDateTime::utc_now(),
+            subscribed: DateTimeAsMicroseconds::now(),
             metrics: MetricsHistory::new(),
             delivered_amount: MetricOneSecond::new(),
             delivery_microseconds: MetricOneSecond::new(),
@@ -47,7 +46,7 @@ impl MySbSessionSubscriberData {
             "TopicId: {}, QueueId: {}, subscribed_at: {}",
             self.topic_id,
             self.queue_id,
-            self.subscribed.to_iso_string()
+            self.subscribed.to_rfc3339()
         );
     }
 }

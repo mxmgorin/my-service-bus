@@ -1,11 +1,11 @@
 use my_service_bus_shared::{
+    date_time::DateTimeAsMicroseconds,
     queue::TopicQueueType,
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
     MessageId,
 };
 use tokio::sync::RwLock;
 
-use crate::date_time::MyDateTime;
 use crate::topics::TopicQueueSnapshot;
 
 use super::QueueData;
@@ -13,7 +13,7 @@ use super::QueueData;
 pub struct TopicQueueGcData {
     pub subscribers_amount: usize,
     pub queue_type: TopicQueueType,
-    pub last_subscriber_disconnect: MyDateTime,
+    pub last_subscriber_disconnect: DateTimeAsMicroseconds,
 }
 
 pub struct TopicQueueMonitoringData {

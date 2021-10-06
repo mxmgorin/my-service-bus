@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
-use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWithIntervals};
+use my_service_bus_shared::{
+    date_time::DateTimeAsMicroseconds, queue::TopicQueueType,
+    queue_with_intervals::QueueWithIntervals,
+};
 
 use crate::{
     app::{AppContext, TEST_QUEUE},
-    date_time::MyDateTime,
     queues::QueueData,
     sessions::MyServiceBusSession,
     subscribers::SubscriberId,
@@ -162,7 +164,7 @@ pub async fn unsubscribe(
         }
     }
 
-    queue.last_ubsubscribe = MyDateTime::utc_now();
+    queue.last_ubsubscribe = DateTimeAsMicroseconds::now();
 
     Ok(())
 }
@@ -191,7 +193,7 @@ pub async fn confirm_delivery(
                 queue_id: queue_id.to_string(),
             })?;
 
-    let start_time: MyDateTime;
+    let start_time: DateTimeAsMicroseconds;
 
     let mut delivered_messages_amount: Option<usize> = None;
 
@@ -244,7 +246,7 @@ pub async fn confirm_delivery(
     }
 
     if let Some(delivered_messages) = delivered_messages_amount {
-        let dur = MyDateTime::utc_now().get_duration_from(start_time);
+        let dur = DateTimeAsMicroseconds::now().duration_since(start_time);
         session
             .set_delivered_statistic(
                 process_id,
@@ -289,7 +291,7 @@ pub async fn confirm_non_delivery(
                 queue_id: queue_id.to_string(),
             })?;
 
-    let start_time: MyDateTime;
+    let start_time: DateTimeAsMicroseconds;
 
     let mut delivered_messages_amount: Option<usize> = None;
     let mut to_send = Vec::new();
@@ -345,8 +347,8 @@ pub async fn confirm_non_delivery(
                 process_id,
                 subscriber_id,
                 delivered_messages as i32,
-                MyDateTime::utc_now()
-                    .get_duration_from(start_time)
+                DateTimeAsMicroseconds::now()
+                    .duration_since(start_time)
                     .as_micros() as i32,
             )
             .await;

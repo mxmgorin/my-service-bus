@@ -1,8 +1,7 @@
-use my_service_bus_shared::debug::LockItem;
+use my_service_bus_shared::{date_time::DateTimeAsMicroseconds, debug::LockItem};
 
 use crate::{
     app::AppContext,
-    date_time::MyDateTime,
     http::{HttpFailResult, HttpOkResult},
     utils::StringBuilder,
 };
@@ -19,9 +18,9 @@ fn compile_result(items: &[LockItem]) -> String {
     let mut result = StringBuilder::new();
 
     for itm in items {
-        let date = MyDateTime::new(itm.date);
+        let date = DateTimeAsMicroseconds::new(itm.date);
         result.append_line(
-            format!("{} {} [{}]", date.to_iso_string(), itm.to_string(), itm.id,).as_str(),
+            format!("{} {} [{}]", date.to_rfc3339(), itm.to_string(), itm.id,).as_str(),
         );
     }
 

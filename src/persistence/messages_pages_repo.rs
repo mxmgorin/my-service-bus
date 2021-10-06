@@ -1,9 +1,12 @@
 use futures_util::stream;
+use my_service_bus_shared::bcl::{BclDateTime, BclToUnixMicroseconds};
+use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
+use my_service_bus_shared::page_compressor::CompressedPageReader;
 use my_service_bus_shared::page_id::PageId;
+use my_service_bus_shared::MessageId;
 use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 
-use crate::date_time::MyDateTime;
 use crate::message_pages::MessagesPage;
 use crate::messages::{MySbMessage, MySbMessageContent};
 use crate::settings::SettingsModel;
@@ -13,10 +16,7 @@ use crate::persistence_grpc::my_service_bus_messages_persistence_grpc_service_cl
 use crate::persistence_grpc::*;
 
 use super::errors::{GrpcClientError, PersistenceError};
-use super::protobuf_models::{
-    MessageProtobufModel, MessagesProtobufModel, NewMessagesProtobufContract,
-};
-use super::zip::decompress_payload;
+use super::protobuf_models::{MessageProtobufModel, NewMessagesProtobufContract};
 pub struct MessagesPagesRepo {
     grpc_address: String,
     grpc_client: LazyObject<MyServiceBusMessagesPersistenceGrpcServiceClient<Channel>>,
@@ -83,36 +83,34 @@ impl MessagesPagesRepo {
             buffer.extend(stream_result.chunk);
         }
 
-        let unzipped = decompress_payload(buffer.as_slice())?;
+        let zip_size = buffer.len();
 
-        let grpc_model: MessagesProtobufModel = prost::Message::decode(unzipped.as_slice())?;
+        let mut reader = CompressedPageReader::new(buffer)?;
+
+        let grpc_model = reader.unzip_messages()?;
 
         let page = MessagesPage::new(page_id);
 
         let mut msgs = Vec::new();
 
         for message in grpc_model.messages {
-            let time_parse_result = MyDateTime::from_optional_bcl(message.created);
+            let time = parse_date_time_from_bcl(message.message_id, message.created);
 
-            match time_parse_result {
-                Ok(time) => {
-                    let msg = MySbMessage::Loaded(MySbMessageContent::new(
-                        message.message_id,
-                        message.data,
-                        time,
-                    ));
-                    msgs.push(msg);
-                }
-                Err(err) => {
-                    let msg = MySbMessage::CanNotBeLoaded {
-                        id: message.message_id,
-                        err: format!("{:?}", err),
-                    };
-                    msgs.push(msg);
-                }
-            }
+            let msg = MySbMessage::Loaded(MySbMessageContent::new(
+                message.message_id,
+                message.data,
+                time,
+            ));
+            msgs.push(msg);
         }
 
+        println!(
+            "{}/{} restored messages {}. Zip Size: {}",
+            topic_id,
+            page_id,
+            msgs.len(),
+            zip_size
+        );
         page.restore(msgs).await;
 
         Ok(page)
@@ -131,7 +129,10 @@ impl MessagesPagesRepo {
 
         let grpc_protobuf = grpc_messages.into_protobuf_vec();
 
-        let grpc_protobuf_compressed = super::zip::compress_payload(grpc_protobuf.as_slice())?;
+        let grpc_protobuf_compressed =
+            my_service_bus_shared::page_compressor::zip::compress_payload(
+                grpc_protobuf.as_slice(),
+            )?;
 
         let grpc_client_lazy_object = self.get_grpc_client().await?;
 
@@ -180,4 +181,25 @@ fn split(src: &[u8], max_payload_size: usize) -> Vec<Vec<u8>> {
     }
 
     result
+}
+
+fn parse_date_time_from_bcl(msg_id: MessageId, bcl: Option<BclDateTime>) -> DateTimeAsMicroseconds {
+    if bcl.is_none() {
+        print!("MessageID {} has None DateTime", msg_id);
+        return DateTimeAsMicroseconds::now();
+    }
+
+    let bcl_time = bcl.unwrap();
+
+    let microseconds = bcl_time.to_unix_microseconds();
+
+    if let Err(err) = microseconds {
+        print!(
+            "MessageID {} has a problem with DateTime. Err {}",
+            msg_id, err
+        );
+        return DateTimeAsMicroseconds::now();
+    }
+
+    return DateTimeAsMicroseconds::new(microseconds.unwrap());
 }

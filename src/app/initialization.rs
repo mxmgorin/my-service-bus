@@ -15,6 +15,8 @@ pub async fn init(app: Arc<AppContext>) {
 
     let topics_and_queues = restore_topics_and_queues(app.as_ref()).await;
 
+    println!("Loaded topics {}", topics_and_queues.len());
+
     let topics_count = topics_and_queues.len();
 
     for topic_and_queues in topics_and_queues {
@@ -56,6 +58,8 @@ pub async fn init(app: Arc<AppContext>) {
             ),
         )
         .await;
+
+    println!("Application is initialized in {:?}", sw.duration());
 }
 
 async fn restore_topic_pages(app: Arc<AppContext>, topic: Arc<Topic>) {

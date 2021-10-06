@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use my_service_bus_shared::{
+    date_time::DateTimeAsMicroseconds,
     queue::TopicQueueType,
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
     MessageId,
 };
 
 use crate::{
-    date_time::MyDateTime, messages_bucket::MessagesBucket, operations::OperationFailResult,
-    subscribers::SubscribersList,
+    messages_bucket::MessagesBucket, operations::OperationFailResult, subscribers::SubscribersList,
 };
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ pub struct QueueData {
     pub subscribers: SubscribersList,
     attempts: HashMap<MessageId, i32>,
     pub queue_type: TopicQueueType,
-    pub last_ubsubscribe: MyDateTime,
+    pub last_ubsubscribe: DateTimeAsMicroseconds,
 }
 
 impl QueueData {
@@ -36,7 +36,7 @@ impl QueueData {
             subscribers: SubscribersList::new(),
             attempts: HashMap::new(),
             queue_type,
-            last_ubsubscribe: MyDateTime::utc_now(),
+            last_ubsubscribe: DateTimeAsMicroseconds::now(),
         }
     }
 
@@ -53,7 +53,7 @@ impl QueueData {
             subscribers: SubscribersList::new(),
             attempts: HashMap::new(),
             queue_type,
-            last_ubsubscribe: MyDateTime::utc_now(),
+            last_ubsubscribe: DateTimeAsMicroseconds::now(),
         }
     }
 

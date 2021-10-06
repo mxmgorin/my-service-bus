@@ -1,9 +1,5 @@
+use my_service_bus_shared::page_compressor::CompressedPageReaderError;
 use zip::result::ZipError;
-
-use crate::{
-    bcl_proto::{BclDateTime, BclDateTimeError, BclToUnixMicroseconds},
-    date_time::MyDateTime,
-};
 
 use super::GrpcClientError;
 
@@ -14,6 +10,13 @@ pub enum PersistenceError {
     InvalidProtobufPayload(String),
     GrpcClientError(tonic::transport::Error),
     GrpcClientIsNotInitialized(String),
+    CompressedPageReaderError(CompressedPageReaderError),
+}
+
+impl From<CompressedPageReaderError> for PersistenceError {
+    fn from(src: CompressedPageReaderError) -> Self {
+        Self::CompressedPageReaderError(src)
+    }
 }
 
 impl From<GrpcClientError> for PersistenceError {
@@ -37,22 +40,5 @@ impl From<prost::DecodeError> for PersistenceError {
 impl From<ZipError> for PersistenceError {
     fn from(src: ZipError) -> Self {
         Self::ZipOperationError(src)
-    }
-}
-
-impl MyDateTime {
-    pub fn from_optional_bcl(dt: Option<BclDateTime>) -> Result<Self, BclDateTimeError> {
-        if dt.is_none() {
-            return Err(BclDateTimeError {
-                reason: "Date time is null".to_string(),
-            });
-        }
-
-        return Ok(MyDateTime::from_bcl(&dt.unwrap())?);
-    }
-
-    pub fn from_bcl(dt: &BclDateTime) -> Result<Self, BclDateTimeError> {
-        let micros = dt.to_unix_microseconds()?;
-        Ok(MyDateTime { micros })
     }
 }

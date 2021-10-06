@@ -1,9 +1,9 @@
+use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
 use my_service_bus_shared::page_id::{get_page_id, PageId};
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
 use my_service_bus_shared::{queue::TopicQueueType, MessageId};
 use tokio::sync::RwLock;
 
-use crate::date_time::MyDateTime;
 use crate::message_pages::MessagesPagesCache;
 use crate::messages::MySbMessageContent;
 use crate::queues::TopicQueue;
@@ -48,7 +48,7 @@ impl Topic {
             let message = MySbMessageContent {
                 id: topic_write_access.message_id,
                 content,
-                time: MyDateTime::utc_now(),
+                time: DateTimeAsMicroseconds::now(),
             };
             result.push_back(message);
             topic_write_access.message_id = topic_write_access.message_id + 1;

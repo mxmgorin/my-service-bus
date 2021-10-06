@@ -1,5 +1,6 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
+use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
 use my_service_bus_tcp_shared::{
     ConnectionAttributes, ReadingTcpContractFail, SocketReader, TcpContract,
 };
@@ -11,7 +12,6 @@ use tokio::{
 
 use crate::{
     app::{logs::SystemProcess, AppContext},
-    date_time::MyDateTime,
     sessions::MyServiceBusSession,
 };
 
@@ -162,7 +162,7 @@ async fn socket_loop(
             .increase_read_size(process_id, socket_reader.read_size)
             .await;
 
-        let now = MyDateTime::utc_now();
+        let now = DateTimeAsMicroseconds::now();
         session.last_incoming_package.update(now);
 
         let result = super::connection::handle_incoming_payload(

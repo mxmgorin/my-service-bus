@@ -3,7 +3,6 @@ mod messages_pages_repo;
 
 pub mod protobuf_models;
 mod queue_snapshot_repo;
-mod zip;
 
 pub use messages_pages_repo::MessagesPagesRepo;
 

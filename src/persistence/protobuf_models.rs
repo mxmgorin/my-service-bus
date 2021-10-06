@@ -1,4 +1,4 @@
-use crate::bcl_proto::BclDateTime;
+use my_service_bus_shared::bcl::BclDateTime;
 
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MessagesProtobufModel {

@@ -1,8 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
+use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
 use tokio::sync::RwLock;
-
-use crate::date_time::MyDateTime;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SystemProcess {
@@ -81,7 +80,7 @@ pub enum LogLevel {
 }
 #[derive(Debug, Clone)]
 pub struct LogItem {
-    pub date: MyDateTime,
+    pub date: DateTimeAsMicroseconds,
 
     pub topic: Option<String>,
 
@@ -148,7 +147,7 @@ impl Logs {
         message: String,
     ) {
         let item = LogItem {
-            date: MyDateTime::utc_now(),
+            date: DateTimeAsMicroseconds::now(),
             level: LogLevel::Info,
             topic,
             process_name,
@@ -169,7 +168,7 @@ impl Logs {
         err_ctx: Option<String>,
     ) {
         let item = LogItem {
-            date: MyDateTime::utc_now(),
+            date: DateTimeAsMicroseconds::now(),
             level: LogLevel::Error,
             topic,
             process_name,
@@ -179,12 +178,14 @@ impl Logs {
         };
 
         println!(
-            "{dt} {level:?} {proces:?}\n Process:{processname}\n Message:{message}",
-            dt = item.date.to_iso_string(),
+            "{dt} {level:?} {proces:?}\n Topic:{topic:?}\n Process:{processname}\n Message:{message}\n Ctx:{err_ctx:?}",
+            topic= item.topic,
+            dt = item.date.to_rfc3339(),
             level = item.level,
             proces = item.process,
             processname = item.process_name,
-            message = item.message
+            message = item.message,
+            err_ctx = item.err_ctx
         );
         println!("-------------");
         self.add(item).await;
@@ -197,7 +198,7 @@ impl Logs {
         message: String,
     ) {
         let item = LogItem {
-            date: MyDateTime::utc_now(),
+            date: DateTimeAsMicroseconds::now(),
             level: LogLevel::FatalError,
             topic: None,
             process_name,
@@ -208,7 +209,7 @@ impl Logs {
 
         println!(
             "{dt} {level:?} {proces:?}\n Process:{processname}\n Message:{message}",
-            dt = item.date.to_iso_string(),
+            dt = item.date.to_rfc3339(),
             level = item.level,
             proces = item.process,
             processname = item.process_name,

@@ -149,7 +149,7 @@ fn compile_result(
         let line = format!(
             "<b style='background:{color}; color:white;'>{level:?}:</b> {dt}</br>",
             color = get_log_level_color(&log_item.as_ref()),
-            dt = log_item.date.to_iso_string(),
+            dt = log_item.date.to_rfc3339(),
             level = log_item.level
         );
         sb.append_line(&line);

@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{
-    app::AppContext, date_time::MyDateTime, sessions::MyServiceBusSession,
-    utils::duration_to_string,
-};
+use crate::{app::AppContext, sessions::MyServiceBusSession, utils::duration_to_string};
 
+use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
 use serde::{Deserialize, Serialize};
 
 use super::session_subscriber_model::SessionSubscriberJsonContract;
@@ -33,15 +31,13 @@ pub struct SessionJsonResult {
 
 impl SessionJsonResult {
     pub async fn new(session: &MyServiceBusSession, process_id: i64) -> Self {
-        let last_incoming = session.last_incoming_package.get();
-
         session
             .app
             .enter_lock(process_id, "MySbSession.SessionJsonResult.new".to_string())
             .await;
         let session_read = session.data.read().await;
 
-        let now = MyDateTime::utc_now();
+        let now = DateTimeAsMicroseconds::now();
 
         let mut subscribers_json = Vec::new();
 
@@ -58,8 +54,10 @@ impl SessionJsonResult {
             ip: session.ip.to_string(),
             name: session_read.get_name(),
             version: session_read.get_version(),
-            connected: duration_to_string(now.get_duration_from(session.connected)),
-            last_incoming: duration_to_string(now.get_duration_from_micros(last_incoming)),
+            connected: duration_to_string(now.duration_since(session.connected)),
+            last_incoming: duration_to_string(
+                now.duration_since(session.last_incoming_package.as_date_time()),
+            ),
             read_size: session_read.statistic.read_size,
             written_size: session_read.statistic.written_size,
             read_per_sec: session_read.statistic.read_per_sec,

@@ -1,11 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
-use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
+use my_service_bus_shared::{bcl::BclDateTime, queue_with_intervals::QueueWithIntervals};
 
 use crate::{
     app::{logs::Logs, AppContext},
-    bcl_proto::BclDateTime,
-    date_time::MyDateTime,
     message_pages::MessagesPage,
     messages::MySbMessage,
     persistence::protobuf_models::MessageProtobufModel,
@@ -183,14 +181,4 @@ async fn put_messages_to_persist_back(page: &MessagesPage, msgs: &QueueWithInter
 async fn messages_are_persisted_ok(page: &MessagesPage) {
     let mut write_access = page.data.write().await;
     write_access.is_being_persisted = false;
-}
-
-impl From<MyDateTime> for BclDateTime {
-    fn from(src: MyDateTime) -> Self {
-        BclDateTime {
-            value: src.micros * 20,
-            scale: crate::bcl_proto::bcl_date_time_utils::SCALE_TICKS,
-            kind: 0,
-        }
-    }
 }
