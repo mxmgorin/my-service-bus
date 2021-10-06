@@ -128,16 +128,6 @@ async fn get_message_size_first_time(
             return None;
         }
         MessageSize::CanNotBeLoaded => {
-            app.logs
-                .add_error(
-                    Some(topic.topic_id.to_string()),
-                    SystemProcess::DeliveryOperation,
-                    "fill_messages".to_string(),
-                    "Message can not be loaded. Skipping it".to_string(),
-                    Some(format!("MessageId: {}", next_message.message_id)),
-                )
-                .await;
-
             return None;
         }
     }
