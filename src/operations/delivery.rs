@@ -70,8 +70,6 @@ async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -
                 return result;
             }
 
-            queue.dequeue_next_message();
-
             bucket_page.add(
                 next_message.message_id,
                 next_message.attempt_no,
@@ -83,6 +81,8 @@ async fn fill_messages(app: &AppContext, topic: &Topic, queue: &mut QueueData) -
             let page = get_page(app, topic, page_id).await;
             result.add_page(MessagesBucketPage::new(page));
         }
+
+        queue.dequeue_next_message();
     }
 
     return result;
