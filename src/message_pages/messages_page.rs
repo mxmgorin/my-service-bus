@@ -42,7 +42,7 @@ impl MessagesPage {
 
         if msg.is_none() {
             //TODO - Double check
-            return MessageSize::NotLoaded;
+            return MessageSize::CanNotBeLoaded;
         }
 
         match msg.unwrap() {
