@@ -78,4 +78,9 @@ impl SubscriberMetrics {
         let value = delivery_duration.as_micros() as i32 / -delivered_messages;
         self.delivery_history.put(value);
     }
+
+    pub fn set_started_delivery(&mut self) {
+        self.start_delivery_time = DateTimeAsMicroseconds::now();
+        self.active = 2;
+    }
 }

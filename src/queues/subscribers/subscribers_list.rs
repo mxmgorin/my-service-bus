@@ -79,7 +79,8 @@ impl SubscribersList {
         let item = self.get_by_id_mut(subscriber_id);
 
         if let Some(subscriber) = item {
-            subscriber.messages_on_delivery = Some(messages)
+            subscriber.messages_on_delivery = Some(messages);
+            subscriber.metrics.set_started_delivery();
         } else {
             panic!(
                 "Can not set messages on delivery . Subscriber {} is not found",
