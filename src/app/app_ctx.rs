@@ -5,9 +5,9 @@ use tokio::sync::Mutex;
 
 use crate::{
     persistence::{MessagesPagesRepo, TopcsAndQueuesSnapshotRepo},
+    queues::subscribers::SubscriberIdGenerator,
     sessions::SessionsList,
     settings::SettingsModel,
-    subscribers::SubscriberIdGenerator,
     topics::TopicsList,
 };
 

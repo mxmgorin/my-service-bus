@@ -1,15 +1,11 @@
 use std::sync::Arc;
 
-use my_service_bus_shared::{
-    date_time::DateTimeAsMicroseconds, queue::TopicQueueType,
-    queue_with_intervals::QueueWithIntervals,
-};
+use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWithIntervals};
 
 use crate::{
-    app::{AppContext, TEST_QUEUE},
-    queues::QueueData,
+    app::AppContext,
+    queues::subscribers::{QueueSubscriber, SubscriberId},
     sessions::MyServiceBusSession,
-    subscribers::SubscriberId,
 };
 
 use super::OperationFailResult;
@@ -51,6 +47,8 @@ pub async fn subscribe_to_queue(
 
     let the_session = the_session.unwrap();
 
+    let kicked_subscriber_result;
+
     let subscriber_id = app.subscriber_id_generator.get_next_subsriber_id();
     {
         app.enter_lock(
@@ -60,11 +58,15 @@ pub async fn subscribe_to_queue(
         .await;
         let mut write_access = topic_queue.data.write().await;
 
-        write_access.queue_type = queue_type;
+        write_access.update_queue_type(queue_type);
 
-        write_access
-            .subscribers
-            .subscribe(subscriber_id, queue_id, the_session.clone());
+        kicked_subscriber_result = write_access.subscribers.subscribe(
+            subscriber_id,
+            session.id,
+            topic.clone(),
+            topic_queue.clone(),
+            the_session.clone(),
+        );
 
         app.logs
             .add_info(
@@ -83,38 +85,16 @@ pub async fn subscribe_to_queue(
             )
             .await;
 
-        if matches!(
-            write_access.queue_type,
-            TopicQueueType::PermanentWithSingleConnection
-        ) {
-            let subscribers_to_unsubscribe = write_access
-                .subscribers
-                .get_all_except_this_one(subscriber_id);
-
-            for subscriber_to_unsubscribe_id in subscribers_to_unsubscribe {
-                let result = unsubscribe(
-                    process_id,
-                    session,
-                    &mut write_access,
-                    subscriber_to_unsubscribe_id,
-                )
-                .await;
-
-                if let Err(err) = result {
-                    app.logs
-                        .add_error(
-                            None,
-                            crate::app::logs::SystemProcess::TcpSocket,
-                            "subscriber::subscribe_to_queue".to_string(),
-                            format!("Faild to unscrubscribe {}", subscriber_to_unsubscribe_id),
-                            Some(format!("{:?}", err)),
-                        )
-                        .await;
-                }
-            }
-        }
-
         app.exit_lock(process_id).await;
+    }
+
+    if let Some(kicked_subscriber) = kicked_subscriber_result {
+        crate::operations::subscriber::handle_subscriber_remove(
+            process_id,
+            app.as_ref(),
+            kicked_subscriber,
+        )
+        .await;
     }
 
     super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
@@ -122,31 +102,26 @@ pub async fn subscribe_to_queue(
     Ok(())
 }
 
-pub async fn unsubscribe(
+pub async fn handle_subscriber_remove(
     process_id: i64,
-    session: &MyServiceBusSession,
-    queue: &mut QueueData,
-    subscriber_id: SubscriberId,
-) -> Result<(), OperationFailResult> {
-    let removed_subscriber = queue.subscribers.remove(&subscriber_id);
+    app: &AppContext,
+    mut subscriber: QueueSubscriber,
+) {
+    let messages = subscriber.reset_delivery();
 
-    if removed_subscriber.is_none() {
-        return Err(OperationFailResult::SubscriberNotFound { id: subscriber_id });
+    if let Some(messages_on_delivery) = &messages {
+        app.enter_lock(
+            process_id,
+            format!(
+                "handle_subscriber_remove[{}/{}]",
+                subscriber.queue.topic_id, subscriber.queue.queue_id
+            ),
+        )
+        .await;
+        let mut write_access = subscriber.queue.data.write().await;
+        write_access.mark_not_delivered(messages_on_delivery);
+        app.exit_lock(process_id).await;
     }
-
-    let removed_subscriber = removed_subscriber.unwrap();
-
-    session.remove_subscriber(process_id, subscriber_id).await;
-
-    if queue.queue_id == TEST_QUEUE {
-        if let Some(message_bucket) = removed_subscriber.messages_on_delivery {
-            queue.confirmed_non_delivered(&message_bucket)
-        }
-    }
-
-    queue.last_ubsubscribe = DateTimeAsMicroseconds::now();
-
-    Ok(())
 }
 
 pub async fn confirm_delivery(
@@ -154,7 +129,6 @@ pub async fn confirm_delivery(
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
-    session: &MyServiceBusSession,
     subscriber_id: SubscriberId,
 ) -> Result<(), OperationFailResult> {
     let topic = app
@@ -173,24 +147,16 @@ pub async fn confirm_delivery(
                 queue_id: queue_id.to_string(),
             })?;
 
-    let mut delivered_messages_amount: Option<usize> = None;
+    let mut write_access = topic_queue.data.write().await;
 
-    {
-        let mut write_access = topic_queue.data.write().await;
-
-        let subscriber = write_access
-            .subscribers
-            .get_by_id_mut(subscriber_id)
-            .ok_or(OperationFailResult::SubscriberNotFound { id: subscriber_id })?;
-
-        let messages_on_delivery = subscriber.reset();
-
-        let start_time = subscriber.start_delivering;
-
-        if let Some(messages_on_delivery) = messages_on_delivery {
-            delivered_messages_amount = Some(messages_on_delivery.messages_count());
-            write_access.confirmed_delivered(messages_on_delivery);
-        }
+    if let Err(err) = write_access.confirmed_delivered(subscriber_id) {
+        app.logs
+            .add_fatal_error(
+                crate::app::logs::SystemProcess::DeliveryOperation,
+                "confirm_delivery".to_string(),
+                format!("{:?}", err),
+            )
+            .await
     }
 
     super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
@@ -203,7 +169,6 @@ pub async fn confirm_non_delivery(
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
-    session: &MyServiceBusSession,
     subscriber_id: SubscriberId,
 ) -> Result<(), OperationFailResult> {
     let topic = app
@@ -222,39 +187,15 @@ pub async fn confirm_non_delivery(
                 queue_id: queue_id.to_string(),
             })?;
 
-    let start_time: DateTimeAsMicroseconds;
-
-    let mut delivered_messages_amount: Option<usize> = None;
-
-    {
-        let mut write_access = topic_queue.data.write().await;
-
-        let subscriber = write_access
-            .subscribers
-            .get_by_id_mut(subscriber_id)
-            .ok_or(OperationFailResult::SubscriberNotFound { id: subscriber_id })?;
-
-        let messages_on_delivery = subscriber.reset();
-
-        start_time = subscriber.start_delivering;
-
-        if let Some(messages_on_delivery) = &messages_on_delivery {
-            delivered_messages_amount = Some(messages_on_delivery.messages_count());
-            write_access.confirmed_non_delivered(messages_on_delivery);
-        }
-    }
-
-    if let Some(delivered_messages) = delivered_messages_amount {
-        session
-            .set_not_delivered_statistic(
-                process_id,
-                subscriber_id,
-                delivered_messages as i32,
-                DateTimeAsMicroseconds::now()
-                    .duration_since(start_time)
-                    .as_micros() as i32,
+    let mut write_access = topic_queue.data.write().await;
+    if let Err(err) = write_access.confirmed_non_delivered(subscriber_id) {
+        app.logs
+            .add_fatal_error(
+                crate::app::logs::SystemProcess::DeliveryOperation,
+                "confirm_non_delivery".to_string(),
+                format!("{:?}", err),
             )
-            .await;
+            .await
     }
 
     super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
@@ -287,19 +228,15 @@ pub async fn some_messages_are_confirmed(
                 queue_id: queue_id.to_string(),
             })?;
 
-    {
-        let mut write_access = topic_queue.data.write().await;
-
-        let subscriber = write_access
-            .subscribers
-            .get_by_id_mut(subscriber_id)
-            .ok_or(OperationFailResult::SubscriberNotFound { id: subscriber_id })?;
-
-        let messages_on_delivery = subscriber.reset();
-
-        if let Some(messages_on_delivery) = messages_on_delivery {
-            write_access.confirmed_some_delivered(messages_on_delivery, confirmed_messages)?;
-        }
+    let mut write_access = topic_queue.data.write().await;
+    if let Err(err) = write_access.confirmed_some_delivered(subscriber_id, confirmed_messages) {
+        app.logs
+            .add_fatal_error(
+                crate::app::logs::SystemProcess::DeliveryOperation,
+                "some_messages_are_confirmed".to_string(),
+                format!("{:?}", err),
+            )
+            .await
     }
 
     super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
@@ -331,20 +268,18 @@ pub async fn some_messages_are_not_confirmed(
             .ok_or(OperationFailResult::QueueNotFound {
                 queue_id: queue_id.to_string(),
             })?;
+
+    let mut write_access = topic_queue.data.write().await;
+    if let Err(err) =
+        write_access.confirmed_some_not_delivered(subscriber_id, not_confirmed_messages)
     {
-        let mut write_access = topic_queue.data.write().await;
-
-        let subscriber = write_access
-            .subscribers
-            .get_by_id_mut(subscriber_id)
-            .ok_or(OperationFailResult::SubscriberNotFound { id: subscriber_id })?;
-
-        let messages_on_delivery = subscriber.reset();
-
-        if let Some(messages_on_delivery) = messages_on_delivery {
-            write_access
-                .confirmed_some_not_delivered(messages_on_delivery, not_confirmed_messages)?;
-        }
+        app.logs
+            .add_fatal_error(
+                crate::app::logs::SystemProcess::DeliveryOperation,
+                "some_messages_are_not_confirmed".to_string(),
+                format!("{:?}", err),
+            )
+            .await
     }
 
     super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());

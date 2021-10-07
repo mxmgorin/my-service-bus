@@ -1,79 +1,17 @@
 use std::sync::Arc;
 
 use my_service_bus_shared::page_id::{get_page_id, PageId};
-use my_service_bus_tcp_shared::TcpContract;
 
 use crate::{
     app::AppContext,
     message_pages::{MessageSize, MessagesPage},
     messages_bucket::MessagesBucket,
+    operations::OperationFailResult,
     queues::{NextMessage, QueueData, TopicQueue},
-    sessions::MyServiceBusSession,
-    subscribers::SubscriberId,
     topics::Topic,
 };
 
-use super::OperationFailResult;
-
-pub struct DeliveryMessageData {
-    pub sessions: Vec<DeliverMessagesToSession>,
-    pub current_session: Option<DeliverMessagesToSession>,
-}
-
-impl DeliveryMessageData {
-    pub fn new() -> Self {
-        Self {
-            sessions: Vec::new(),
-            current_session: None,
-        }
-    }
-
-    pub fn set_current(&mut self, session: DeliverMessagesToSession) {
-        self.complete();
-        self.current_session = Some(session);
-    }
-
-    pub fn complete(&mut self) {
-        if self.current_session.is_some() {
-            let mut current_session = None;
-            std::mem::swap(&mut current_session, &mut self.current_session);
-            self.sessions.push(current_session.unwrap());
-        }
-    }
-}
-
-pub struct DeliverMessagesToSession {
-    pub messages: MessagesBucket,
-    pub session: Arc<MyServiceBusSession>,
-    pub subscriber_id: SubscriberId,
-}
-
-impl DeliverMessagesToSession {
-    pub fn new(subscriber_id: SubscriberId, session: Arc<MyServiceBusSession>) -> Self {
-        Self {
-            subscriber_id,
-            session,
-            messages: MessagesBucket::new(),
-        }
-    }
-    pub async fn compile_tcp_packet(
-        &self,
-        process_id: i64,
-        app: &AppContext,
-        topic: &Topic,
-        queue_id: &str,
-    ) -> TcpContract {
-        crate::tcp::tcp_contracts::compile_messages_delivery_contract(
-            process_id,
-            app,
-            &self.messages,
-            topic,
-            queue_id,
-            self.subscriber_id,
-        )
-        .await
-    }
-}
+use super::{DeliverPayloadBySubscriber, DeliveryPayloadsCollector};
 
 pub enum CompileResult {
     Completed,
@@ -86,16 +24,38 @@ pub fn deliver_to_queue(
     topic: Arc<Topic>,
     queue: Arc<TopicQueue>,
 ) {
-    tokio::spawn(deliver_to_queue_swapned(process_id, app, topic, queue));
+    tokio::spawn(deliver_to_queue_spawned(process_id, app, topic, queue));
 }
 
-async fn deliver_to_queue_swapned(
+async fn deliver_to_queue_spawned(
     process_id: i64,
     app: Arc<AppContext>,
     topic: Arc<Topic>,
     queue: Arc<TopicQueue>,
+) {
+    let result =
+        try_to_deliver_to_queue(process_id, app.as_ref(), topic.as_ref(), queue.as_ref()).await;
+
+    if let Err(err) = result {
+        app.logs
+            .add_error(
+                Some(topic.topic_id.to_string()),
+                crate::app::logs::SystemProcess::DeliveryOperation,
+                format!("deliver_to_queue {}", queue.queue_id),
+                "We cought error while it was a delivery process".to_string(),
+                Some(format!("{:?}", err)),
+            )
+            .await
+    }
+}
+
+async fn try_to_deliver_to_queue(
+    process_id: i64,
+    app: &AppContext,
+    topic: &Topic,
+    queue: &TopicQueue,
 ) -> Result<(), OperationFailResult> {
-    let mut delivery_data = DeliveryMessageData::new();
+    let mut payloads_collector = DeliveryPayloadsCollector::new();
 
     loop {
         queue.delivery_lock.lock().await;
@@ -112,10 +72,10 @@ async fn deliver_to_queue_swapned(
             let mut queue_write_access = queue.data.write().await;
 
             compile_result = try_to_complie_next_messages_from_the_queue(
-                app.as_ref(),
-                topic.as_ref(),
+                app,
+                topic,
                 &mut queue_write_access,
-                &mut delivery_data,
+                &mut payloads_collector,
             )
             .await;
 
@@ -132,29 +92,32 @@ async fn deliver_to_queue_swapned(
                     "We do not have page {} for the topic {} to delivery messages. Restoring",
                     page_id, topic.topic_id
                 );
-                crate::operations::load_page_to_cache::do_it(app.as_ref(), topic.as_ref(), page_id)
-                    .await;
+                crate::operations::load_page_to_cache::do_it(app, topic, page_id).await;
             }
         }
     }
 
-    delivery_data.complete();
-    for delivery_data in delivery_data.sessions {
-        let tcp_contract = delivery_data
-            .compile_tcp_packet(
+    payloads_collector.complete();
+    for subscriber_data in payloads_collector.subscribers {
+        if subscriber_data.messages.messages_count() > 0 {
+            let tcp_contract = subscriber_data
+                .compile_tcp_packet(process_id, app, topic, queue.queue_id.as_str())
+                .await;
+
+            queue
+                .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages)
+                .await;
+
+            crate::operations::sessions::send_package(
                 process_id,
-                app.as_ref(),
-                topic.as_ref(),
-                queue.queue_id.as_str(),
+                app,
+                subscriber_data.session.as_ref(),
+                tcp_contract,
             )
             .await;
-
-        delivery_data
-            .session
-            .send_and_set_on_delivery(process_id, tcp_contract, delivery_data.subscriber_id)
-            .await;
-
-        todo!("Do not forget set messages to session")
+        } else {
+            queue.reset_rented(subscriber_data.subscriber_id).await;
+        }
     }
 
     Ok(())
@@ -164,12 +127,15 @@ async fn try_to_complie_next_messages_from_the_queue(
     app: &AppContext,
     topic: &Topic,
     queue: &mut QueueData,
-    delivery_data: &mut DeliveryMessageData,
+    delivery_data: &mut DeliveryPayloadsCollector,
 ) -> CompileResult {
     loop {
         if delivery_data.current_session.is_none() {
-            if let Some(subscriber) = queue.subscribers.get_next_subscriber_ready_to_deliver() {
-                delivery_data.set_current(DeliverMessagesToSession::new(
+            if let Some(subscriber) = queue
+                .subscribers
+                .get_and_rent_next_subscriber_ready_to_deliver()
+            {
+                delivery_data.set_current(DeliverPayloadBySubscriber::new(
                     subscriber.id,
                     subscriber.session.clone(),
                 ))
@@ -178,14 +144,15 @@ async fn try_to_complie_next_messages_from_the_queue(
             }
         }
 
-        let session = delivery_data.current_session.as_mut().unwrap();
+        let selected_subscruber = delivery_data.current_session.as_mut().unwrap();
 
-        let result = fill_messages(app, topic, queue, &mut session.messages).await;
+        let fill_messages_result =
+            fill_messages(app, topic, queue, &mut selected_subscruber.messages).await;
 
-        match result {
+        match fill_messages_result {
             FillMessagesResult::Complete => {
-                queue.subscribers.set_as_rented(session.subscriber_id);
                 delivery_data.complete();
+                return CompileResult::Completed;
             }
             FillMessagesResult::LoadPage(page_id) => return CompileResult::LoadPage(page_id),
         }
@@ -260,8 +227,13 @@ async fn get_message_size(
             return Some(next_msg_size);
         }
         MessageSize::NotLoaded => {
-            super::message_pages::restore_page(app, topic, page_id, "get_message_size_first_time")
-                .await;
+            crate::operations::message_pages::restore_page(
+                app,
+                topic,
+                page_id,
+                "get_message_size_first_time",
+            )
+            .await;
             return None;
         }
         MessageSize::CanNotBeLoaded => {

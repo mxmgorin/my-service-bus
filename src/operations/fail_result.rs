@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{subscribers::SubscriberId, topics::Topic};
+use crate::{queues::subscribers::SubscriberId, topics::Topic};
 
 #[derive(Debug)]
 pub enum OperationFailResult {

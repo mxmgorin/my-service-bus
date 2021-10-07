@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{metric_data::MetricOneSecond, subscribers::SubscriberId};
-
-use super::my_sb_session_subscriber_data::MySbSessionSubscriberData;
+use crate::metric_data::MetricOneSecond;
 
 #[derive(Clone)]
-pub struct MySbSessionStatistic {
+pub struct MySbSessionMetrics {
     pub disconnected: bool,
     pub read_size: usize,
     pub written_size: usize,
@@ -17,12 +15,11 @@ pub struct MySbSessionStatistic {
     pub written_per_sec_going: MetricOneSecond,
 
     pub publishers: HashMap<String, u8>,
-    pub subscribers: HashMap<SubscriberId, MySbSessionSubscriberData>,
 
     pub active: u8,
 }
 
-impl MySbSessionStatistic {
+impl MySbSessionMetrics {
     pub fn new() -> Self {
         Self {
             disconnected: false,
@@ -33,7 +30,6 @@ impl MySbSessionStatistic {
             read_per_sec_going: MetricOneSecond::new(),
             written_per_sec_going: MetricOneSecond::new(),
             publishers: HashMap::new(),
-            subscribers: HashMap::new(),
 
             active: 0,
         }
@@ -76,10 +72,6 @@ impl MySbSessionStatistic {
             if value > 0 {
                 self.publishers.insert(topic_id, value - 1);
             }
-        }
-
-        for (_, subscriber) in &mut self.subscribers {
-            subscriber.one_second_tick();
         }
     }
 }

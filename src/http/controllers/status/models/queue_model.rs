@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::topics::Topic;
+use crate::queues::TopicQueue;
 
 use serde::{Deserialize, Serialize};
 
@@ -12,16 +12,17 @@ pub struct QueuesJsonResult {
 }
 
 impl QueuesJsonResult {
-    pub async fn new(topics: &[Arc<Topic>]) -> HashMap<String, Self> {
+    pub async fn new(
+        queues: &HashMap<String, (usize, Vec<Arc<TopicQueue>>)>,
+    ) -> HashMap<String, Self> {
         let mut result = HashMap::new();
 
-        for topic in topics {
-            let (snapshot_id, topic_queues) = topic.get_all_queues_with_snapshot_id().await;
-
+        for (topic_id, (snapshot_id, topic_queues)) in queues {
             let mut queues = Vec::new();
 
             for topic_queue in topic_queues {
                 let monitoring_data = topic_queue.metrics.get().await;
+
                 queues.push(QueueJsonContract {
                     id: monitoring_data.id,
                     queue_type: monitoring_data.queue_type.into_u8(),
@@ -34,14 +35,14 @@ impl QueuesJsonResult {
                             to_id: itm.to_id,
                         })
                         .collect(),
-                })
+                });
             }
 
             result.insert(
-                topic.topic_id.to_string(),
+                topic_id.to_string(),
                 QueuesJsonResult {
                     queues,
-                    snapshot_id,
+                    snapshot_id: *snapshot_id,
                 },
             );
         }

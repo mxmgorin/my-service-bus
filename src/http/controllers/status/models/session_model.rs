@@ -1,6 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use crate::{app::AppContext, sessions::MyServiceBusSession, utils::duration_to_string};
+use crate::{
+    app::AppContext,
+    queues::{subscribers::SubscriberMetrics, TopicQueue},
+    sessions::MyServiceBusSession,
+    tcp::tcp_server::ConnectionId,
+    utils::duration_to_string,
+};
 
 use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
 use serde::{Deserialize, Serialize};
@@ -30,7 +36,11 @@ pub struct SessionJsonResult {
 }
 
 impl SessionJsonResult {
-    pub async fn new(session: &MyServiceBusSession, process_id: i64) -> Self {
+    pub async fn new(
+        subscribers: &[SubscriberMetrics],
+        session: &MyServiceBusSession,
+        process_id: i64,
+    ) -> Self {
         session
             .app
             .enter_lock(process_id, "MySbSession.SessionJsonResult.new".to_string())
@@ -41,8 +51,8 @@ impl SessionJsonResult {
 
         let mut subscribers_json = Vec::new();
 
-        for (subscriber_id, subscriber) in &session_read.statistic.subscribers {
-            let item = SessionSubscriberJsonContract::new(*subscriber_id, subscriber);
+        for subscriber in subscribers {
+            let item = SessionSubscriberJsonContract::new(subscriber);
 
             subscribers_json.push(item);
         }
@@ -76,13 +86,29 @@ pub struct SessionsJsonResult {
 }
 
 impl SessionsJsonResult {
-    pub async fn new(app: &AppContext, process_id: i64) -> SessionsJsonResult {
+    pub async fn new(
+        app: &AppContext,
+        process_id: i64,
+        queues_as_hashmap: &HashMap<String, (usize, Vec<Arc<TopicQueue>>)>,
+    ) -> SessionsJsonResult {
+        let subscribers_by_connection_id =
+            get_subscribers_by_connection_id(queues_as_hashmap).await;
+
         let mut items = Vec::new();
 
         let (snapshot_id, sessions) = app.sessions.get_snapshot().await;
 
+        let empty = [];
+
         for session in sessions {
-            let session = SessionJsonResult::new(session.as_ref(), process_id).await;
+            let subscribers = subscribers_by_connection_id.get(&session.id);
+
+            let subscribers = match subscribers {
+                Some(subscribers) => subscribers.as_slice(),
+                None => &empty,
+            };
+
+            let session = SessionJsonResult::new(subscribers, session.as_ref(), process_id).await;
             items.push(session);
         }
 
@@ -91,4 +117,29 @@ impl SessionsJsonResult {
             items,
         }
     }
+}
+
+async fn get_subscribers_by_connection_id(
+    queues: &HashMap<String, (usize, Vec<Arc<TopicQueue>>)>,
+) -> HashMap<ConnectionId, Vec<SubscriberMetrics>> {
+    let mut result = HashMap::new();
+
+    for (_, topic_queues) in queues.values() {
+        for topic_queue in topic_queues {
+            let subscriber_metrics = topic_queue.get_all_subscribers_metrics().await;
+
+            for metrics in subscriber_metrics {
+                if !result.contains_key(&metrics.connection_id) {
+                    result.insert(metrics.connection_id, Vec::new());
+                }
+
+                result
+                    .get_mut(&metrics.connection_id)
+                    .unwrap()
+                    .push(metrics);
+            }
+        }
+    }
+
+    result
 }

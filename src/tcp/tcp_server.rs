@@ -191,14 +191,15 @@ async fn socket_loop(
                         )
                         .await;
 
-                    session
-                        .send(
-                            process_id,
-                            TcpContract::Reject {
-                                message: format!("{:?}", err),
-                            },
-                        )
-                        .await;
+                    crate::operations::sessions::send_package(
+                        process_id,
+                        app.as_ref(),
+                        session.as_ref(),
+                        TcpContract::Reject {
+                            message: format!("{:?}", err),
+                        },
+                    )
+                    .await;
                 }
             }
         }

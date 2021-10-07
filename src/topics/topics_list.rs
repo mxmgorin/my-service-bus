@@ -103,9 +103,7 @@ impl TopicsList {
         let read_access = self.data.read().await;
 
         for topic in read_access.topics.values() {
-            let persist_queue_size = topic.messages.get_persist_queue_size().await;
-
-            topic.metrics.one_second_tick(persist_queue_size).await;
+            topic.one_second_tick().await;
         }
     }
 }

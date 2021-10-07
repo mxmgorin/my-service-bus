@@ -1,49 +1,51 @@
 use std::sync::Arc;
 
-use crate::{app::AppContext, sessions::MyServiceBusSession};
+use my_service_bus_tcp_shared::TcpContract;
+
+use crate::{
+    app::AppContext,
+    sessions::{MyServiceBusSession, SessionOperationError},
+};
 
 pub async fn disconnect(process_id: i64, app: &AppContext, session: Arc<MyServiceBusSession>) {
-    let subscribers = session.disconnect(process_id).await;
+    let disconnect_result = session.disconnect(process_id).await;
 
-    if subscribers.is_none() {
-        return;
+    if let Ok(_) = disconnect_result {
+        handle_after_disconnect(process_id, app, session.as_ref()).await
     }
+}
 
-    let subscribers = subscribers.unwrap();
+async fn handle_after_disconnect(process_id: i64, app: &AppContext, session: &MyServiceBusSession) {
+    let topics = app.topic_list.get_all().await;
 
-    for (subscriber_id, subscriber_data) in &subscribers {
-        let topic = app.topic_list.get(subscriber_data.topic_id.as_str()).await;
+    for topic in &topics {
+        let removed_subscribers = topic
+            .queues
+            .remove_subscribers_by_connection_id(session.id)
+            .await;
 
-        if let Some(topic) = topic {
-            let queue = topic.queues.get(subscriber_data.queue_id.as_str()).await;
+        for removed_subscriber in removed_subscribers {
+            crate::operations::subscriber::handle_subscriber_remove(
+                process_id,
+                app,
+                removed_subscriber,
+            )
+            .await;
+        }
+    }
+}
 
-            if let Some(queue) = queue {
-                let mut write_access = queue.data.write().await;
+pub async fn send_package(
+    process_id: i64,
+    app: &AppContext,
+    session: &MyServiceBusSession,
+    tcp_contract: TcpContract,
+) {
+    let result = session.send(process_id, tcp_contract).await;
 
-                let result = crate::operations::subscriber::unsubscribe(
-                    process_id,
-                    session.as_ref(),
-                    &mut write_access,
-                    *subscriber_id,
-                )
-                .await;
-
-                if let Err(err) = result {
-                    app.logs
-                        .add_error(
-                            None,
-                            crate::app::logs::SystemProcess::TcpSocket,
-                            "operations::disconnect".to_string(),
-                            format!(
-                                "Can not unsubscriber subscriber {}. Data {}",
-                                subscriber_id,
-                                subscriber_data.to_string()
-                            ),
-                            Some(format!("{:?}", err)),
-                        )
-                        .await;
-                }
-            }
+    if let Err(err) = result {
+        if let SessionOperationError::JustDisconnected = err {
+            handle_after_disconnect(process_id, app, session).await;
         }
     }
 }

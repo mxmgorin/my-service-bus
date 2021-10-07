@@ -7,11 +7,12 @@ use my_service_bus_shared::{
     MessageId,
 };
 
-use crate::{
-    messages_bucket::MessagesBucket, operations::OperationFailResult, subscribers::SubscribersList,
-};
+use crate::{messages_bucket::MessagesBucket, operations::OperationFailResult};
 
-use super::TopicQueueMetrics;
+use super::{
+    subscribers::{QueueSubscriber, SubscriberId, SubscribersList},
+    TopicQueueMetrics,
+};
 
 #[derive(Debug)]
 pub struct NextMessage {
@@ -35,7 +36,7 @@ impl QueueData {
             topic_id,
             queue_id,
             queue: QueueWithIntervals::new(),
-            subscribers: SubscribersList::new(),
+            subscribers: SubscribersList::new(queue_type),
             attempts: HashMap::new(),
             queue_type,
             last_ubsubscribe: DateTimeAsMicroseconds::now(),
@@ -52,11 +53,40 @@ impl QueueData {
             topic_id,
             queue_id,
             queue,
-            subscribers: SubscribersList::new(),
+            subscribers: SubscribersList::new(queue_type),
             attempts: HashMap::new(),
             queue_type,
             last_ubsubscribe: DateTimeAsMicroseconds::now(),
         }
+    }
+
+    pub fn queue_type_is_about_to_change(&self, new_queue_type: TopicQueueType) -> bool {
+        match self.queue_type {
+            TopicQueueType::Permanent => match new_queue_type {
+                TopicQueueType::Permanent => false,
+                TopicQueueType::DeleteOnDisconnect => true,
+                TopicQueueType::PermanentWithSingleConnection => true,
+            },
+            TopicQueueType::DeleteOnDisconnect => match new_queue_type {
+                TopicQueueType::Permanent => true,
+                TopicQueueType::DeleteOnDisconnect => false,
+                TopicQueueType::PermanentWithSingleConnection => true,
+            },
+            TopicQueueType::PermanentWithSingleConnection => match new_queue_type {
+                TopicQueueType::Permanent => true,
+                TopicQueueType::DeleteOnDisconnect => true,
+                TopicQueueType::PermanentWithSingleConnection => false,
+            },
+        }
+    }
+
+    pub fn update_queue_type(&mut self, new_queue_type: TopicQueueType) {
+        if !self.queue_type_is_about_to_change(new_queue_type) {
+            return;
+        }
+
+        self.queue_type = new_queue_type;
+        //T - cover all the cases of changing queue_type;
     }
 
     pub fn enqueue_messages(&mut self, msgs: &QueueWithIntervals) {
@@ -104,15 +134,34 @@ impl QueueData {
         self.queue.get_snapshot()
     }
 
-    pub fn confirmed_delivered(&mut self, messages: MessagesBucket) {
-        for page in messages.pages.values() {
-            for msg_id in page.messages.keys() {
-                self.attempts.remove(msg_id);
+    pub fn confirmed_delivered(
+        &mut self,
+        subscriber_id: SubscriberId,
+    ) -> Result<(), OperationFailResult> {
+        let subscriber = self.subscribers.get_by_id_mut(subscriber_id);
+
+        if subscriber.is_none() {
+            return Err(OperationFailResult::SubscriberNotFound { id: subscriber_id });
+        }
+
+        let subscriber = subscriber.unwrap();
+
+        update_delivery_time(subscriber, true);
+
+        let messages = subscriber.reset_delivery();
+
+        if let Some(messages) = messages {
+            for page in messages.pages.values() {
+                for msg_id in page.messages.keys() {
+                    self.attempts.remove(msg_id);
+                }
             }
         }
+
+        Ok(())
     }
 
-    pub fn confirmed_non_delivered(&mut self, messages: &MessagesBucket) {
+    pub fn mark_not_delivered(&mut self, messages: &MessagesBucket) {
         for page in messages.pages.values() {
             for msg_id in page.messages.keys() {
                 self.queue.enqueue(*msg_id);
@@ -121,39 +170,76 @@ impl QueueData {
         }
     }
 
+    pub fn confirmed_non_delivered(
+        &mut self,
+        subscriber_id: SubscriberId,
+    ) -> Result<(), OperationFailResult> {
+        let subscriber = self.subscribers.get_by_id_mut(subscriber_id);
+
+        if subscriber.is_none() {
+            return Err(OperationFailResult::SubscriberNotFound { id: subscriber_id });
+        }
+
+        let subscriber = subscriber.unwrap();
+
+        update_delivery_time(subscriber, false);
+
+        let messages = subscriber.reset_delivery();
+
+        if let Some(messages) = messages {
+            self.mark_not_delivered(&messages);
+        }
+
+        Ok(())
+    }
+
     pub fn confirmed_some_not_delivered(
         &mut self,
-        mut messages: MessagesBucket,
+        subscriber_id: SubscriberId,
         not_delivered: QueueWithIntervals,
     ) -> Result<(), OperationFailResult> {
-        for by_page_id in not_delivered.split_by_page_id() {
-            if !messages.has_page(by_page_id.page_id) {
-                let reason = format!(
-                    "confirmed_some_not_delivered: There is a message in the page {}. But page is not found",
-                    by_page_id.page_id
-                );
+        let subscriber = self.subscribers.get_by_id_mut(subscriber_id);
 
-                return Err(OperationFailResult::Other(reason));
-            }
+        if subscriber.is_none() {
+            return Err(OperationFailResult::SubscriberNotFound { id: subscriber_id });
+        }
 
-            for message_id in by_page_id.ids {
-                if !messages.remove_message(by_page_id.page_id, message_id) {
+        let subscriber = subscriber.unwrap();
+
+        update_delivery_time(subscriber, false);
+
+        let mut messages_bucket = subscriber.reset_delivery();
+
+        if let Some(messages) = &mut messages_bucket {
+            for by_page_id in not_delivered.split_by_page_id() {
+                if !messages.has_page(by_page_id.page_id) {
                     let reason = format!(
-                        "confirmed_some_not_delivered: There is a message as confimred not delivered {}. But it's not found",
-                        message_id
+                        "confirmed_some_not_delivered: There is a message in the page {}. But page is not found",
+                        by_page_id.page_id
                     );
 
                     return Err(OperationFailResult::Other(reason));
                 }
 
-                self.queue.enqueue(message_id);
-                self.add_attempt(message_id);
-            }
-        }
+                for message_id in by_page_id.ids {
+                    if !messages.remove_message(by_page_id.page_id, message_id) {
+                        let reason = format!(
+                            "confirmed_some_not_delivered: There is a message as confimred not delivered {}. But it's not found",
+                            message_id
+                        );
 
-        for page in messages.pages.values() {
-            for message_id in &page.ids {
-                self.attempts.remove(&message_id);
+                        return Err(OperationFailResult::Other(reason));
+                    }
+
+                    self.queue.enqueue(message_id);
+                    self.add_attempt(message_id);
+                }
+            }
+
+            for page in messages.pages.values() {
+                for message_id in &page.ids {
+                    self.attempts.remove(&message_id);
+                }
             }
         }
 
@@ -162,9 +248,31 @@ impl QueueData {
 
     pub fn confirmed_some_delivered(
         &mut self,
-        mut messages: MessagesBucket,
+        subscriber_id: SubscriberId,
         delivered: QueueWithIntervals,
     ) -> Result<(), OperationFailResult> {
+        let subscriber = self.subscribers.get_by_id_mut(subscriber_id);
+
+        if subscriber.is_none() {
+            return Err(OperationFailResult::SubscriberNotFound { id: subscriber_id });
+        }
+
+        let subscriber = subscriber.unwrap();
+
+        update_delivery_time(subscriber, false);
+
+        let messages = subscriber.reset_delivery();
+
+        if messages.is_none() {
+            println!(
+                "Somehow we confirming messages which are not in the subscriber. SubscriberId: {}",
+                subscriber_id
+            );
+            return Ok(());
+        }
+
+        let mut messages = messages.unwrap();
+
         for by_page_id in delivered.split_by_page_id() {
             if !messages.has_page(by_page_id.page_id) {
                 let reason = format!(
@@ -189,7 +297,7 @@ impl QueueData {
             }
         }
 
-        self.confirmed_non_delivered(&messages);
+        self.mark_not_delivered(&messages);
 
         Ok(())
     }
@@ -206,5 +314,22 @@ impl QueueData {
                 self.attempts.insert(message_id, 0);
             }
         }
+    }
+}
+
+fn update_delivery_time(subscriber: &mut QueueSubscriber, positive: bool) {
+    let messages_on_delivery = subscriber.get_messages_amount_on_delivery();
+
+    let delivery_duration =
+        DateTimeAsMicroseconds::now().duration_since(subscriber.metrics.start_delivery_time);
+
+    if positive {
+        subscriber
+            .metrics
+            .set_delivered_statistic(messages_on_delivery, delivery_duration);
+    } else {
+        subscriber
+            .metrics
+            .set_not_delivered_statistic(messages_on_delivery as i32, delivery_duration);
     }
 }

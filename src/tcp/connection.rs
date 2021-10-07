@@ -34,7 +34,13 @@ pub async fn handle_incoming_payload(
 ) -> Result<(), MySbSocketError> {
     match tcp_contract {
         TcpContract::Ping {} => {
-            session.send(process_id, TcpContract::Pong).await;
+            crate::operations::sessions::send_package(
+                process_id,
+                app.as_ref(),
+                session,
+                TcpContract::Pong,
+            )
+            .await;
             Ok(())
         }
         TcpContract::Pong {} => Ok(()),
@@ -73,7 +79,7 @@ pub async fn handle_incoming_payload(
 
             let result = operations::publisher::publish(
                 process_id,
-                app,
+                app.clone(),
                 topic_id.as_str(),
                 data_to_publish,
                 persist_immediately,
@@ -81,18 +87,23 @@ pub async fn handle_incoming_payload(
             .await;
 
             if let Err(err) = result {
-                session
-                    .send(
-                        process_id,
-                        TcpContract::Reject {
-                            message: format!("{:?}", err),
-                        },
-                    )
-                    .await;
+                crate::operations::sessions::send_package(
+                    process_id,
+                    app.as_ref(),
+                    session,
+                    TcpContract::Reject {
+                        message: format!("{:?}", err),
+                    },
+                )
+                .await;
             } else {
-                session
-                    .send(process_id, TcpContract::PublishResponse { request_id })
-                    .await;
+                crate::operations::sessions::send_package(
+                    process_id,
+                    app.as_ref(),
+                    session,
+                    TcpContract::PublishResponse { request_id },
+                )
+                .await;
             }
 
             Ok(())
@@ -139,7 +150,6 @@ pub async fn handle_incoming_payload(
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
-                session,
                 confirmation_id,
             )
             .await?;
@@ -195,7 +205,6 @@ pub async fn handle_incoming_payload(
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
-                session,
                 confirmation_id,
             )
             .await?;

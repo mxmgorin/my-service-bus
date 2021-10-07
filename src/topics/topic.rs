@@ -126,4 +126,10 @@ impl Topic {
 
         result
     }
+
+    pub async fn one_second_tick(&self) {
+        let persist_queue_size = self.messages.get_persist_queue_size().await;
+        self.metrics.one_second_tick(persist_queue_size).await;
+        self.queues.one_second_tick().await;
+    }
 }

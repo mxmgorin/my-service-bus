@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use my_service_bus_tcp_shared::ConnectionAttributes;
 use tokio::{
@@ -6,21 +6,23 @@ use tokio::{
     net::TcpStream,
 };
 
-use crate::{app::AppContext, subscribers::SubscriberId};
+use crate::app::AppContext;
 
-use super::{my_sb_session_subscriber_data::MySbSessionSubscriberData, MySbSessionStatistic};
+use super::{MySbSessionMetrics, SessionOperationError};
+
+pub struct ConnectedState {
+    tcp_stream: WriteHalf<TcpStream>,
+}
 
 pub struct MyServiceBusSessionData {
     pub name: Option<String>,
     pub client_version: Option<String>,
 
-    pub subscribers: HashMap<SubscriberId, MySbSessionSubscriberData>,
+    pub connected_state: Option<ConnectedState>,
 
     pub attr: ConnectionAttributes,
 
-    pub tcp_stream: Option<WriteHalf<TcpStream>>,
-
-    pub statistic: MySbSessionStatistic,
+    pub statistic: MySbSessionMetrics,
 
     pub app: Arc<AppContext>,
 
@@ -29,20 +31,16 @@ pub struct MyServiceBusSessionData {
 
 impl MyServiceBusSessionData {
     pub fn new(tcp_stream: WriteHalf<TcpStream>, app: Arc<AppContext>) -> Self {
+        let connected_state = ConnectedState { tcp_stream };
         Self {
             name: None,
             client_version: None,
-            subscribers: HashMap::new(),
+            connected_state: Some(connected_state),
             attr: ConnectionAttributes::new(),
-            tcp_stream: Some(tcp_stream),
-            statistic: MySbSessionStatistic::new(),
+            statistic: MySbSessionMetrics::new(),
             app,
             logged_send_error_on_disconnected: 0,
         }
-    }
-
-    pub fn is_disconnected(&self) -> bool {
-        return self.tcp_stream.is_none();
     }
 
     pub fn get_name(&self) -> Option<String> {
@@ -55,72 +53,58 @@ impl MyServiceBusSessionData {
         return Some(result.to_string());
     }
 
-    pub fn has_subscriber(&self, subscriber_id: &SubscriberId) -> bool {
-        self.subscribers.contains_key(subscriber_id)
-    }
-
-    pub fn add_subscriber(&mut self, subscriber_id: &SubscriberId, topic_id: &str, queue_id: &str) {
-        self.subscribers.insert(
-            *subscriber_id,
-            MySbSessionSubscriberData::new(topic_id, queue_id, 0),
-        );
-    }
-
-    pub fn remove_subscriber(&mut self, subscriber_id: &SubscriberId) {
-        self.subscribers.remove(subscriber_id);
-    }
-
-    pub fn get_subscribers(&self) -> HashMap<SubscriberId, MySbSessionSubscriberData> {
-        return self.subscribers.clone();
-    }
-
-    pub async fn send(&mut self, buf: &[u8]) -> Result<(), String> {
-        match self.tcp_stream.as_mut() {
-            Some(tcp_stream) => {
-                let result = tcp_stream.write_all(buf).await;
-
-                if let Err(err) = result {
-                    return Err(format!(
-                        "Can not send to the socket {:?}. Err:{}",
-                        self.name, err
-                    ));
-                } else {
-                    self.statistic.increase_written_size(buf.len()).await;
-                    return Ok(());
-                }
-            }
-            None => {
-                return Err(format!("Socket {:?} is disconnected", self.name));
-            }
+    fn get_connected_state_mut(&mut self) -> Result<&mut ConnectedState, SessionOperationError> {
+        match &mut self.connected_state {
+            Some(state) => Ok(state),
+            None => Err(SessionOperationError::Disconnected),
         }
     }
 
-    pub async fn disconnect(&mut self) {
-        if self.tcp_stream.is_none() {
-            return;
-        }
+    pub async fn send(&mut self, buf: &[u8]) -> Result<(), SessionOperationError> {
+        let connected_state = self.get_connected_state_mut()?;
 
-        let mut tcp_stream = None;
-
-        std::mem::swap(&mut tcp_stream, &mut self.tcp_stream);
-
-        self.statistic.disconnected = true;
-
-        let result = tcp_stream.unwrap().shutdown().await;
+        let result = connected_state.tcp_stream.write_all(buf).await;
 
         if let Err(err) = result {
-            return println!(
-                "Can nod disconnect tcp socket{:?}. Err: {:?}",
+            println!("Could not send to the connection. Disconnecting Session");
+            let disconnect_result = self.disconnect().await;
+
+            if let Some(_) = disconnect_result {
+                return Err(SessionOperationError::JustDisconnected);
+            };
+
+            return Err(SessionOperationError::CanNotSendOperationToSocket(format!(
+                "Can not send to the socket {:?}. Err:{}",
                 self.name, err
-            );
+            )));
+        } else {
+            self.statistic.increase_written_size(buf.len()).await;
         }
+
+        Ok(())
     }
 
-    pub fn set_on_delivery_flag(&mut self, subscriber_id: SubscriberId) {
-        let subscriber = self.statistic.subscribers.get_mut(&subscriber_id);
+    pub async fn disconnect(&mut self) -> Option<ConnectedState> {
+        let mut connected_state = None;
+        std::mem::swap(&mut connected_state, &mut self.connected_state);
 
-        if let Some(subscriber) = subscriber {
-            subscriber.active = 2;
+        if connected_state.is_none() {
+            return None;
         }
+
+        let mut connected_state = connected_state.unwrap();
+        self.statistic.disconnected = true;
+
+        let result = connected_state.tcp_stream.shutdown().await;
+
+        if let Err(err) = result {
+            println!(
+                "Error on diconnect session {:?}. Err: {:?}",
+                self.get_name(),
+                err
+            );
+        }
+
+        Some(connected_state)
     }
 }

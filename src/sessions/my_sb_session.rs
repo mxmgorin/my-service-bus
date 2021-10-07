@@ -4,9 +4,9 @@ use my_service_bus_shared::date_time::{AtomicDateTimeAsMicroseconds, DateTimeAsM
 use my_service_bus_tcp_shared::TcpContract;
 use tokio::{io::WriteHalf, net::TcpStream, sync::RwLock};
 
-use crate::{app::AppContext, operations::OperationFailResult, subscribers::SubscriberId};
+use crate::app::AppContext;
 
-use super::{MySbSessionSubscriberData, MyServiceBusSessionData};
+use super::{my_sb_session_data::ConnectedState, MyServiceBusSessionData, SessionOperationError};
 
 pub type ConnectionId = i64;
 
@@ -16,7 +16,6 @@ pub struct MyServiceBusSession {
     pub id: ConnectionId,
     pub connected: DateTimeAsMicroseconds,
     pub last_incoming_package: AtomicDateTimeAsMicroseconds,
-
     pub app: Arc<AppContext>,
 }
 
@@ -113,6 +112,7 @@ impl MyServiceBusSession {
             .await;
         let mut write_access = self.data.write().await;
         write_access.statistic.one_second_tick();
+
         self.app.exit_lock(process_id).await;
     }
 
@@ -138,72 +138,22 @@ impl MyServiceBusSession {
         tcp_contract.serialize(&data.attr)
     }
 
-    async fn send_and_hadle_error(
+    pub async fn send(
         &self,
         process_id: i64,
-        buf: &[u8],
-        set_on_delivery: Option<SubscriberId>,
-    ) -> bool {
+        tcp_contract: TcpContract,
+    ) -> Result<(), SessionOperationError> {
+        let buf = self.serialize_tcp_contract(tcp_contract).await;
+
         self.app
             .enter_lock(process_id, format!("MySbSession[{}].send", self.id))
             .await;
 
         let mut write_access = self.data.write().await;
-        let result = write_access.send(buf).await;
-
-        if let Some(subscriber_id) = set_on_delivery {
-            write_access.set_on_delivery_flag(subscriber_id);
-        }
-
+        let result = write_access.send(&buf).await;
         self.app.exit_lock(process_id).await;
 
-        if let Err(err) = result {
-            if write_access.logged_send_error_on_disconnected < 5 {
-                self.app
-                    .logs
-                    .add_error(
-                        None,
-                        crate::app::logs::SystemProcess::TcpSocket,
-                        format!("Send data to socket {:?}", write_access.name),
-                        format!("Can not send data to the socket {:?}", write_access.name),
-                        Some(err),
-                    )
-                    .await;
-            }
-
-            write_access.logged_send_error_on_disconnected += 1;
-
-            return false;
-        }
-
-        true
-    }
-
-    pub async fn send(&self, process_id: i64, tcp_contract: TcpContract) {
-        let buf = self.serialize_tcp_contract(tcp_contract).await;
-
-        if !self
-            .send_and_hadle_error(process_id, buf.as_slice(), None)
-            .await
-        {
-            self.disconnect(process_id).await;
-        }
-    }
-
-    pub async fn send_and_set_on_delivery(
-        &self,
-        process_id: i64,
-        tcp_contract: TcpContract,
-        subscriber_id: SubscriberId,
-    ) {
-        let buf = self.serialize_tcp_contract(tcp_contract).await;
-
-        if !self
-            .send_and_hadle_error(process_id, buf.as_slice(), Some(subscriber_id))
-            .await
-        {
-            self.disconnect(process_id).await;
-        }
+        result
     }
 
     pub async fn add_publisher(&self, process_id: i64, topic: &str) {
@@ -228,116 +178,20 @@ impl MyServiceBusSession {
         self.app.exit_lock(process_id).await;
     }
 
-    pub async fn add_subscriber(
-        &self,
-        process_id: i64,
-        subscriber_id: SubscriberId,
-        topic_id: &str,
-        queue_id: &str,
-    ) -> Result<(), OperationFailResult> {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].add_subscriber", self.id),
-            )
-            .await;
-
-        let mut data = self.data.write().await;
-        if data.is_disconnected() {
-            return Err(OperationFailResult::SessionIsDisconnected);
-        }
-        data.statistic.subscribers.insert(
-            subscriber_id,
-            MySbSessionSubscriberData::new(topic_id, queue_id, 0),
-        );
-
-        data.add_subscriber(&subscriber_id, topic_id, queue_id);
-
-        self.app.exit_lock(process_id).await;
-        return Ok(());
-    }
-
-    pub async fn set_delivered_statistic(
-        &self,
-        process_id: i64,
-        subscriber_id: i64,
-        delivered: usize,
-        microseconds: usize,
-    ) {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].set_delivered_statistic", self.id),
-            )
-            .await;
-
-        let mut write_access = self.data.write().await;
-
-        let found_subscriber = write_access.statistic.subscribers.get_mut(&subscriber_id);
-
-        if let Some(subscriber) = found_subscriber {
-            subscriber.delivered_amount.increase(delivered);
-            subscriber.delivery_microseconds.increase(microseconds);
-        }
-
-        self.app.exit_lock(process_id).await;
-    }
-
-    pub async fn set_not_delivered_statistic(
-        &self,
-        process_id: i64,
-        subscriber_id: i64,
-        delivered: i32,
-        microseconds: i32,
-    ) {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].set_not_delivered_statistic", self.id),
-            )
-            .await;
-
-        let mut write_access = self.data.write().await;
-
-        let found_subscriber = write_access.statistic.subscribers.get_mut(&subscriber_id);
-
-        if let Some(subscriber) = found_subscriber {
-            subscriber.metrics.put(microseconds / -delivered)
-        }
-
-        self.app.exit_lock(process_id).await;
-    }
-
-    pub async fn remove_subscriber(&self, process_id: i64, subscriber_id: SubscriberId) {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].remove_subscriber", self.id),
-            )
-            .await;
-        let mut statistic_write_access = self.data.write().await;
-        statistic_write_access
-            .statistic
-            .subscribers
-            .remove(&subscriber_id);
-
-        statistic_write_access.remove_subscriber(&subscriber_id);
-        self.app.exit_lock(process_id).await;
-    }
-
-    pub async fn disconnect(
-        &self,
-        process_id: i64,
-    ) -> Option<HashMap<SubscriberId, MySbSessionSubscriberData>> {
+    pub async fn disconnect(&self, process_id: i64) -> Result<ConnectedState, ()> {
         self.app
             .enter_lock(process_id, format!("MySbSession[{}].disconnect", self.id))
             .await;
 
         let mut write_access = self.data.write().await;
 
-        write_access.disconnect().await;
+        let result = write_access.disconnect().await;
 
         self.app.exit_lock(process_id).await;
-        return Some(write_access.get_subscribers());
+
+        match result {
+            Some(state) => Ok(state),
+            None => Err(()),
+        }
     }
 }

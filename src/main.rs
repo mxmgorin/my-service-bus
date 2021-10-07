@@ -17,7 +17,6 @@ mod persistence;
 mod queues;
 mod sessions;
 mod settings;
-mod subscribers;
 mod tcp;
 mod timers;
 mod topics;

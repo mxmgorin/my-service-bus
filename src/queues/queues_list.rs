@@ -3,9 +3,9 @@ use std::{collections::HashMap, sync::Arc};
 use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWithIntervals};
 use tokio::sync::RwLock;
 
-use crate::topics::TopicQueueSnapshot;
+use crate::{tcp::tcp_server::ConnectionId, topics::TopicQueueSnapshot};
 
-use super::queue::TopicQueue;
+use super::{queue::TopicQueue, subscribers::QueueSubscriber};
 
 pub struct TopicQueueListData {
     queues: HashMap<String, Arc<TopicQueue>>,
@@ -124,5 +124,36 @@ impl TopicQueuesList {
         }
 
         (read_access.snapshot_id, result)
+    }
+
+    pub async fn one_second_tick(&self) {
+        let queues = self.get_queues().await;
+
+        for queue in queues {
+            queue.one_second_tick().await;
+        }
+    }
+
+    pub async fn remove_subscribers_by_connection_id(
+        &self,
+        connection_id: ConnectionId,
+    ) -> Vec<QueueSubscriber> {
+        let mut result = Vec::new();
+
+        let queues = self.get_queues().await;
+
+        for queue in queues {
+            let mut queue_read_access = queue.data.write().await;
+
+            let remove_result = queue_read_access
+                .subscribers
+                .remove_by_connection_id(connection_id);
+
+            if let Some(sub) = remove_result {
+                result.push(sub);
+            }
+        }
+
+        result
     }
 }

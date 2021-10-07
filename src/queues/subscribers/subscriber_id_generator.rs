@@ -1,6 +1,6 @@
 use std::sync::atomic::AtomicI64;
 
-pub type SubscriberId = i64;
+use super::SubscriberId;
 
 pub struct SubscriberIdGenerator {
     current_id: AtomicI64,

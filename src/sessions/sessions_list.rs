@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use my_service_bus_tcp_shared::PacketProtVer;
 use tokio::sync::RwLock;
 
-use crate::subscribers::SubscriberId;
+use crate::queues::subscribers::SubscriberId;
 
 use super::{my_sb_session::ConnectionId, MyServiceBusSession};
 
@@ -96,10 +96,9 @@ impl SessionsList {
                 )
                 .await;
             let read_access = session.data.read().await;
-            if read_access.has_subscriber(&subscriber_id) {
-                packet_version = read_access.attr.versions.get_packet_version(packet);
-                protocol_version = read_access.attr.protocol_version;
-            }
+
+            packet_version = read_access.attr.versions.get_packet_version(packet);
+            protocol_version = read_access.attr.protocol_version;
 
             session.app.exit_lock(process_id).await;
         }
