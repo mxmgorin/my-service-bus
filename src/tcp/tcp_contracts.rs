@@ -46,7 +46,7 @@ async fn serialize_messages(
 
     serialize_i32(result, messages_count);
 
-    for page in &messages_to_deliver.pages {
+    for page in messages_to_deliver.pages.values() {
         let read_access = page.page.data.read().await;
 
         for msg_id in &page.ids {

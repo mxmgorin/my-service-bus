@@ -83,6 +83,10 @@ impl Topic {
         self.queues.get_queues().await
     }
 
+    pub async fn get_all_queues_with_snapshot_id(&self) -> (usize, Vec<Arc<TopicQueue>>) {
+        self.queues.get_queues_with_snapshot_id().await
+    }
+
     pub async fn delete_queue(&self, queue_id: &str) -> Option<Arc<TopicQueue>> {
         self.queues.delete_queue(queue_id).await
     }

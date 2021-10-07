@@ -1,14 +1,12 @@
 use my_service_bus_shared::{
-    date_time::DateTimeAsMicroseconds,
-    queue::TopicQueueType,
-    queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
-    MessageId,
+    date_time::DateTimeAsMicroseconds, queue::TopicQueueType,
+    queue_with_intervals::QueueWithIntervals, MessageId,
 };
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::topics::TopicQueueSnapshot;
 
-use super::QueueData;
+use super::{QueueData, TopicQueueMetrics};
 
 pub struct TopicQueueGcData {
     pub subscribers_amount: usize,
@@ -16,37 +14,31 @@ pub struct TopicQueueGcData {
     pub last_subscriber_disconnect: DateTimeAsMicroseconds,
 }
 
-pub struct TopicQueueMonitoringData {
-    pub id: String,
-    pub queue_type: TopicQueueType,
-    pub size: i64,
-    pub queue: Vec<QueueIndexRange>,
-}
-
 pub struct TopicQueue {
     pub topic_id: String,
     pub queue_id: String,
     pub data: RwLock<QueueData>,
+    pub delivery_lock: Mutex<usize>,
+    pub metrics: TopicQueueMetrics,
 }
 
 impl TopicQueue {
-    pub fn new(topic_id: &str, queue_id: &str, queue_type: TopicQueueType) -> TopicQueue {
-        let data = RwLock::new(QueueData::new(
-            topic_id.to_string(),
-            queue_id.to_string(),
-            queue_type,
-        ));
+    pub async fn new(topic_id: &str, queue_id: &str, queue_type: TopicQueueType) -> TopicQueue {
+        let data = QueueData::new(topic_id.to_string(), queue_id.to_string(), queue_type);
 
-        let result = TopicQueue {
+        let metrics = TopicQueueMetrics::new(queue_id.to_string(), queue_type);
+        data.update_metrics(&metrics).await;
+
+        TopicQueue {
             topic_id: topic_id.to_string(),
             queue_id: queue_id.to_string(),
-            data,
-        };
-
-        return result;
+            data: RwLock::new(data),
+            delivery_lock: Mutex::new(0),
+            metrics: TopicQueueMetrics::new(queue_id.to_string(), queue_type),
+        }
     }
 
-    pub fn restore(
+    pub async fn restore(
         topic_id: &str,
         queue_id: &str,
         queue_type: TopicQueueType,
@@ -59,13 +51,16 @@ impl TopicQueue {
             queue,
         );
 
-        let result = TopicQueue {
+        let metrics = TopicQueueMetrics::new(queue_id.to_string(), queue_type);
+        data.update_metrics(&metrics).await;
+
+        TopicQueue {
             topic_id: topic_id.to_string(),
             queue_id: queue_id.to_string(),
             data: RwLock::new(data),
-        };
-
-        return result;
+            delivery_lock: Mutex::new(0),
+            metrics,
+        }
     }
 
     pub async fn get_min_msg_id(&self) -> Option<MessageId> {
@@ -102,5 +97,11 @@ impl TopicQueue {
     pub async fn get_queue_size(&self) -> i64 {
         let read_access = self.data.read().await;
         return read_access.queue.len();
+    }
+
+    pub async fn enqueue_messages(&self, msgs: &QueueWithIntervals) {
+        let mut write_access = self.data.write().await;
+        write_access.enqueue_messages(msgs);
+        write_access.update_metrics(&self.metrics).await;
     }
 }

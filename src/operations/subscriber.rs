@@ -22,8 +22,6 @@ pub async fn subscribe_to_queue(
     queue_type: TopicQueueType,
     session: &MyServiceBusSession,
 ) -> Result<(), OperationFailResult> {
-    let mut to_send = Vec::new();
-
     let topic = app
         .topic_list
         .get(topic_id)
@@ -116,28 +114,10 @@ pub async fn subscribe_to_queue(
             }
         }
 
-        let result = super::delivery::try_to_complie_next_messages_from_the_queue(
-            process_id,
-            app.as_ref(),
-            topic.as_ref(),
-            &mut write_access,
-        )
-        .await?;
-
-        to_send.extend(result);
         app.exit_lock(process_id).await;
     }
 
-    session
-        .add_subscriber(process_id, subscriber_id, topic_id, queue_id)
-        .await?;
-
-    //Thread safety - we are doing it beyond scope of the queue lock;
-    for (tcp_contract, session, subscriber_id) in to_send {
-        session
-            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
-            .await;
-    }
+    super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
 
     Ok(())
 }
@@ -193,11 +173,7 @@ pub async fn confirm_delivery(
                 queue_id: queue_id.to_string(),
             })?;
 
-    let start_time: DateTimeAsMicroseconds;
-
     let mut delivered_messages_amount: Option<usize> = None;
-
-    let mut to_send = Vec::new();
 
     {
         let mut write_access = topic_queue.data.write().await;
@@ -209,60 +185,15 @@ pub async fn confirm_delivery(
 
         let messages_on_delivery = subscriber.reset();
 
-        start_time = subscriber.start_delivering;
+        let start_time = subscriber.start_delivering;
 
         if let Some(messages_on_delivery) = messages_on_delivery {
             delivered_messages_amount = Some(messages_on_delivery.messages_count());
             write_access.confirmed_delivered(messages_on_delivery);
         }
-
-        let result = super::delivery::try_to_complie_next_messages_from_the_queue(
-            process_id,
-            app.as_ref(),
-            topic.as_ref(),
-            &mut write_access,
-        )
-        .await;
-
-        match result {
-            Ok(msg) => {
-                to_send.extend(msg);
-            }
-            Err(err) => {
-                app.logs
-                    .add_error(
-                        Some(topic.topic_id.to_string()),
-                        crate::app::logs::SystemProcess::TcpSocket,
-                        "subscribers::confirm_delivery".to_string(),
-                        format!(
-                            "Faild to deliver next data to subscriber {}. Queue {}",
-                            subscriber_id, queue_id
-                        ),
-                        Some(format!("{:?}", err)),
-                    )
-                    .await;
-            }
-        }
     }
 
-    if let Some(delivered_messages) = delivered_messages_amount {
-        let dur = DateTimeAsMicroseconds::now().duration_since(start_time);
-        session
-            .set_delivered_statistic(
-                process_id,
-                subscriber_id,
-                delivered_messages as usize,
-                dur.as_micros() as usize,
-            )
-            .await;
-    }
-
-    //Thread safety - we are doing it beyond scope of the queue lock;
-    for (tcp_contract, session, subscriber_id) in to_send {
-        session
-            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
-            .await;
-    }
+    super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
 
     Ok(())
 }
@@ -294,7 +225,7 @@ pub async fn confirm_non_delivery(
     let start_time: DateTimeAsMicroseconds;
 
     let mut delivered_messages_amount: Option<usize> = None;
-    let mut to_send = Vec::new();
+
     {
         let mut write_access = topic_queue.data.write().await;
 
@@ -311,34 +242,6 @@ pub async fn confirm_non_delivery(
             delivered_messages_amount = Some(messages_on_delivery.messages_count());
             write_access.confirmed_non_delivered(messages_on_delivery);
         }
-
-        let result = super::delivery::try_to_complie_next_messages_from_the_queue(
-            process_id,
-            app.as_ref(),
-            topic.as_ref(),
-            &mut write_access,
-        )
-        .await;
-
-        match result {
-            Ok(msg) => {
-                to_send.extend(msg);
-            }
-            Err(err) => {
-                app.logs
-                    .add_error(
-                        Some(topic.topic_id.to_string()),
-                        crate::app::logs::SystemProcess::TcpSocket,
-                        "subscribers::confirm_non_delivery".to_string(),
-                        format!(
-                            "Faild to deliver next data to subscriber {}. Queue {}",
-                            subscriber_id, queue_id
-                        ),
-                        Some(format!("{:?}", err)),
-                    )
-                    .await;
-            }
-        }
     }
 
     if let Some(delivered_messages) = delivered_messages_amount {
@@ -354,12 +257,7 @@ pub async fn confirm_non_delivery(
             .await;
     }
 
-    //Thread safety - we are doing it beyond scope of the queue lock;
-    for (tcp_contract, session, subscriber_id) in to_send {
-        session
-            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
-            .await;
-    }
+    super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
 
     Ok(())
 }
@@ -373,25 +271,23 @@ pub async fn some_messages_are_confirmed(
     subscriber_id: SubscriberId,
     confirmed_messages: QueueWithIntervals,
 ) -> Result<(), OperationFailResult> {
-    let mut to_send = Vec::new();
+    let topic = app
+        .topic_list
+        .get(topic_id)
+        .await
+        .ok_or(OperationFailResult::TopicNotFound {
+            topic_id: topic_id.to_string(),
+        })?;
+
+    let topic_queue =
+        topic
+            .get_queue(queue_id)
+            .await
+            .ok_or(OperationFailResult::QueueNotFound {
+                queue_id: queue_id.to_string(),
+            })?;
 
     {
-        let topic =
-            app.topic_list
-                .get(topic_id)
-                .await
-                .ok_or(OperationFailResult::TopicNotFound {
-                    topic_id: topic_id.to_string(),
-                })?;
-
-        let topic_queue =
-            topic
-                .get_queue(queue_id)
-                .await
-                .ok_or(OperationFailResult::QueueNotFound {
-                    queue_id: queue_id.to_string(),
-                })?;
-
         let mut write_access = topic_queue.data.write().await;
 
         let subscriber = write_access
@@ -404,42 +300,9 @@ pub async fn some_messages_are_confirmed(
         if let Some(messages_on_delivery) = messages_on_delivery {
             write_access.confirmed_some_delivered(messages_on_delivery, confirmed_messages)?;
         }
-
-        let result = super::delivery::try_to_complie_next_messages_from_the_queue(
-            process_id,
-            app.as_ref(),
-            topic.as_ref(),
-            &mut write_access,
-        )
-        .await;
-
-        match result {
-            Ok(msg) => {
-                to_send.extend(msg);
-            }
-            Err(err) => {
-                app.logs
-                    .add_error(
-                        Some(topic.topic_id.to_string()),
-                        crate::app::logs::SystemProcess::TcpSocket,
-                        "subscribers::some_messages_are_not_confirmed".to_string(),
-                        format!(
-                            "Faild to deliver next data to subscriber {}. Queue {}",
-                            subscriber_id, queue_id
-                        ),
-                        Some(format!("{:?}", err)),
-                    )
-                    .await;
-            }
-        }
     }
 
-    //Thread safety - we are doing it beyond scope of the queue lock;
-    for (tcp_contract, session, subscriber_id) in to_send {
-        session
-            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
-            .await;
-    }
+    super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
 
     Ok(())
 }
@@ -453,25 +316,22 @@ pub async fn some_messages_are_not_confirmed(
     subscriber_id: SubscriberId,
     not_confirmed_messages: QueueWithIntervals,
 ) -> Result<(), OperationFailResult> {
-    let mut to_send = Vec::new();
+    let topic = app
+        .topic_list
+        .get(topic_id)
+        .await
+        .ok_or(OperationFailResult::TopicNotFound {
+            topic_id: topic_id.to_string(),
+        })?;
 
+    let topic_queue =
+        topic
+            .get_queue(queue_id)
+            .await
+            .ok_or(OperationFailResult::QueueNotFound {
+                queue_id: queue_id.to_string(),
+            })?;
     {
-        let topic =
-            app.topic_list
-                .get(topic_id)
-                .await
-                .ok_or(OperationFailResult::TopicNotFound {
-                    topic_id: topic_id.to_string(),
-                })?;
-
-        let topic_queue =
-            topic
-                .get_queue(queue_id)
-                .await
-                .ok_or(OperationFailResult::QueueNotFound {
-                    queue_id: queue_id.to_string(),
-                })?;
-
         let mut write_access = topic_queue.data.write().await;
 
         let subscriber = write_access
@@ -485,42 +345,9 @@ pub async fn some_messages_are_not_confirmed(
             write_access
                 .confirmed_some_not_delivered(messages_on_delivery, not_confirmed_messages)?;
         }
-
-        let result = super::delivery::try_to_complie_next_messages_from_the_queue(
-            process_id,
-            app.as_ref(),
-            topic.as_ref(),
-            &mut write_access,
-        )
-        .await;
-
-        match result {
-            Ok(msg) => {
-                to_send.extend(msg);
-            }
-            Err(err) => {
-                app.logs
-                    .add_error(
-                        Some(topic.topic_id.to_string()),
-                        crate::app::logs::SystemProcess::TcpSocket,
-                        "subscribers::some_messages_are_not_confirmed".to_string(),
-                        format!(
-                            "Faild to deliver next data to subscriber {}. Queue {}",
-                            subscriber_id, queue_id
-                        ),
-                        Some(format!("{:?}", err)),
-                    )
-                    .await;
-            }
-        }
     }
 
-    //Thread safety - we are doing it beyond scope of the queue lock;
-    for (tcp_contract, session, subscriber_id) in to_send {
-        session
-            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
-            .await;
-    }
+    super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
 
     Ok(())
 }

@@ -1,11 +1,13 @@
+use std::{collections::BTreeMap, sync::Arc};
+
 use my_service_bus_shared::{page_id::PageId, MessageId};
+
+use crate::message_pages::MessagesPage;
 
 use super::MessagesBucketPage;
 
 pub struct MessagesBucket {
-    pub pages: Vec<MessagesBucketPage>,
-    pub last_page_id: Option<PageId>,
-    found_page_index: usize,
+    pub pages: BTreeMap<PageId, MessagesBucketPage>,
     pub min_id: Option<MessageId>,
     pub total_size: usize,
 }
@@ -13,23 +15,29 @@ pub struct MessagesBucket {
 impl MessagesBucket {
     pub fn new() -> Self {
         Self {
-            pages: Vec::new(),
+            pages: BTreeMap::new(),
             min_id: None,
             total_size: 0,
-            found_page_index: 0,
-            last_page_id: None,
         }
     }
 
-    pub fn add_page(&mut self, page: MessagesBucketPage) {
-        self.last_page_id = Some(page.page.page_id);
-        self.pages.push(page);
+    pub fn has_page(&mut self, page_id: PageId) -> bool {
+        self.pages.contains_key(&page_id)
+    }
+
+    pub fn add_page(&mut self, page: Arc<MessagesPage>) {
+        let page = MessagesBucketPage::new(page);
+        self.pages.insert(page.page.page_id, page);
+    }
+
+    pub fn get_page(&mut self, page_id: PageId) -> &mut MessagesBucketPage {
+        return self.pages.get_mut(&page_id).unwrap();
     }
 
     pub fn messages_count(&self) -> usize {
         let mut result = 0;
 
-        for page in &self.pages {
+        for page in self.pages.values() {
             result += page.messages_count();
         }
 
@@ -53,23 +61,8 @@ impl MessagesBucket {
         self.update_min_id(msg_id);
     }
 
-    pub fn find_page(&mut self, page_id: PageId) -> bool {
-        let mut index: usize = 0;
-
-        for page in &mut self.pages {
-            if page.page.page_id == page_id {
-                self.found_page_index = index;
-                return true;
-            }
-
-            index += 1;
-        }
-
-        return false;
-    }
-
     pub fn remove_message(&mut self, page_id: PageId, msg_id: MessageId) -> bool {
-        let page = self.pages.get_mut(self.found_page_index);
+        let page = self.pages.get_mut(&page_id);
 
         if page.is_none() {
             return false;

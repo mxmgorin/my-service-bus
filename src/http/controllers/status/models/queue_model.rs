@@ -16,16 +16,17 @@ impl QueuesJsonResult {
         let mut result = HashMap::new();
 
         for topic in topics {
-            let (snapshot_id, monitoring_datas) = topic.queues.get_monitoring_data().await;
+            let (snapshot_id, topic_queues) = topic.get_all_queues_with_snapshot_id().await;
 
             let mut queues = Vec::new();
 
-            for mon_data in monitoring_datas {
+            for topic_queue in topic_queues {
+                let monitoring_data = topic_queue.metrics.get().await;
                 queues.push(QueueJsonContract {
-                    id: mon_data.id,
-                    queue_type: mon_data.queue_type.into_u8(),
-                    size: mon_data.size,
-                    data: mon_data
+                    id: monitoring_data.id,
+                    queue_type: monitoring_data.queue_type.into_u8(),
+                    size: monitoring_data.size,
+                    data: monitoring_data
                         .queue
                         .iter()
                         .map(|itm| QueueIndex {

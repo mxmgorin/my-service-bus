@@ -11,6 +11,8 @@ use crate::{
     messages_bucket::MessagesBucket, operations::OperationFailResult, subscribers::SubscribersList,
 };
 
+use super::TopicQueueMetrics;
+
 #[derive(Debug)]
 pub struct NextMessage {
     pub message_id: MessageId,
@@ -57,10 +59,16 @@ impl QueueData {
         }
     }
 
-    pub fn enqueue_messages(&mut self, msgs: &[MessageId]) {
+    pub fn enqueue_messages(&mut self, msgs: &QueueWithIntervals) {
         for msg_id in msgs {
-            self.queue.enqueue(*msg_id);
+            self.queue.enqueue(msg_id);
         }
+    }
+
+    pub async fn update_metrics(&self, metrics: &TopicQueueMetrics) {
+        metrics
+            .update(self.queue.len(), self.queue.get_snapshot())
+            .await;
     }
 
     pub fn get_attempt_no(&self, message_id: MessageId) -> i32 {
@@ -97,7 +105,7 @@ impl QueueData {
     }
 
     pub fn confirmed_delivered(&mut self, messages: MessagesBucket) {
-        for page in &messages.pages {
+        for page in messages.pages.values() {
             for msg_id in page.messages.keys() {
                 self.attempts.remove(msg_id);
             }
@@ -105,7 +113,7 @@ impl QueueData {
     }
 
     pub fn confirmed_non_delivered(&mut self, messages: &MessagesBucket) {
-        for page in &messages.pages {
+        for page in messages.pages.values() {
             for msg_id in page.messages.keys() {
                 self.queue.enqueue(*msg_id);
                 self.add_attempt(*msg_id);
@@ -119,7 +127,7 @@ impl QueueData {
         not_delivered: QueueWithIntervals,
     ) -> Result<(), OperationFailResult> {
         for by_page_id in not_delivered.split_by_page_id() {
-            if !messages.find_page(by_page_id.page_id) {
+            if !messages.has_page(by_page_id.page_id) {
                 let reason = format!(
                     "confirmed_some_not_delivered: There is a message in the page {}. But page is not found",
                     by_page_id.page_id
@@ -143,8 +151,8 @@ impl QueueData {
             }
         }
 
-        for page in messages.pages {
-            for message_id in page.ids {
+        for page in messages.pages.values() {
+            for message_id in &page.ids {
                 self.attempts.remove(&message_id);
             }
         }
@@ -158,7 +166,7 @@ impl QueueData {
         delivered: QueueWithIntervals,
     ) -> Result<(), OperationFailResult> {
         for by_page_id in delivered.split_by_page_id() {
-            if !messages.find_page(by_page_id.page_id) {
+            if !messages.has_page(by_page_id.page_id) {
                 let reason = format!(
                     "confirmed_some_delivered: There is a message in the page {}. But page is not found",
                     by_page_id.page_id

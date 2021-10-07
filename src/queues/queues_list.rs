@@ -5,7 +5,7 @@ use tokio::sync::RwLock;
 
 use crate::topics::TopicQueueSnapshot;
 
-use super::queue::{TopicQueue, TopicQueueMonitoringData};
+use super::queue::TopicQueue;
 
 pub struct TopicQueueListData {
     queues: HashMap<String, Arc<TopicQueue>>,
@@ -37,7 +37,7 @@ impl TopicQueuesList {
         let mut write_access = self.data.write().await;
 
         if !write_access.queues.contains_key(queue_id) {
-            let queue = TopicQueue::new(topic_id, queue_id, queue_type);
+            let queue = TopicQueue::new(topic_id, queue_id, queue_type).await;
 
             let queue = Arc::new(queue);
             write_access
@@ -61,7 +61,7 @@ impl TopicQueuesList {
         queue_type: TopicQueueType,
         queue: QueueWithIntervals,
     ) -> Arc<TopicQueue> {
-        let topic_queue = TopicQueue::restore(topic_id, queue_id, queue_type, queue);
+        let topic_queue = TopicQueue::restore(topic_id, queue_id, queue_type, queue).await;
         let topic_queue = Arc::new(topic_queue);
 
         let mut write_access = self.data.write().await;
@@ -124,26 +124,5 @@ impl TopicQueuesList {
         }
 
         (read_access.snapshot_id, result)
-    }
-
-    pub async fn get_monitoring_data(&self) -> (usize, Vec<TopicQueueMonitoringData>) {
-        let queues = self.get_queues_with_snapshot_id().await;
-
-        let mut monitoring_data = Vec::new();
-
-        for queue in queues.1 {
-            let read_access = queue.data.read().await;
-
-            let item = TopicQueueMonitoringData {
-                id: queue.queue_id.to_string(),
-                queue_type: read_access.queue_type,
-                size: read_access.queue.len(),
-                queue: read_access.get_snapshot(),
-            };
-
-            monitoring_data.push(item);
-        }
-
-        return (queues.0, monitoring_data);
     }
 }

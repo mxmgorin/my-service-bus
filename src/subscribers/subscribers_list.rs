@@ -15,14 +15,21 @@ impl SubscribersList {
         }
     }
 
-    pub fn get_next_subscriber_ready_to_deliver(&self) -> Option<SubscriberId> {
+    pub fn get_next_subscriber_ready_to_deliver(&self) -> Option<&Subscriber> {
         for subscriber in self.subscribers_by_id.values() {
             if !subscriber.rented && !subscriber.disconnected {
-                return Some(subscriber.id);
+                return Some(subscriber);
             }
         }
-
         None
+    }
+
+    pub fn set_as_rented(&mut self, subscriber_id: SubscriberId) {
+        let item = self.subscribers_by_id.get_mut(&subscriber_id);
+
+        if let Some(sub) = item {
+            sub.rented = true;
+        }
     }
 
     pub fn get_all_except_this_one(&mut self, id: SubscriberId) -> Vec<SubscriberId> {

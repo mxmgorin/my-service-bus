@@ -5,7 +5,7 @@ use std::{
 
 use my_service_bus_shared::{
     page_id::{get_page_id, PageId},
-    MessageId,
+    queue_with_intervals::QueueWithIntervals,
 };
 
 use crate::{
@@ -57,37 +57,14 @@ pub async fn publish(
 
     let queues = topic.get_all_queues().await;
 
-    let mut to_send = Vec::new();
-
     for queue in queues {
-        app.enter_lock(
+        queue.enqueue_messages(&msg_ids).await;
+        crate::operations::delivery::deliver_to_queue(
             process_id,
-            format!("Publisher[{}/{}].publish", topic_id, queue.queue_id),
-        )
-        .await;
-
-        let mut write_access = queue.data.write().await;
-
-        write_access.enqueue_messages(msg_ids.as_slice());
-
-        let msg_to_deliver =
-            crate::operations::delivery::try_to_complie_next_messages_from_the_queue(
-                process_id,
-                app.as_ref(),
-                topic.as_ref(),
-                &mut write_access,
-            )
-            .await?;
-
-        to_send.extend(msg_to_deliver);
-
-        app.exit_lock(process_id).await;
-    }
-
-    for (tcp_contract, session, subscriber_id) in to_send {
-        session
-            .send_and_set_on_delivery(process_id, tcp_contract, subscriber_id)
-            .await;
+            app.clone(),
+            topic.clone(),
+            queue.clone(),
+        );
     }
 
     Ok(())
@@ -96,12 +73,12 @@ pub async fn publish(
 //TODO - UnitTest It
 fn split_to_pages(
     mut messages: VecDeque<MySbMessageContent>,
-) -> (HashMap<PageId, Vec<MySbMessageContent>>, Vec<MessageId>) {
+) -> (HashMap<PageId, Vec<MySbMessageContent>>, QueueWithIntervals) {
     let mut result = HashMap::new();
 
-    let mut msg_ids = Vec::new();
+    let mut msg_ids = QueueWithIntervals::new();
     for msg in messages.drain(..) {
-        msg_ids.push(msg.id);
+        msg_ids.enqueue(msg.id);
         let page_id = get_page_id(msg.id);
 
         if !result.contains_key(&page_id) {
