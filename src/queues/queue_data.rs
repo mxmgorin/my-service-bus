@@ -145,10 +145,9 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
+        let messages = subscriber.reset_delivery();
 
         update_delivery_time(subscriber, true);
-
-        let messages = subscriber.reset_delivery();
 
         if let Some(messages) = messages {
             for page in messages.pages.values() {
