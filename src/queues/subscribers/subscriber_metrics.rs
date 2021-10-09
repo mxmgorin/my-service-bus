@@ -53,7 +53,7 @@ impl SubscriberMetrics {
         let delivered_amount = self.delivered_amount.get_and_reset();
         let delivery_microseconds = self.delivery_microseconds.get_and_reset();
 
-        if delivery_microseconds > 0 {
+        if delivered_amount > 0 {
             let delivered = delivery_microseconds / delivered_amount;
             self.delivery_history.put(delivered as i32);
         }
