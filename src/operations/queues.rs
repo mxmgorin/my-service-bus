@@ -28,18 +28,6 @@ pub async fn set_message_id(
 
     let mut topic_queue_data = topic_queue.data.write().await;
 
-    let subscribers_amount = topic_queue_data.subscribers.get_amount();
-
-    if subscribers_amount > 0 {
-        let err = OperationFailResult::Other(
-        format!("Queue {} of the topic {} has {} subscriber. Operations is allowed only with 0 subscribers",
-                topic_queue.queue_id.as_str(),
-        topic.topic_id.as_str(),
-        subscribers_amount));
-
-        return Err(err);
-    }
-
     let max_message_id = topic.get_message_id().await;
 
     let mut intervals = Vec::new();
@@ -76,18 +64,6 @@ pub async fn delete_queue(
             })?;
 
     let topic_queue_data = topic_queue.data.write().await;
-
-    let subscribers_amount = topic_queue_data.subscribers.get_amount();
-
-    if subscribers_amount > 0 {
-        let err = OperationFailResult::Other(
-            format!("Queue {} of the topic {} has {} subscriber. Operations is allowed only with 0 subscribers",
-                    topic_queue.queue_id.as_str(),
-            topic.topic_id.as_str(),
-            subscribers_amount));
-
-        return Err(err);
-    }
 
     topic.queues.delete_queue(queue_id).await;
 
