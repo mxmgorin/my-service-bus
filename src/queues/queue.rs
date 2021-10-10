@@ -126,11 +126,6 @@ impl TopicQueue {
             .set_messages_on_delivery(subscriber_id, messages_bucket);
     }
 
-    pub async fn reset_rented(&self, subscriber_id: SubscriberId) {
-        let mut write_access = self.data.write().await;
-        write_access.subscribers.reset_rented(subscriber_id);
-    }
-
     pub async fn get_all_subscribers_metrics(&self) -> Vec<SubscriberMetrics> {
         let mut result = Vec::new();
 

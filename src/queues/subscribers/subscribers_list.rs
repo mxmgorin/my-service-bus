@@ -37,17 +37,15 @@ impl SubscribersList {
         match &mut self.data {
             SubscribersData::MultiSubscribers(state) => {
                 for subscriber in state.values_mut() {
-                    if !subscriber.rented {
-                        subscriber.rented = true;
+                    if subscriber.rent_me() {
                         return Some(subscriber);
                     }
                 }
             }
             SubscribersData::SingleSubscriber(state) => {
-                if let Some(state) = state {
-                    if !state.rented {
-                        state.rented = true;
-                        return Some(state);
+                if let Some(subscriber) = state {
+                    if subscriber.rent_me() {
+                        return Some(subscriber);
                     }
                 }
             }
@@ -74,19 +72,18 @@ impl SubscribersList {
     pub fn set_messages_on_delivery(
         &mut self,
         subscriber_id: SubscriberId,
-        messages: MessagesBucket,
+        messages_bucket: MessagesBucket,
     ) {
-        let item = self.get_by_id_mut(subscriber_id);
-
-        if let Some(subscriber) = item {
-            subscriber.messages_on_delivery = Some(messages);
-            subscriber.metrics.set_started_delivery();
-        } else {
-            panic!(
+        let subscriber = self.get_by_id_mut(subscriber_id).expect(
+            format!(
                 "Can not set messages on delivery . Subscriber {} is not found",
                 subscriber_id
             )
-        }
+            .as_str(),
+        );
+
+        subscriber.set_messages_on_delivery(messages_bucket);
+        subscriber.metrics.set_started_delivery();
     }
 
     pub fn subscribe(
@@ -129,14 +126,6 @@ impl SubscribersList {
 
                 return old_subscriber;
             }
-        }
-    }
-
-    pub fn reset_rented(&mut self, subscriber_id: SubscriberId) {
-        let found_subscriber = self.get_by_id_mut(subscriber_id);
-
-        if let Some(subscriber) = found_subscriber {
-            subscriber.rented = false;
         }
     }
 

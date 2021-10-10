@@ -145,15 +145,16 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
-        let messages = subscriber.reset_delivery();
+
+        let messages_bucket = subscriber
+            .reset_delivery()
+            .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
 
         update_delivery_time(subscriber, true);
 
-        if let Some(messages) = messages {
-            for page in messages.pages.values() {
-                for msg_id in page.messages.keys() {
-                    self.attempts.remove(msg_id);
-                }
+        for page in messages_bucket.pages.values() {
+            for msg_id in page.messages.keys() {
+                self.attempts.remove(msg_id);
             }
         }
 
@@ -183,11 +184,11 @@ impl QueueData {
 
         update_delivery_time(subscriber, false);
 
-        let messages = subscriber.reset_delivery();
+        let messages_bucket = subscriber
+            .reset_delivery()
+            .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
 
-        if let Some(messages) = messages {
-            self.mark_not_delivered(&messages);
-        }
+        self.mark_not_delivered(&messages_bucket);
 
         Ok(())
     }
@@ -207,38 +208,38 @@ impl QueueData {
 
         update_delivery_time(subscriber, false);
 
-        let mut messages_bucket = subscriber.reset_delivery();
+        let mut messages_bucket = subscriber
+            .reset_delivery()
+            .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
 
-        if let Some(messages) = &mut messages_bucket {
-            for by_page_id in not_delivered.split_by_page_id() {
-                if !messages.has_page(by_page_id.page_id) {
-                    let reason = format!(
+        for by_page_id in not_delivered.split_by_page_id() {
+            if !messages_bucket.has_page(by_page_id.page_id) {
+                let reason = format!(
                         "confirmed_some_not_delivered: There is a message in the page {}. But page is not found",
                         by_page_id.page_id
                     );
 
-                    return Err(OperationFailResult::Other(reason));
-                }
+                return Err(OperationFailResult::Other(reason));
+            }
 
-                for message_id in by_page_id.ids {
-                    if !messages.remove_message(by_page_id.page_id, message_id) {
-                        let reason = format!(
+            for message_id in by_page_id.ids {
+                if !messages_bucket.remove_message(by_page_id.page_id, message_id) {
+                    let reason = format!(
                             "confirmed_some_not_delivered: There is a message as confimred not delivered {}. But it's not found",
                             message_id
                         );
 
-                        return Err(OperationFailResult::Other(reason));
-                    }
-
-                    self.queue.enqueue(message_id);
-                    self.add_attempt(message_id);
+                    return Err(OperationFailResult::Other(reason));
                 }
+
+                self.queue.enqueue(message_id);
+                self.add_attempt(message_id);
             }
+        }
 
-            for page in messages.pages.values() {
-                for message_id in &page.ids {
-                    self.attempts.remove(&message_id);
-                }
+        for page in messages_bucket.pages.values() {
+            for message_id in &page.ids {
+                self.attempts.remove(&message_id);
             }
         }
 
@@ -260,20 +261,12 @@ impl QueueData {
 
         update_delivery_time(subscriber, false);
 
-        let messages = subscriber.reset_delivery();
-
-        if messages.is_none() {
-            println!(
-                "Somehow we confirming messages which are not in the subscriber. SubscriberId: {}",
-                subscriber_id
-            );
-            return Ok(());
-        }
-
-        let mut messages = messages.unwrap();
+        let mut messages_bucket = subscriber
+            .reset_delivery()
+            .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
 
         for by_page_id in delivered.split_by_page_id() {
-            if !messages.has_page(by_page_id.page_id) {
+            if !messages_bucket.has_page(by_page_id.page_id) {
                 let reason = format!(
                     "confirmed_some_delivered: There is a message in the page {}. But page is not found",
                     by_page_id.page_id
@@ -283,7 +276,7 @@ impl QueueData {
             }
 
             for message_id in by_page_id.ids {
-                if !messages.remove_message(by_page_id.page_id, message_id) {
+                if !messages_bucket.remove_message(by_page_id.page_id, message_id) {
                     let reason = format!(
                         "confirmed_some_delivered: There is a message as confimred not delivered {}. But it's not found",
                         message_id
@@ -296,7 +289,7 @@ impl QueueData {
             }
         }
 
-        self.mark_not_delivered(&messages);
+        self.mark_not_delivered(&messages_bucket);
 
         Ok(())
     }
