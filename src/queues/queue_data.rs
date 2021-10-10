@@ -146,12 +146,11 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
+        update_delivery_time(subscriber, true);
 
         let messages_bucket = subscriber
             .reset_delivery()
             .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
-
-        update_delivery_time(subscriber, true);
 
         for page in messages_bucket.pages.values() {
             for msg_id in page.messages.keys() {
@@ -182,7 +181,6 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
-
         update_delivery_time(subscriber, false);
 
         let messages_bucket = subscriber
@@ -206,7 +204,6 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
-
         update_delivery_time(subscriber, false);
 
         let mut messages_bucket = subscriber
@@ -259,7 +256,6 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
-
         update_delivery_time(subscriber, false);
 
         let mut messages_bucket = subscriber
