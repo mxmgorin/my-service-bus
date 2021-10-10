@@ -7,12 +7,13 @@ use my_service_bus_shared::{
     MessageId,
 };
 
-use crate::{messages_bucket::MessagesBucket, operations::OperationFailResult};
-
-use super::{
-    subscribers::{QueueSubscriber, SubscriberId, SubscribersList},
-    TopicQueueMetrics,
+use crate::{
+    messages_bucket::MessagesBucket,
+    operations::OperationFailResult,
+    queue_subscribers::{QueueSubscriber, SubscriberId, SubscribersList},
 };
+
+use super::TopicQueueMetrics;
 
 #[derive(Debug)]
 pub struct NextMessage {

@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use my_service_bus_tcp_shared::PacketProtVer;
 use tokio::sync::RwLock;
 
-use crate::queues::subscribers::SubscriberId;
+use crate::queue_subscribers::SubscriberId;
 
 use super::{my_sb_session::ConnectionId, MyServiceBusSession};
 

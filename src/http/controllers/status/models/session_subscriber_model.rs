@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::queues::subscribers::SubscriberMetrics;
+use crate::queue_subscribers::SubscriberMetrics;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionSubscriberJsonContract {

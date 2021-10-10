@@ -3,9 +3,11 @@ use std::{collections::HashMap, sync::Arc};
 use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWithIntervals};
 use tokio::sync::RwLock;
 
-use crate::{tcp::tcp_server::ConnectionId, topics::TopicQueueSnapshot};
+use crate::{
+    queue_subscribers::QueueSubscriber, tcp::tcp_server::ConnectionId, topics::TopicQueueSnapshot,
+};
 
-use super::{queue::TopicQueue, subscribers::QueueSubscriber};
+use super::queue::TopicQueue;
 
 pub struct TopicQueueListData {
     queues: HashMap<String, Arc<TopicQueue>>,

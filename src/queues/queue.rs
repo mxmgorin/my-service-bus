@@ -4,12 +4,13 @@ use my_service_bus_shared::{
 };
 use tokio::sync::{Mutex, RwLock};
 
-use crate::{messages_bucket::MessagesBucket, topics::TopicQueueSnapshot};
-
-use super::{
-    subscribers::{SubscriberId, SubscriberMetrics},
-    QueueData, TopicQueueMetrics,
+use crate::{
+    messages_bucket::MessagesBucket,
+    queue_subscribers::{SubscriberId, SubscriberMetrics},
+    topics::TopicQueueSnapshot,
 };
+
+use super::{QueueData, TopicQueueMetrics};
 
 pub struct TopicQueueGcData {
     pub subscribers_amount: usize,

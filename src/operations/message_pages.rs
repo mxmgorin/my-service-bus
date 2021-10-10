@@ -8,7 +8,10 @@ use crate::{
 };
 
 pub async fn restore_page(app: &AppContext, topic: &Topic, page_id: PageId, process: &str) {
-    println!("Restoring page as a part of the process {}", process);
+    println!(
+        "Restoring page {}/{} as a part of the process {}",
+        topic.topic_id, page_id, process
+    );
     let page = load_page(app, topic, page_id).await;
     topic.messages.restore_page(page).await;
 }
