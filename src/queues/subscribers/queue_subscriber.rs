@@ -57,6 +57,7 @@ impl QueueSubscriber {
 
     pub fn rent_me(&mut self) -> bool {
         if let QueueSubscriberDeliveryState::ReadyToDeliver = &self.delivery_state {
+            self.metrics.set_delivery_mode_as_rented();
             self.delivery_state = QueueSubscriberDeliveryState::Rented;
             return true;
         }
@@ -66,7 +67,8 @@ impl QueueSubscriber {
 
     pub fn cancel_the_rent(&mut self) {
         if let QueueSubscriberDeliveryState::Rented = &self.delivery_state {
-            self.delivery_state = QueueSubscriberDeliveryState::Rented;
+            self.metrics.set_delivery_mode_as_ready_to_deliver();
+            self.delivery_state = QueueSubscriberDeliveryState::ReadyToDeliver;
             return;
         }
 
@@ -80,6 +82,7 @@ impl QueueSubscriber {
         let mut prev_delivery_state = QueueSubscriberDeliveryState::ReadyToDeliver;
         std::mem::swap(&mut prev_delivery_state, &mut self.delivery_state);
 
+        self.metrics.set_delivery_mode_as_ready_to_deliver();
         if let QueueSubscriberDeliveryState::OnDelivery(messages) = prev_delivery_state {
             return Some(messages);
         }
@@ -88,10 +91,9 @@ impl QueueSubscriber {
     }
 
     pub fn set_messages_on_delivery(&mut self, messages_bucket: MessagesBucket) {
-        let mut prev_delivery_state = QueueSubscriberDeliveryState::OnDelivery(messages_bucket);
-        std::mem::swap(&mut prev_delivery_state, &mut self.delivery_state);
-
-        if let QueueSubscriberDeliveryState::Rented = prev_delivery_state {
+        if let QueueSubscriberDeliveryState::Rented = &self.delivery_state {
+            self.delivery_state = QueueSubscriberDeliveryState::OnDelivery(messages_bucket);
+            self.metrics.set_delivery_mode_as_on_delivery();
             return;
         }
 

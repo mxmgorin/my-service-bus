@@ -33,7 +33,9 @@ impl SubscribersList {
         }
     }
 
-    pub fn get_and_rent_next_subscriber_ready_to_deliver(&mut self) -> Option<&QueueSubscriber> {
+    pub fn get_and_rent_next_subscriber_ready_to_deliver(
+        &mut self,
+    ) -> Option<&mut QueueSubscriber> {
         match &mut self.data {
             SubscribersData::MultiSubscribers(state) => {
                 for subscriber in state.values_mut() {

@@ -138,7 +138,7 @@ async fn try_to_complie_next_messages_from_the_queue(
                 delivery_data.set_current(DeliverPayloadBySubscriber::new(
                     subscriber.id,
                     subscriber.session.clone(),
-                ))
+                ));
             } else {
                 return CompileResult::Completed;
             }

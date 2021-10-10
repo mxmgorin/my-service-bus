@@ -11,9 +11,9 @@ use crate::{
 
 use super::SubscriberId;
 
-pub const DELIVERY_MODE_READY_TO_DELIVER: u8 = 0;
-pub const DELIVERY_MODE_RENTED: u8 = 1;
-pub const DELIVERY_MODE_ON_DELIVERY: u8 = 2;
+pub const DELIVERY_STATE_READY_TO_DELIVER: u8 = 0;
+pub const DELIVERY_STATE_RENTED: u8 = 1;
+pub const DELIVERY_STATE_ON_DELIVERY: u8 = 2;
 
 #[derive(Clone)]
 pub struct SubscriberMetrics {
@@ -48,7 +48,7 @@ impl SubscriberMetrics {
             connection_id,
             topic,
             queue,
-            delivery_mode: DELIVERY_MODE_READY_TO_DELIVER,
+            delivery_mode: DELIVERY_STATE_READY_TO_DELIVER,
         }
     }
 
@@ -71,7 +71,7 @@ impl SubscriberMetrics {
         delivered_messages: usize,
         delivery_duration: Duration,
     ) {
-        self.delivery_mode = DELIVERY_MODE_READY_TO_DELIVER;
+        self.delivery_mode = DELIVERY_STATE_READY_TO_DELIVER;
         self.delivered_amount.increase(delivered_messages);
         self.delivery_microseconds
             .increase(delivery_duration.as_micros() as usize);
@@ -83,7 +83,7 @@ impl SubscriberMetrics {
         delivered_messages: i32,
         delivery_duration: Duration,
     ) {
-        self.delivery_mode = DELIVERY_MODE_READY_TO_DELIVER;
+        self.delivery_mode = DELIVERY_STATE_READY_TO_DELIVER;
         let value = delivery_duration.as_micros() as i32 / -delivered_messages;
         self.delivery_history.put(value);
     }
@@ -91,6 +91,18 @@ impl SubscriberMetrics {
     pub fn set_started_delivery(&mut self) {
         self.start_delivery_time = DateTimeAsMicroseconds::now();
         self.active = 2;
-        self.delivery_mode = DELIVERY_MODE_ON_DELIVERY;
+        self.delivery_mode = DELIVERY_STATE_ON_DELIVERY;
+    }
+
+    pub fn set_delivery_mode_as_ready_to_deliver(&mut self) {
+        self.delivery_mode = DELIVERY_STATE_READY_TO_DELIVER;
+    }
+
+    pub fn set_delivery_mode_as_rented(&mut self) {
+        self.delivery_mode = DELIVERY_STATE_RENTED;
+    }
+
+    pub fn set_delivery_mode_as_on_delivery(&mut self) {
+        self.delivery_mode = DELIVERY_STATE_ON_DELIVERY;
     }
 }

@@ -35,7 +35,13 @@ var HtmlQueue = /** @class */ (function () {
         var html = "";
         for (var _i = 0, subscribers_1 = subscribers; _i < subscribers_1.length; _i++) {
             var itm = subscribers_1[_i];
-            var subscriber_badge = itm.subscriber.deliveryMode == 0 ? "badge-primary" : "badge-danger";
+            var subscriber_badge = "badge-primary";
+            if (itm.subscriber.deliveryMode == 1) {
+                subscriber_badge = "badge-warning";
+            }
+            else if (itm.subscriber.deliveryMode == 2) {
+                subscriber_badge = "badge-danger";
+            }
             html += '<table class="table-dark" style="width:200px; box-shadow: 0 0 3px black;"">' +
                 '<tr><td>' + HtmlMain.drawLed(itm.subscriber.active > 0, 'blue') + '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-secondary">' + itm.session.id + '</span></div>' +
                 '<div style="margin-top: 10px;font-size: 12px;"><span class="badge ' + subscriber_badge + '">' + itm.subscriber.id + '</span></div></td>' +
