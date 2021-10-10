@@ -11,6 +11,10 @@ use crate::{
 
 use super::SubscriberId;
 
+pub const DELIVERY_MODE_READY_TO_DELIVER: u8 = 0;
+pub const DELIVERY_MODE_RENTED: u8 = 1;
+pub const DELIVERY_MODE_ON_DELIVERY: u8 = 2;
+
 #[derive(Clone)]
 pub struct SubscriberMetrics {
     pub topic: Arc<Topic>,
@@ -23,6 +27,8 @@ pub struct SubscriberMetrics {
 
     pub connection_id: ConnectionId,
     pub subscriber_id: SubscriberId,
+
+    pub delivery_mode: u8,
 }
 
 impl SubscriberMetrics {
@@ -42,6 +48,7 @@ impl SubscriberMetrics {
             connection_id,
             topic,
             queue,
+            delivery_mode: DELIVERY_MODE_READY_TO_DELIVER,
         }
     }
 
@@ -64,6 +71,7 @@ impl SubscriberMetrics {
         delivered_messages: usize,
         delivery_duration: Duration,
     ) {
+        self.delivery_mode = DELIVERY_MODE_READY_TO_DELIVER;
         self.delivered_amount.increase(delivered_messages);
         self.delivery_microseconds
             .increase(delivery_duration.as_micros() as usize);
@@ -75,6 +83,7 @@ impl SubscriberMetrics {
         delivered_messages: i32,
         delivery_duration: Duration,
     ) {
+        self.delivery_mode = DELIVERY_MODE_READY_TO_DELIVER;
         let value = delivery_duration.as_micros() as i32 / -delivered_messages;
         self.delivery_history.put(value);
     }
@@ -82,5 +91,6 @@ impl SubscriberMetrics {
     pub fn set_started_delivery(&mut self) {
         self.start_delivery_time = DateTimeAsMicroseconds::now();
         self.active = 2;
+        self.delivery_mode = DELIVERY_MODE_ON_DELIVERY;
     }
 }

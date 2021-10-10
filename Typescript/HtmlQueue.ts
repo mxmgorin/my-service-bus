@@ -58,9 +58,12 @@ class HtmlQueue {
 
 
         for (var itm of subscribers) {
+
+            let subscriber_badge = itm.subscriber.deliveryMode == 0 ? "badge-primary" : "badge-danger";
+
             html += '<table class="table-dark" style="width:200px; box-shadow: 0 0 3px black;"">' +
                 '<tr><td>' + HtmlMain.drawLed(itm.subscriber.active > 0, 'blue') + '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-secondary">' + itm.session.id + '</span></div>' +
-                '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-primary">' + itm.subscriber.id + '</span></div></td>' +
+                '<div style="margin-top: 10px;font-size: 12px;"><span class="badge ' + subscriber_badge + '">' + itm.subscriber.id + '</span></div></td>' +
                 '<td style="font-size:10px"><div>' + itm.session.name + '</div><div>' + itm.session.version + '</div><div> ' + itm.session.ip + ' </div>' +
                 HtmlGraph.renderGraph(itm.subscriber.deliveryHistory, c => Utils.format_duration(c), c => Math.abs(c), c => c < 0) + '</td></tr></table>';
 
