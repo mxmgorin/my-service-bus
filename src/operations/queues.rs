@@ -55,16 +55,6 @@ pub async fn delete_queue(
             topic_id: topic_id.to_string(),
         })?;
 
-    let topic_queue =
-        topic
-            .get_queue(queue_id)
-            .await
-            .ok_or(OperationFailResult::QueueNotFound {
-                queue_id: queue_id.to_string(),
-            })?;
-
-    let topic_queue_data = topic_queue.data.write().await;
-
     topic.queues.delete_queue(queue_id).await;
 
     Ok(())

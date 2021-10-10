@@ -32,7 +32,7 @@ async fn main() {
 
     let mut tasks = Vec::new();
 
-    tasks.push(tokio::task::spawn(crate::app::initialization::init(
+    tasks.push(tokio::task::spawn(crate::operations::initialization::init(
         app.clone(),
     )));
 

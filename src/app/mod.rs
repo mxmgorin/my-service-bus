@@ -1,6 +1,5 @@
 mod app_ctx;
 mod global_states;
-pub mod initialization;
 pub mod logs;
 pub mod prometheus_metrics;
 pub mod shutdown;

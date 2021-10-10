@@ -7,7 +7,7 @@ use crate::{
     utils::StopWatch,
 };
 
-use super::AppContext;
+use crate::app::AppContext;
 
 pub async fn init(app: Arc<AppContext>) {
     let mut sw = StopWatch::new();
@@ -50,7 +50,7 @@ pub async fn init(app: Arc<AppContext>) {
     app.logs
         .add_info(
             None,
-            super::logs::SystemProcess::Init,
+            crate::app::logs::SystemProcess::Init,
             format!("Initialization is done in {:?}", sw.duration()),
             format!(
                 "Application is initialized. Topics amount is: {}",
@@ -83,7 +83,7 @@ async fn restore_topics_and_queues(app: &AppContext) -> Vec<TopicSnapshot> {
         app.logs
             .add_info(
                 None,
-                super::logs::SystemProcess::Init,
+                crate::app::logs::SystemProcess::Init,
                 "restore_topics_and_queues".to_string(),
                 format!("Restoring topics and queues. Attempt {}", attempt),
             )
@@ -98,7 +98,7 @@ async fn restore_topics_and_queues(app: &AppContext) -> Vec<TopicSnapshot> {
         app.logs
             .add_error(
                 None,
-                super::logs::SystemProcess::Init,
+                crate::app::logs::SystemProcess::Init,
                 "restore_topics_and_queues".to_string(),
                 "Can not restore topics and queues".to_string(),
                 Some(format!("{:?}", err)),
