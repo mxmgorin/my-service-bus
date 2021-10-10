@@ -4,12 +4,13 @@ use my_service_bus_shared::{
 };
 use tokio::sync::{Mutex, RwLock};
 
-use crate::{messages_bucket::MessagesBucket, topics::TopicQueueSnapshot};
-
-use super::{
-    subscribers::{SubscriberId, SubscriberMetrics},
-    QueueData, TopicQueueMetrics,
+use crate::{
+    messages_bucket::MessagesBucket,
+    queue_subscribers::{SubscriberId, SubscriberMetrics},
+    topics::TopicQueueSnapshot,
 };
+
+use super::{QueueData, TopicQueueMetrics};
 
 pub struct TopicQueueGcData {
     pub subscribers_amount: usize,
@@ -124,11 +125,6 @@ impl TopicQueue {
         write_access
             .subscribers
             .set_messages_on_delivery(subscriber_id, messages_bucket);
-    }
-
-    pub async fn reset_rented(&self, subscriber_id: SubscriberId) {
-        let mut write_access = self.data.write().await;
-        write_access.subscribers.reset_rented(subscriber_id);
     }
 
     pub async fn get_all_subscribers_metrics(&self) -> Vec<SubscriberMetrics> {

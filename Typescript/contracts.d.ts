@@ -67,7 +67,8 @@ interface ISubscriber {
     topicId: string,
     queueId: string,
     active: number,
-    deliveryHistory: number[]
+    deliveryMode: number,
+    deliveryHistory: number[],
 }
 
 

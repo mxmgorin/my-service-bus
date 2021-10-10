@@ -21,7 +21,7 @@ impl MessagesBucket {
         }
     }
 
-    pub fn has_page(&mut self, page_id: PageId) -> bool {
+    pub fn has_page(&self, page_id: PageId) -> bool {
         self.pages.contains_key(&page_id)
     }
 

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::queues::subscribers::SubscriberMetrics;
+use crate::queue_subscribers::SubscriberMetrics;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionSubscriberJsonContract {
@@ -12,16 +12,19 @@ pub struct SessionSubscriberJsonContract {
     pub active: u8,
     #[serde(rename = "deliveryHistory")]
     pub delivery_history: Vec<i32>,
+    #[serde(rename = "deliveryMode")]
+    pub delivery_mode: u8,
 }
 
 impl SessionSubscriberJsonContract {
-    pub fn new(subscriber: &SubscriberMetrics) -> Self {
+    pub fn new(metrics: &SubscriberMetrics) -> Self {
         Self {
-            id: subscriber.subscriber_id,
-            topic_id: subscriber.topic.topic_id.to_string(),
-            queue_id: subscriber.queue.queue_id.to_string(),
-            active: subscriber.active,
-            delivery_history: subscriber.delivery_history.get(),
+            id: metrics.subscriber_id,
+            topic_id: metrics.topic.topic_id.to_string(),
+            queue_id: metrics.queue.queue_id.to_string(),
+            active: metrics.active,
+            delivery_history: metrics.delivery_history.get(),
+            delivery_mode: metrics.delivery_mode,
         }
     }
 }

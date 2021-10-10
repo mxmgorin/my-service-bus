@@ -14,6 +14,7 @@ mod messages_bucket;
 mod metric_data;
 mod operations;
 mod persistence;
+mod queue_subscribers;
 mod queues;
 mod sessions;
 mod settings;

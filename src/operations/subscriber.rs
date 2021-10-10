@@ -4,7 +4,7 @@ use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWi
 
 use crate::{
     app::AppContext,
-    queues::subscribers::{QueueSubscriber, SubscriberId},
+    queue_subscribers::{QueueSubscriber, SubscriberId},
     sessions::MyServiceBusSession,
 };
 

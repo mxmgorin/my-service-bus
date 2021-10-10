@@ -35,9 +35,16 @@ var HtmlQueue = /** @class */ (function () {
         var html = "";
         for (var _i = 0, subscribers_1 = subscribers; _i < subscribers_1.length; _i++) {
             var itm = subscribers_1[_i];
+            var subscriber_badge = "badge-primary";
+            if (itm.subscriber.deliveryMode == 1) {
+                subscriber_badge = "badge-warning";
+            }
+            else if (itm.subscriber.deliveryMode == 2) {
+                subscriber_badge = "badge-danger";
+            }
             html += '<table class="table-dark" style="width:200px; box-shadow: 0 0 3px black;"">' +
                 '<tr><td>' + HtmlMain.drawLed(itm.subscriber.active > 0, 'blue') + '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-secondary">' + itm.session.id + '</span></div>' +
-                '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-primary">' + itm.subscriber.id + '</span></div></td>' +
+                '<div style="margin-top: 10px;font-size: 12px;"><span class="badge ' + subscriber_badge + '">' + itm.subscriber.id + '</span></div></td>' +
                 '<td style="font-size:10px"><div>' + itm.session.name + '</div><div>' + itm.session.version + '</div><div> ' + itm.session.ip + ' </div>' +
                 HtmlGraph.renderGraph(itm.subscriber.deliveryHistory, function (c) { return Utils.format_duration(c); }, function (c) { return Math.abs(c); }, function (c) { return c < 0; }) + '</td></tr></table>';
         }

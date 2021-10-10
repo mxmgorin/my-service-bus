@@ -36,7 +36,7 @@ async fn deliver_to_queue_spawned(
     let result =
         try_to_deliver_to_queue(process_id, app.as_ref(), topic.as_ref(), queue.as_ref()).await;
 
-    if let Err(err) = result {
+    if let Err(err) = &result {
         app.logs
             .add_error(
                 Some(topic.topic_id.to_string()),
@@ -47,6 +47,31 @@ async fn deliver_to_queue_spawned(
             )
             .await
     }
+
+    let payloads_collector = result.unwrap();
+
+    for subscriber_data in payloads_collector.subscribers {
+        let tcp_contract = subscriber_data
+            .compile_tcp_packet(
+                process_id,
+                app.as_ref(),
+                topic.as_ref(),
+                queue.queue_id.as_str(),
+            )
+            .await;
+
+        queue
+            .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages)
+            .await;
+
+        crate::operations::sessions::send_package(
+            process_id,
+            app.as_ref(),
+            subscriber_data.session.as_ref(),
+            tcp_contract,
+        )
+        .await;
+    }
 }
 
 async fn try_to_deliver_to_queue(
@@ -54,7 +79,7 @@ async fn try_to_deliver_to_queue(
     app: &AppContext,
     topic: &Topic,
     queue: &TopicQueue,
-) -> Result<(), OperationFailResult> {
+) -> Result<DeliveryPayloadsCollector, OperationFailResult> {
     let mut payloads_collector = DeliveryPayloadsCollector::new();
 
     loop {
@@ -85,7 +110,7 @@ async fn try_to_deliver_to_queue(
 
         match compile_result {
             CompileResult::Completed => {
-                break;
+                return Ok(payloads_collector);
             }
             CompileResult::LoadPage(page_id) => {
                 println!(
@@ -96,31 +121,6 @@ async fn try_to_deliver_to_queue(
             }
         }
     }
-
-    payloads_collector.complete();
-    for subscriber_data in payloads_collector.subscribers {
-        if subscriber_data.messages.messages_count() > 0 {
-            let tcp_contract = subscriber_data
-                .compile_tcp_packet(process_id, app, topic, queue.queue_id.as_str())
-                .await;
-
-            queue
-                .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages)
-                .await;
-
-            crate::operations::sessions::send_package(
-                process_id,
-                app,
-                subscriber_data.session.as_ref(),
-                tcp_contract,
-            )
-            .await;
-        } else {
-            queue.reset_rented(subscriber_data.subscriber_id).await;
-        }
-    }
-
-    Ok(())
 }
 
 async fn try_to_complie_next_messages_from_the_queue(
@@ -130,7 +130,7 @@ async fn try_to_complie_next_messages_from_the_queue(
     delivery_data: &mut DeliveryPayloadsCollector,
 ) -> CompileResult {
     loop {
-        if delivery_data.current_session.is_none() {
+        if delivery_data.current_subscriber.is_none() {
             if let Some(subscriber) = queue
                 .subscribers
                 .get_and_rent_next_subscriber_ready_to_deliver()
@@ -138,20 +138,33 @@ async fn try_to_complie_next_messages_from_the_queue(
                 delivery_data.set_current(DeliverPayloadBySubscriber::new(
                     subscriber.id,
                     subscriber.session.clone(),
-                ))
+                ));
             } else {
                 return CompileResult::Completed;
             }
         }
 
-        let selected_subscruber = delivery_data.current_session.as_mut().unwrap();
+        let fill_messages_result;
+        let subscriber_id;
+        {
+            let current_subscriber = delivery_data.current_subscriber.as_mut().unwrap();
+            subscriber_id = current_subscriber.subscriber_id;
 
-        let fill_messages_result =
-            fill_messages(app, topic, queue, &mut selected_subscruber.messages).await;
+            fill_messages_result =
+                fill_messages(app, topic, queue, &mut current_subscriber.messages).await;
+        }
 
         match fill_messages_result {
             FillMessagesResult::Complete => {
-                delivery_data.complete();
+                if !delivery_data.complete() {
+                    let subscriber = queue
+                        .subscribers
+                        .get_by_id_mut(subscriber_id)
+                        .expect(format!("Subscriber with id {} not found", subscriber_id).as_str());
+
+                    subscriber.cancel_the_rent();
+                }
+
                 return CompileResult::Completed;
             }
             FillMessagesResult::LoadPage(page_id) => return CompileResult::LoadPage(page_id),
