@@ -147,16 +147,18 @@ pub async fn confirm_delivery(
                 queue_id: queue_id.to_string(),
             })?;
 
-    let mut write_access = topic_queue.data.write().await;
+    {
+        let mut write_access = topic_queue.data.write().await;
 
-    if let Err(err) = write_access.confirmed_delivered(subscriber_id) {
-        app.logs
-            .add_fatal_error(
-                crate::app::logs::SystemProcess::DeliveryOperation,
-                "confirm_delivery".to_string(),
-                format!("{:?}", err),
-            )
-            .await
+        if let Err(err) = write_access.confirmed_delivered(subscriber_id) {
+            app.logs
+                .add_fatal_error(
+                    crate::app::logs::SystemProcess::DeliveryOperation,
+                    "confirm_delivery".to_string(),
+                    format!("{:?}", err),
+                )
+                .await
+        }
     }
 
     super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
@@ -187,17 +189,18 @@ pub async fn confirm_non_delivery(
                 queue_id: queue_id.to_string(),
             })?;
 
-    let mut write_access = topic_queue.data.write().await;
-    if let Err(err) = write_access.confirmed_non_delivered(subscriber_id) {
-        app.logs
-            .add_fatal_error(
-                crate::app::logs::SystemProcess::DeliveryOperation,
-                "confirm_non_delivery".to_string(),
-                format!("{:?}", err),
-            )
-            .await
+    {
+        let mut write_access = topic_queue.data.write().await;
+        if let Err(err) = write_access.confirmed_non_delivered(subscriber_id) {
+            app.logs
+                .add_fatal_error(
+                    crate::app::logs::SystemProcess::DeliveryOperation,
+                    "confirm_non_delivery".to_string(),
+                    format!("{:?}", err),
+                )
+                .await
+        }
     }
-
     super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
 
     Ok(())
@@ -228,15 +231,17 @@ pub async fn some_messages_are_confirmed(
                 queue_id: queue_id.to_string(),
             })?;
 
-    let mut write_access = topic_queue.data.write().await;
-    if let Err(err) = write_access.confirmed_some_delivered(subscriber_id, confirmed_messages) {
-        app.logs
-            .add_fatal_error(
-                crate::app::logs::SystemProcess::DeliveryOperation,
-                "some_messages_are_confirmed".to_string(),
-                format!("{:?}", err),
-            )
-            .await
+    {
+        let mut write_access = topic_queue.data.write().await;
+        if let Err(err) = write_access.confirmed_some_delivered(subscriber_id, confirmed_messages) {
+            app.logs
+                .add_fatal_error(
+                    crate::app::logs::SystemProcess::DeliveryOperation,
+                    "some_messages_are_confirmed".to_string(),
+                    format!("{:?}", err),
+                )
+                .await
+        }
     }
 
     super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());

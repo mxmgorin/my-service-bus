@@ -152,10 +152,8 @@ impl QueueData {
             .reset_delivery()
             .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
 
-        for page in messages_bucket.pages.values() {
-            for msg_id in page.messages.keys() {
-                self.attempts.remove(msg_id);
-            }
+        for msg_id in messages_bucket.get_ids() {
+            self.attempts.remove(&msg_id);
         }
 
         Ok(())
