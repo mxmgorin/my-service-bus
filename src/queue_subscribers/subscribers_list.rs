@@ -75,17 +75,16 @@ impl SubscribersList {
         &mut self,
         subscriber_id: SubscriberId,
         messages_bucket: MessagesBucket,
-    ) {
-        let subscriber = self.get_by_id_mut(subscriber_id).expect(
-            format!(
-                "Can not set messages on delivery . Subscriber {} is not found",
-                subscriber_id
-            )
-            .as_str(),
-        );
+    ) -> Option<MessagesBucket> {
+        let subscriber_result = self.get_by_id_mut(subscriber_id);
 
-        subscriber.set_messages_on_delivery(messages_bucket);
-        subscriber.metrics.set_started_delivery();
+        if let Some(subscriber) = subscriber_result {
+            subscriber.set_messages_on_delivery(messages_bucket);
+            subscriber.metrics.set_started_delivery();
+            return None;
+        } else {
+            return Some(messages_bucket);
+        }
     }
 
     pub fn subscribe(

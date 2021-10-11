@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use my_service_bus_shared::{page_id::PageId, MessageId};
+use my_service_bus_shared::{page_id::PageId, queue_with_intervals::QueueWithIntervals, MessageId};
 
 use crate::message_pages::MessagesPage;
 
@@ -86,5 +86,17 @@ impl MessagesBucket {
         self.total_size -= removed.msg_size;
 
         return true;
+    }
+
+    pub fn get_ids(&self) -> QueueWithIntervals {
+        let mut result = QueueWithIntervals::new();
+
+        for page in self.pages.values() {
+            for interval in &page.ids.intervals {
+                result.enqueue_range(interval);
+            }
+        }
+
+        result
     }
 }

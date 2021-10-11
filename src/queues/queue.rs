@@ -4,11 +4,7 @@ use my_service_bus_shared::{
 };
 use tokio::sync::{Mutex, RwLock};
 
-use crate::{
-    messages_bucket::MessagesBucket,
-    queue_subscribers::{SubscriberId, SubscriberMetrics},
-    topics::TopicQueueSnapshot,
-};
+use crate::{queue_subscribers::SubscriberMetrics, topics::TopicQueueSnapshot};
 
 use super::{QueueData, TopicQueueMetrics};
 
@@ -113,18 +109,6 @@ impl TopicQueue {
         let mut write_access = self.data.write().await;
 
         write_access.subscribers.one_second_tick();
-    }
-
-    pub async fn set_messages_on_delivery(
-        &self,
-        subscriber_id: SubscriberId,
-        messages_bucket: MessagesBucket,
-    ) {
-        let mut write_access = self.data.write().await;
-
-        write_access
-            .subscribers
-            .set_messages_on_delivery(subscriber_id, messages_bucket);
     }
 
     pub async fn get_all_subscribers_metrics(&self) -> Vec<SubscriberMetrics> {

@@ -60,17 +60,32 @@ async fn deliver_to_queue_spawned(
             )
             .await;
 
-        queue
-            .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages)
-            .await;
+        let send_packet;
 
-        crate::operations::sessions::send_package(
-            process_id,
-            app.as_ref(),
-            subscriber_data.session.as_ref(),
-            tcp_contract,
-        )
-        .await;
+        {
+            let mut queue_data = queue.data.write().await;
+
+            let result = queue_data
+                .subscribers
+                .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages);
+
+            if let Some(messages) = result {
+                queue_data.enqueue_messages(&messages.get_ids());
+                send_packet = false;
+            } else {
+                send_packet = true;
+            }
+        }
+
+        if send_packet {
+            crate::operations::sessions::send_package(
+                process_id,
+                app.as_ref(),
+                subscriber_data.session.as_ref(),
+                tcp_contract,
+            )
+            .await;
+        }
     }
 }
 
