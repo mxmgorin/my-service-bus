@@ -70,7 +70,16 @@ async fn deliver_to_queue_spawned(
                 .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages);
 
             if let Some(messages) = result {
-                queue_data.enqueue_messages(&messages.get_ids());
+                let msgs = messages.get_ids();
+                println!(
+                    "Could not find subscriber {} for the {}/{}. Set {} messages back to the queue",
+                    subscriber_data.subscriber_id,
+                    topic.topic_id,
+                    queue_data.queue_id,
+                    msgs.len()
+                );
+                queue_data.enqueue_messages(&msgs);
+
                 send_packet = false;
             } else {
                 send_packet = true;
