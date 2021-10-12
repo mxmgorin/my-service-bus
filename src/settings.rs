@@ -101,7 +101,9 @@ impl Into<SettingsModel> for SettingsModelJson {
             }
             Some(timeout_duration.unwrap())
         } else {
-            println!("Delivery timeout is disabled");
+            println!(
+                "Delivery timeout is disabled. To enable please specify DeliveryTimeout=hh:mm:ss"
+            );
             None
         };
 
