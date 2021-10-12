@@ -100,8 +100,13 @@ impl MyServiceBusSession {
     }
 
     async fn serialize_tcp_contract(&self, tcp_contract: TcpContract) -> Vec<u8> {
-        let data = self.data.read().await;
-        tcp_contract.serialize(&data.attr)
+        let attr;
+        {
+            let data = self.data.read().await;
+            attr = data.attr.clone()
+        }
+
+        tcp_contract.serialize(&attr)
     }
 
     pub async fn send(&self, tcp_contract: TcpContract) -> Result<(), SessionOperationError> {
