@@ -27,14 +27,18 @@ async fn on_disconnect_process(app: Arc<AppContext>, my_sb_session: Arc<MyServic
 pub async fn handle_incoming_payload(
     app: Arc<AppContext>,
     tcp_contract: TcpContract,
-    session: &MyServiceBusSession,
+    session: Arc<MyServiceBusSession>,
     attr: &mut ConnectionAttributes,
     process_id: i64,
 ) -> Result<(), MySbSocketError> {
     match tcp_contract {
         TcpContract::Ping {} => {
-            crate::operations::sessions::send_package(app.as_ref(), session, TcpContract::Pong)
-                .await;
+            crate::operations::sessions::send_package(
+                app.as_ref(),
+                session.as_ref(),
+                TcpContract::Pong,
+            )
+            .await;
             Ok(())
         }
         TcpContract::Pong {} => Ok(()),
@@ -77,7 +81,7 @@ pub async fn handle_incoming_payload(
             if let Err(err) = result {
                 crate::operations::sessions::send_package(
                     app.as_ref(),
-                    session,
+                    session.as_ref(),
                     TcpContract::Reject {
                         message: format!("{:?}", err),
                     },
@@ -86,7 +90,7 @@ pub async fn handle_incoming_payload(
             } else {
                 crate::operations::sessions::send_package(
                     app.as_ref(),
-                    session,
+                    session.as_ref(),
                     TcpContract::PublishResponse { request_id },
                 )
                 .await;
@@ -110,7 +114,7 @@ pub async fn handle_incoming_payload(
                 topic_id.as_str(),
                 queue_id.as_str(),
                 queue_type,
-                session,
+                session.clone(),
             )
             .await?;
             Ok(())
@@ -144,7 +148,7 @@ pub async fn handle_incoming_payload(
         TcpContract::CreateTopicIfNotExists { topic_id } => {
             operations::publisher::create_topic_if_not_exists(
                 app,
-                Some(session),
+                Some(session.as_ref()),
                 topic_id.as_str(),
             )
             .await;

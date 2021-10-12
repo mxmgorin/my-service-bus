@@ -16,7 +16,7 @@ pub async fn subscribe_to_queue(
     topic_id: &str,
     queue_id: &str,
     queue_type: TopicQueueType,
-    session: &MyServiceBusSession,
+    session: Arc<MyServiceBusSession>,
 ) -> Result<(), OperationFailResult> {
     let topic = app
         .topic_list
@@ -30,22 +30,6 @@ pub async fn subscribe_to_queue(
         .queues
         .add_queue_if_not_exists(topic.topic_id.as_str(), queue_id, queue_type.clone())
         .await;
-
-    let the_session = app.as_ref().sessions.get_by_id(session.id).await;
-
-    if the_session.is_none() {
-        app.logs
-            .add_error(
-                Some(topic_id.to_string()),
-                crate::app::logs::SystemProcess::QueueOperation,
-                format!("subscribe_to_queue {}", queue_id),
-                format!("Somehow subscriber {} is not found anymore", session.id),
-                None,
-            )
-            .await;
-    }
-
-    let the_session = the_session.unwrap();
 
     let kicked_subscriber_result;
 
@@ -63,10 +47,9 @@ pub async fn subscribe_to_queue(
 
         kicked_subscriber_result = write_access.data.subscribers.subscribe(
             subscriber_id,
-            session.id,
             topic.clone(),
             topic_queue.clone(),
-            the_session.clone(),
+            session.clone(),
         );
 
         app.logs

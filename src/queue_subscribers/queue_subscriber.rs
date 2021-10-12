@@ -4,7 +4,7 @@ use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
 
 use crate::{
     messages_bucket::MessagesBucket, queues::TopicQueue, sessions::MyServiceBusSession,
-    tcp::tcp_server::ConnectionId, topics::Topic,
+    topics::Topic,
 };
 
 use super::{SubscriberId, SubscriberMetrics};
@@ -43,7 +43,6 @@ pub struct QueueSubscriber {
 impl QueueSubscriber {
     pub fn new(
         id: SubscriberId,
-        connection_id: ConnectionId,
         topic: Arc<Topic>,
         queue: Arc<TopicQueue>,
         session: Arc<MyServiceBusSession>,
@@ -52,7 +51,7 @@ impl QueueSubscriber {
             topic: topic.clone(),
             queue: queue.clone(),
             subscribed: DateTimeAsMicroseconds::now(),
-            metrics: SubscriberMetrics::new(id, connection_id, topic, queue),
+            metrics: SubscriberMetrics::new(id, session.id, topic, queue),
             delivery_state: QueueSubscriberDeliveryState::ReadyToDeliver,
             session,
             id,

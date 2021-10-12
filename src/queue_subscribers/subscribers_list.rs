@@ -106,7 +106,6 @@ impl SubscribersList {
     pub fn subscribe(
         &mut self,
         subscriber_id: SubscriberId,
-        connection_id: ConnectionId,
         topic: Arc<Topic>,
         queue: Arc<TopicQueue>,
         session: Arc<MyServiceBusSession>,
@@ -117,8 +116,7 @@ impl SubscribersList {
                     panic!("Can not add subscriber with {}. Subscriber with the same ID is already in the multilist", subscriber_id);
                 }
 
-                let subscriber =
-                    QueueSubscriber::new(subscriber_id, connection_id, topic, queue, session);
+                let subscriber = QueueSubscriber::new(subscriber_id, topic, queue, session);
 
                 hash_map.insert(subscriber_id, subscriber);
 
@@ -131,13 +129,8 @@ impl SubscribersList {
                     }
                 }
 
-                let mut old_subscriber = Some(QueueSubscriber::new(
-                    subscriber_id,
-                    connection_id,
-                    topic,
-                    queue,
-                    session,
-                ));
+                let mut old_subscriber =
+                    Some(QueueSubscriber::new(subscriber_id, topic, queue, session));
 
                 std::mem::swap(&mut old_subscriber, single);
 

@@ -164,7 +164,7 @@ async fn socket_loop(
         let result = super::connection::handle_incoming_payload(
             app.clone(),
             tcp_contract,
-            session.as_ref(),
+            session.clone(),
             &mut attr,
             process_id,
         )
