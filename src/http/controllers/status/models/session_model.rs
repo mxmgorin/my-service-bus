@@ -46,13 +46,16 @@ impl SessionJsonResult {
 
         let session_metrics_data = session.get_metrics().await;
 
+        let name = if let Some(name) = session_metrics_data.name {
+            name
+        } else {
+            "???".to_string()
+        };
+
         Self {
             id: session_metrics_data.id,
             ip: session_metrics_data.ip,
-            name: format!(
-                "{:?}[{}]",
-                session_metrics_data.name, session_metrics_data.protocol_version
-            ),
+            name: format!("{}[{}]", name, session_metrics_data.protocol_version),
             version: session_metrics_data.version,
             connected: duration_to_string(now.duration_since(session.connected)),
             last_incoming: duration_to_string(
