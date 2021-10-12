@@ -104,9 +104,7 @@ async fn process_socket(
     let socket_loop_result =
         tokio::task::spawn(socket_loop(read_socket, app.clone(), my_sb_session.clone())).await;
 
-    let process_id = app.process_id_generator.get_process_id().await;
-
-    let name = my_sb_session.get_name(process_id).await;
+    let name = my_sb_session.get_name().await;
 
     if let Err(err) = socket_loop_result {
         app.logs
@@ -158,9 +156,7 @@ async fn socket_loop(
         let tcp_contract = TcpContract::deserialize(&mut socket_reader, &attr).await?;
         let process_id = app.process_id_generator.get_process_id().await;
 
-        session
-            .increase_read_size(process_id, socket_reader.read_size)
-            .await;
+        session.increase_read_size(socket_reader.read_size).await;
 
         let now = DateTimeAsMicroseconds::now();
         session.last_incoming_package.update(now);
@@ -180,7 +176,7 @@ async fn socket_loop(
                     return Err(err);
                 }
                 MySbSocketError::OperationFailResult(err) => {
-                    let name = session.get_name(process_id).await;
+                    let name = session.get_name().await;
                     app.logs
                         .add_error(
                             None,
@@ -192,7 +188,6 @@ async fn socket_loop(
                         .await;
 
                     crate::operations::sessions::send_package(
-                        process_id,
                         app.as_ref(),
                         session.as_ref(),
                         TcpContract::Reject {

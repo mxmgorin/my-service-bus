@@ -65,47 +65,27 @@ impl SessionsList {
         return Some(result);
     }
 
-    pub async fn one_second_tick(&self, process_id: i64) {
+    pub async fn one_second_tick(&self) {
         let read_access = self.data.read().await;
 
         for session in read_access.sessions.values() {
-            session.one_second_tick(process_id).await;
+            session.one_second_tick().await;
         }
     }
 
     pub async fn get_packet_and_protocol_version(
         &self,
-        process_id: i64,
         subscriber_id: SubscriberId,
         packet: u8,
     ) -> PacketProtVer {
-        let mut packet_version = 0;
-        let mut protocol_version = 0;
+        let found_session = self.get_by_id(subscriber_id).await;
 
-        let read_access = self.data.read().await;
-
-        for session in read_access.sessions.values() {
-            session
-                .app
-                .enter_lock(
-                    process_id,
-                    format!(
-                        "SessionsList[{}].get_packet_and_protocol_version",
-                        subscriber_id
-                    ),
-                )
-                .await;
-            let read_access = session.data.read().await;
-
-            packet_version = read_access.attr.versions.get_packet_version(packet);
-            protocol_version = read_access.attr.protocol_version;
-
-            session.app.exit_lock(process_id).await;
+        match found_session {
+            Some(session) => return session.get_packet_and_protocol_version(packet).await,
+            None => PacketProtVer {
+                packet_version: 0,
+                protocol_version: 0,
+            },
         }
-
-        return PacketProtVer {
-            packet_version,
-            protocol_version,
-        };
     }
 }

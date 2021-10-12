@@ -1,17 +1,20 @@
 use std::{collections::HashMap, sync::Arc};
 
 use my_service_bus_shared::date_time::{AtomicDateTimeAsMicroseconds, DateTimeAsMicroseconds};
-use my_service_bus_tcp_shared::TcpContract;
+use my_service_bus_tcp_shared::{PacketProtVer, TcpContract};
 use tokio::{io::WriteHalf, net::TcpStream, sync::RwLock};
 
-use crate::app::AppContext;
+use crate::{app::AppContext, queue_subscribers::SubscriberId};
 
-use super::{my_sb_session_data::ConnectedState, MyServiceBusSessionData, SessionOperationError};
+use super::{
+    my_sb_session_data::ConnectedState, MySbSessionMetrics, MyServiceBusSessionData,
+    SessionOperationError,
+};
 
 pub type ConnectionId = i64;
 
 pub struct MyServiceBusSession {
-    pub data: RwLock<MyServiceBusSessionData>,
+    data: RwLock<MyServiceBusSessionData>,
     pub ip: String,
     pub id: ConnectionId,
     pub connected: DateTimeAsMicroseconds,
@@ -20,6 +23,14 @@ pub struct MyServiceBusSession {
 }
 
 const BADGE_HIGHLIGHT_TIMOUT: u8 = 2;
+
+pub struct SessionMetrics {
+    pub name: Option<String>,
+    pub version: Option<String>,
+    pub ip: String,
+    pub id: SubscriberId,
+    pub metrics: MySbSessionMetrics,
+}
 
 impl MyServiceBusSession {
     pub fn new(
@@ -40,97 +51,52 @@ impl MyServiceBusSession {
         }
     }
 
-    pub async fn increase_read_size(&self, process_id: i64, read_size: usize) {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].increase_read_size", self.id),
-            )
-            .await;
+    pub async fn increase_read_size(&self, read_size: usize) {
         let mut data = self.data.write().await;
-        data.statistic.increase_read_size(read_size).await;
-
-        self.app.exit_lock(process_id).await;
+        data.metrics.increase_read_size(read_size).await;
     }
 
-    pub async fn set_socket_name(
-        &self,
-        process_id: i64,
-        set_socket_name: String,
-        client_version: Option<String>,
-    ) {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].set_socket_name", self.id),
-            )
-            .await;
-
+    pub async fn set_socket_name(&self, set_socket_name: String, client_version: Option<String>) {
         let mut data = self.data.write().await;
         data.name = Some(set_socket_name);
         data.client_version = client_version;
-
-        self.app.exit_lock(process_id).await;
     }
 
-    pub async fn set_protocol_version(&self, process_id: i64, protocol_version: i32) {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].set_protocol_version", self.id),
-            )
-            .await;
-
+    pub async fn set_protocol_version(&self, protocol_version: i32) {
         let mut data = self.data.write().await;
         data.attr.protocol_version = protocol_version;
-
-        self.app.exit_lock(process_id).await;
     }
 
-    pub async fn update_packet_versions(
-        &self,
-        process_id: i64,
-        packet_versions: &HashMap<u8, i32>,
-    ) {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].update_packet_versions", self.id),
-            )
-            .await;
+    pub async fn update_packet_versions(&self, packet_versions: &HashMap<u8, i32>) {
         let mut data = self.data.write().await;
         data.attr.versions.update(packet_versions);
-        self.app.exit_lock(process_id).await;
     }
 
-    pub async fn one_second_tick(&self, process_id: i64) {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].one_second_tick", self.id),
-            )
-            .await;
+    pub async fn one_second_tick(&self) {
         let mut write_access = self.data.write().await;
-        write_access.statistic.one_second_tick();
-
-        self.app.exit_lock(process_id).await;
+        write_access.metrics.one_second_tick();
     }
 
-    pub async fn get_name(&self, process_id: i64) -> String {
-        self.app
-            .enter_lock(process_id, format!("MySbSession[{}].get_name", self.id))
-            .await;
-
+    pub async fn get_name(&self) -> String {
         let data = self.data.read().await;
 
         let result = match &data.name {
             Some(name) => format!("{} {}", name, self.ip),
             None => self.ip.clone(),
         };
-
-        self.app.exit_lock(process_id).await;
-
         result
+    }
+
+    pub async fn get_metrics(&self) -> SessionMetrics {
+        let read_access = self.data.read().await;
+
+        SessionMetrics {
+            id: self.id,
+            name: read_access.get_name(),
+            version: read_access.get_version(),
+            ip: self.ip.to_string(),
+            metrics: read_access.metrics.clone(),
+        }
     }
 
     async fn serialize_tcp_contract(&self, tcp_contract: TcpContract) -> Vec<u8> {
@@ -138,60 +104,45 @@ impl MyServiceBusSession {
         tcp_contract.serialize(&data.attr)
     }
 
-    pub async fn send(
-        &self,
-        process_id: i64,
-        tcp_contract: TcpContract,
-    ) -> Result<(), SessionOperationError> {
+    pub async fn send(&self, tcp_contract: TcpContract) -> Result<(), SessionOperationError> {
         let buf = self.serialize_tcp_contract(tcp_contract).await;
-
-        self.app
-            .enter_lock(process_id, format!("MySbSession[{}].send", self.id))
-            .await;
 
         let mut write_access = self.data.write().await;
         let result = write_access.send(&buf).await;
-        self.app.exit_lock(process_id).await;
 
         result
     }
 
-    pub async fn add_publisher(&self, process_id: i64, topic: &str) {
-        self.app
-            .enter_lock(
-                process_id,
-                format!("MySbSession[{}].add_publisher", self.id),
-            )
-            .await;
+    pub async fn add_publisher(&self, topic: &str) {
         let mut data = self.data.write().await;
 
-        data.statistic
+        data.metrics
             .publishers
             .insert(topic.to_string(), BADGE_HIGHLIGHT_TIMOUT);
 
-        if !data.statistic.publishers.contains_key(topic) {
-            data.statistic
+        if !data.metrics.publishers.contains_key(topic) {
+            data.metrics
                 .publishers
                 .insert(topic.to_string(), BADGE_HIGHLIGHT_TIMOUT);
         }
-
-        self.app.exit_lock(process_id).await;
     }
 
-    pub async fn disconnect(&self, process_id: i64) -> Result<ConnectedState, ()> {
-        self.app
-            .enter_lock(process_id, format!("MySbSession[{}].disconnect", self.id))
-            .await;
-
+    pub async fn disconnect(&self) -> Result<ConnectedState, ()> {
         let mut write_access = self.data.write().await;
 
         let result = write_access.disconnect().await;
 
-        self.app.exit_lock(process_id).await;
-
         match result {
             Some(state) => Ok(state),
             None => Err(()),
+        }
+    }
+
+    pub async fn get_packet_and_protocol_version(&self, packet: u8) -> PacketProtVer {
+        let read_access = self.data.read().await;
+        PacketProtVer {
+            packet_version: read_access.attr.versions.get_packet_version(packet),
+            protocol_version: read_access.attr.protocol_version,
         }
     }
 }

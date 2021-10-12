@@ -9,8 +9,6 @@ pub async fn delete(app: &AppContext, ctx: HttpContext) -> Result<HttpOkResult, 
 
     let id: i64 = query.get_query_required_parameter("id")?;
 
-    let process_id = app.process_id_generator.get_process_id().await;
-
     let session = app.sessions.remove(&id).await;
 
     if session.is_none() {
@@ -20,7 +18,7 @@ pub async fn delete(app: &AppContext, ctx: HttpContext) -> Result<HttpOkResult, 
         )));
     }
 
-    operations::sessions::disconnect(process_id, app, session.unwrap()).await;
+    operations::sessions::disconnect(app, session.unwrap()).await;
 
     let result = HttpOkResult::Text {
         text: "Session is removed".to_string(),

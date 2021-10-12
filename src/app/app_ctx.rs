@@ -1,7 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use my_service_bus_shared::debug::{LockItem, Locks};
-use tokio::sync::Mutex;
+use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     persistence::{MessagesPagesRepo, TopcsAndQueuesSnapshotRepo},
@@ -12,7 +11,10 @@ use crate::{
 };
 
 use super::{
-    logs::Logs, process_id_generator::ProcessIdGenerator, prometheus_metrics::PrometheusMetrics,
+    locks_registry::{LockEvent, LocksRegistry},
+    logs::Logs,
+    process_id_generator::ProcessIdGenerator,
+    prometheus_metrics::PrometheusMetrics,
     GlobalStates,
 };
 
@@ -34,15 +36,15 @@ pub struct AppContext {
     pub empty_queue_gc_timeout: Duration,
     pub prometheus: PrometheusMetrics,
 
-    pub locks: Mutex<Locks>,
-
     pub process_id_generator: ProcessIdGenerator,
 
     pub delivery_timeout: Option<Duration>,
+
+    pub locks: Arc<LocksRegistry>,
 }
 
 impl AppContext {
-    pub fn new(settings: &SettingsModel) -> Self {
+    pub fn new(settings: &SettingsModel, locks_sender: UnboundedSender<LockEvent>) -> Self {
         let logs = Arc::new(Logs::new());
         Self {
             states: GlobalStates::new(),
@@ -56,24 +58,10 @@ impl AppContext {
             empty_queue_gc_timeout: settings.queue_gc_timeout,
             subscriber_id_generator: SubscriberIdGenerator::new(),
             prometheus: PrometheusMetrics::new(),
-            locks: Mutex::new(Locks::new()),
+
             process_id_generator: ProcessIdGenerator::new(),
             delivery_timeout: settings.delivery_timeout,
+            locks: Arc::new(LocksRegistry::new(locks_sender)),
         }
-    }
-
-    pub async fn enter_lock(&self, process_id: i64, lock_name: String) {
-        let mut write_access = self.locks.lock().await;
-        write_access.new_lock(process_id, lock_name)
-    }
-
-    pub async fn exit_lock(&self, id: i64) {
-        let mut write_access = self.locks.lock().await;
-        write_access.exit(id);
-    }
-
-    pub async fn get_locks(&self) -> Vec<LockItem> {
-        let read_access = self.locks.lock().await;
-        read_access.get_all()
     }
 }

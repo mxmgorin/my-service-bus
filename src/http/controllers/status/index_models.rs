@@ -24,7 +24,7 @@ pub struct StatusJsonResult {
 }
 
 impl StatusJsonResult {
-    pub async fn new(app: &AppContext, process_id: i64) -> Self {
+    pub async fn new(app: &AppContext) -> Self {
         let all_topics = app.topic_list.get_all().await;
 
         let queues_as_hashmap = get_queues_as_hashmap(&all_topics).await;
@@ -37,7 +37,7 @@ impl StatusJsonResult {
 
         let queues = QueuesJsonResult::new(&queues_as_hashmap).await;
 
-        let sessions = SessionsJsonResult::new(app, process_id, &queues_as_hashmap).await;
+        let sessions = SessionsJsonResult::new(app, &queues_as_hashmap).await;
 
         Self {
             topics,

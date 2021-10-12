@@ -54,10 +54,7 @@ pub async fn create(
     let form_data = ctx.get_form_data().await;
     let topics_id = form_data.get_query_required_string_parameter("topicId")?;
 
-    let process_id = app.process_id_generator.get_process_id().await;
-
-    crate::operations::publisher::create_topic_if_not_exists(process_id, app, None, topics_id)
-        .await;
+    crate::operations::publisher::create_topic_if_not_exists(app, None, topics_id).await;
 
     let result = HttpOkResult::Text {
         text: "Topic is created".to_string(),

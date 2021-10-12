@@ -15,7 +15,6 @@ use crate::{
 use super::OperationFailResult;
 
 pub async fn create_topic_if_not_exists(
-    process_id: i64,
     app: Arc<AppContext>,
     session: Option<&MyServiceBusSession>,
     topic_id: &str,
@@ -24,7 +23,7 @@ pub async fn create_topic_if_not_exists(
     tokio::task::spawn(crate::timers::persist::sync_topics_and_queues(app));
 
     if let Some(session) = session {
-        session.add_publisher(process_id, topic_id).await;
+        session.add_publisher(topic_id).await;
     }
 
     return topic;

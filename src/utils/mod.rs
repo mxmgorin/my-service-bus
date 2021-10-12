@@ -3,6 +3,7 @@ mod from_str;
 
 mod lazy_object;
 
+pub mod rw_locks;
 mod stop_watch;
 mod string_builder;
 

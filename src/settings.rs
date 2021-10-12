@@ -62,7 +62,7 @@ pub async fn read() -> SettingsModel {
         }
     }
 
-    let result: SettingsModelJson = serde_yaml::from_slice(file_content.as_slice()).unwrap();
+    let result: SettingsModelJson = serde_yaml::from_slice(&file_content).unwrap();
 
     result.into()
 }

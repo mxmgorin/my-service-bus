@@ -44,8 +44,6 @@ pub async fn kick_them(app: Arc<AppContext>, delivery_timeout_duration: Duration
 async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
     let topics = app.topic_list.get_all().await;
 
-    let process_id = app.process_id_generator.get_process_id().await;
-
     for topic in topics {
         let queues = topic.get_all_queues().await;
 
@@ -63,19 +61,15 @@ async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
                             "Dead subscribers detector".to_string(),
                             format!(
                                 "Kicking Connection {} with dead subscriber {}",
-                                dead_subscriber.session.get_name(process_id).await,
+                                dead_subscriber.session.get_name().await,
                                 dead_subscriber.subscriber_id
                             ),
                             Some(format!("{:?}", dead_subscriber.duration)),
                         )
                         .await;
 
-                    crate::operations::sessions::disconnect(
-                        process_id,
-                        app.as_ref(),
-                        dead_subscriber.session,
-                    )
-                    .await;
+                    crate::operations::sessions::disconnect(app.as_ref(), dead_subscriber.session)
+                        .await;
                 }
             }
         }

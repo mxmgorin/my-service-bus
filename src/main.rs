@@ -29,9 +29,16 @@ pub mod persistence_grpc {
 #[tokio::main]
 async fn main() {
     let settings = crate::settings::read().await;
-    let app = Arc::new(AppContext::new(&settings));
+
+    let (locks_sender, locks_reseiver) = tokio::sync::mpsc::unbounded_channel();
+    let app = Arc::new(AppContext::new(&settings, locks_sender));
 
     let mut tasks = Vec::new();
+
+    tasks.push(tokio::task::spawn(crate::app::locks_registry::start_loop(
+        app.locks.locks.clone(),
+        locks_reseiver,
+    )));
 
     tasks.push(tokio::task::spawn(crate::operations::initialization::init(
         app.clone(),

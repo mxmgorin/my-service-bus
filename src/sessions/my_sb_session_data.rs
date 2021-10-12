@@ -22,7 +22,7 @@ pub struct MyServiceBusSessionData {
 
     pub attr: ConnectionAttributes,
 
-    pub statistic: MySbSessionMetrics,
+    pub metrics: MySbSessionMetrics,
 
     pub app: Arc<AppContext>,
 
@@ -37,7 +37,7 @@ impl MyServiceBusSessionData {
             client_version: None,
             connected_state: Some(connected_state),
             attr: ConnectionAttributes::new(),
-            statistic: MySbSessionMetrics::new(),
+            metrics: MySbSessionMetrics::new(),
             app,
             logged_send_error_on_disconnected: 0,
         }
@@ -78,7 +78,7 @@ impl MyServiceBusSessionData {
                 self.name, err
             )));
         } else {
-            self.statistic.increase_written_size(buf.len()).await;
+            self.metrics.increase_written_size(buf.len()).await;
         }
 
         Ok(())
@@ -93,7 +93,7 @@ impl MyServiceBusSessionData {
         }
 
         let mut connected_state = connected_state.unwrap();
-        self.statistic.disconnected = true;
+        self.metrics.disconnected = true;
 
         let result = connected_state.tcp_stream.shutdown().await;
 
