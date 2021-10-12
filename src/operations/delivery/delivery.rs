@@ -94,6 +94,10 @@ async fn deliver_to_queue_spawned(
         }
 
         if send_packet {
+            if topic.topic_id == "bidask" {
+                println!("Sending bidask {:?}", tcp_contract);
+            }
+
             crate::operations::sessions::send_package(
                 app.as_ref(),
                 subscriber_data.session.as_ref(),
