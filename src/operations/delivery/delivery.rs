@@ -33,6 +33,8 @@ async fn deliver_to_queue_spawned(
     topic: Arc<Topic>,
     queue: Arc<TopicQueue>,
 ) {
+    let _lock = queue.delivery_lock.lock().await;
+
     let result =
         try_to_deliver_to_queue(process_id, app.as_ref(), topic.as_ref(), queue.as_ref()).await;
 
@@ -111,8 +113,6 @@ async fn try_to_deliver_to_queue(
     let mut payloads_collector = DeliveryPayloadsCollector::new();
 
     loop {
-        queue.delivery_lock.lock().await;
-
         let compile_result: CompileResult;
 
         {
