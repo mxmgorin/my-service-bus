@@ -29,7 +29,7 @@ pub async fn compile_messages_delivery_contract(
     result.push(tcp_message_id::NEW_MESSAGE);
     serialize_pascal_string(&mut result, topic.topic_id.as_str());
     serialize_pascal_string(&mut result, queue_id);
-    serialize_long(&mut result, subscriber_id, &versions);
+    serialize_i64(&mut result, subscriber_id);
 
     serialize_messages(&mut result, &versions, messages_to_deliver).await;
 
