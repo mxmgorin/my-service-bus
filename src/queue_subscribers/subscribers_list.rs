@@ -240,7 +240,7 @@ impl SubscribersList {
         self.remove(subscriber_id)
     }
 
-    pub fn find_dead_on_delivery_subscribers(
+    pub fn find_subscribers_dead_on_delivery(
         &self,
         max_delivery_duration: Duration,
     ) -> Option<Vec<DeadSubscriber>> {

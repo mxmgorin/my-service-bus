@@ -128,7 +128,7 @@ impl TopicQueue {
         result
     }
 
-    pub async fn get_dead_on_delivery_subscribers(
+    pub async fn find_subscribers_dead_on_delivery(
         &self,
         max_delivery_duration: Duration,
     ) -> Option<Vec<DeadSubscriber>> {
@@ -137,7 +137,7 @@ impl TopicQueue {
 
         let dead_on_delivery = write_access
             .subscribers
-            .find_dead_on_delivery_subscribers(max_delivery_duration);
+            .find_subscribers_dead_on_delivery(max_delivery_duration);
 
         if let Some(dead_on_delivery) = dead_on_delivery {
             result.extend(dead_on_delivery);

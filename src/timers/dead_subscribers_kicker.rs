@@ -51,7 +51,7 @@ async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
 
         for queue in queues {
             let dead_subscribers = queue
-                .get_dead_on_delivery_subscribers(delivery_timeout_duration)
+                .find_subscribers_dead_on_delivery(delivery_timeout_duration)
                 .await;
 
             if let Some(dead_subscribers) = dead_subscribers {
