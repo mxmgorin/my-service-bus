@@ -95,7 +95,9 @@ async fn deliver_to_queue_spawned(
 
         if send_packet {
             if topic.topic_id == "bidask" {
+                println!("Sendinf bidask queue: {}", queue.queue_id);
                 println!("Sending bidask {:?}", tcp_contract);
+                println!("--------------")
             }
 
             crate::operations::sessions::send_package(
