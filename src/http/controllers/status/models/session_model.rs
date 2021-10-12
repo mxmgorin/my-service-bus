@@ -13,7 +13,7 @@ use super::session_subscriber_model::SessionSubscriberJsonContract;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionJsonResult {
     pub id: i64,
-    pub name: Option<String>,
+    pub name: String,
     pub ip: String,
     pub version: Option<String>,
     pub connected: String,
@@ -49,7 +49,10 @@ impl SessionJsonResult {
         Self {
             id: session_metrics_data.id,
             ip: session_metrics_data.ip,
-            name: session_metrics_data.name,
+            name: format!(
+                "{:?}[{}]",
+                session_metrics_data.name, session_metrics_data.protocol_version
+            ),
             version: session_metrics_data.version,
             connected: duration_to_string(now.duration_since(session.connected)),
             last_incoming: duration_to_string(

@@ -30,6 +30,7 @@ pub struct SessionMetrics {
     pub ip: String,
     pub id: SubscriberId,
     pub metrics: MySbSessionMetrics,
+    pub protocol_version: i32,
 }
 
 impl MyServiceBusSession {
@@ -96,6 +97,7 @@ impl MyServiceBusSession {
             version: read_access.get_version(),
             ip: self.ip.to_string(),
             metrics: read_access.metrics.clone(),
+            protocol_version: read_access.attr.protocol_version,
         }
     }
 
