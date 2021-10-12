@@ -1,10 +1,15 @@
+use std::time::Duration;
+
 use my_service_bus_shared::{
     date_time::DateTimeAsMicroseconds, queue::TopicQueueType,
     queue_with_intervals::QueueWithIntervals, MessageId,
 };
 use tokio::sync::{Mutex, RwLock};
 
-use crate::{queue_subscribers::SubscriberMetrics, topics::TopicQueueSnapshot};
+use crate::{
+    queue_subscribers::{DeadSubscriber, SubscriberMetrics},
+    topics::TopicQueueSnapshot,
+};
 
 use super::{QueueData, TopicQueueMetrics};
 
@@ -121,5 +126,27 @@ impl TopicQueue {
         result.extend(metrics_vec);
 
         result
+    }
+
+    pub async fn get_dead_on_delivery_subscribers(
+        &self,
+        max_delivery_duration: Duration,
+    ) -> Option<Vec<DeadSubscriber>> {
+        let mut result = Vec::new();
+        let write_access = self.data.write().await;
+
+        let dead_on_delivery = write_access
+            .subscribers
+            .find_dead_on_delivery_subscribers(max_delivery_duration);
+
+        if let Some(dead_on_delivery) = dead_on_delivery {
+            result.extend(dead_on_delivery);
+        }
+
+        if result.len() > 0 {
+            return Some(result);
+        }
+
+        return None;
     }
 }

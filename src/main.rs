@@ -59,6 +59,12 @@ async fn main() {
         app.clone(),
     )));
 
+    if let Some(delivery_timeout) = app.delivery_timeout {
+        tasks.push(tokio::task::spawn(
+            crate::timers::dead_subscribers_kicker::start(app.clone(), delivery_timeout),
+        ));
+    }
+
     signal_hook::flag::register(
         signal_hook::consts::SIGTERM,
         app.states.shutting_down.clone(),

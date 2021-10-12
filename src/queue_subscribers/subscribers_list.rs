@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use my_service_bus_shared::queue::TopicQueueType;
 
@@ -12,6 +12,22 @@ use super::{QueueSubscriber, SubscriberId, SubscriberMetrics};
 pub enum SubscribersData {
     MultiSubscribers(HashMap<SubscriberId, QueueSubscriber>),
     SingleSubscriber(Option<QueueSubscriber>),
+}
+
+pub struct DeadSubscriber {
+    pub subscriber_id: SubscriberId,
+    pub session: Arc<MyServiceBusSession>,
+    pub duration: Duration,
+}
+
+impl DeadSubscriber {
+    pub fn new(subscriber: &QueueSubscriber, duration: Duration) -> Self {
+        Self {
+            session: subscriber.session.clone(),
+            subscriber_id: subscriber.id,
+            duration,
+        }
+    }
 }
 
 pub struct SubscribersList {
@@ -222,5 +238,38 @@ impl SubscribersList {
     ) -> Option<QueueSubscriber> {
         let subscriber_id = self.resolve_subscriber_id_by_connection_id(connection_id)?;
         self.remove(subscriber_id)
+    }
+
+    pub fn find_dead_on_delivery_subscribers(
+        &self,
+        max_delivery_duration: Duration,
+    ) -> Option<Vec<DeadSubscriber>> {
+        match &self.data {
+            SubscribersData::MultiSubscribers(subscribers) => {
+                let mut result = Vec::new();
+
+                for subscriber in subscribers.values() {
+                    if let Some(duration) = subscriber.is_dead_on_delivery(max_delivery_duration) {
+                        result.push(DeadSubscriber::new(subscriber, duration));
+                    }
+                }
+
+                if result.len() > 0 {
+                    return Some(result);
+                }
+
+                return None;
+            }
+            SubscribersData::SingleSubscriber(state) => match state {
+                Some(subscriber) => {
+                    if let Some(duration) = subscriber.is_dead_on_delivery(max_delivery_duration) {
+                        return Some(vec![DeadSubscriber::new(subscriber, duration)]);
+                    }
+
+                    return None;
+                }
+                None => return None,
+            },
+        }
     }
 }

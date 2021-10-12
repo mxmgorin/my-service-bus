@@ -37,6 +37,8 @@ pub struct AppContext {
     pub locks: Mutex<Locks>,
 
     pub process_id_generator: ProcessIdGenerator,
+
+    pub delivery_timeout: Option<Duration>,
 }
 
 impl AppContext {
@@ -56,6 +58,7 @@ impl AppContext {
             prometheus: PrometheusMetrics::new(),
             locks: Mutex::new(Locks::new()),
             process_id_generator: ProcessIdGenerator::new(),
+            delivery_timeout: settings.delivery_timeout,
         }
     }
 
