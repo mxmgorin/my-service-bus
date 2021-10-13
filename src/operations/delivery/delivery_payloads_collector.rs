@@ -19,7 +19,6 @@ impl DeliveryPayloadsCollector {
     }
 
     pub fn set_current(&mut self, session: DeliverPayloadBySubscriber) {
-        self.complete();
         self.current_subscriber = Some(session);
     }
 
