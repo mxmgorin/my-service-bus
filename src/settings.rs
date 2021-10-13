@@ -20,6 +20,9 @@ pub struct SettingsModelJson {
 
     #[serde(rename = "MaxDeliverySize")]
     pub max_delivery_size: usize,
+
+    #[serde(rename = "DeliveryTimeout")]
+    pub delivery_timeout: Option<String>,
 }
 
 pub struct SettingsModel {
@@ -29,6 +32,8 @@ pub struct SettingsModel {
     pub debug_mode: bool,
 
     pub max_delivery_size: usize,
+
+    pub delivery_timeout: Option<Duration>,
 }
 
 pub async fn read() -> SettingsModel {
@@ -57,20 +62,20 @@ pub async fn read() -> SettingsModel {
         }
     }
 
-    let result: SettingsModelJson = serde_yaml::from_slice(file_content.as_slice()).unwrap();
+    let result: SettingsModelJson = serde_yaml::from_slice(&file_content).unwrap();
 
     result.into()
 }
 
-#[cfg(target_os = "windows")] 
-fn get_settings_filename() -> String{
+#[cfg(target_os = "windows")]
+fn get_settings_filename() -> String {
     let home_path = env!("HOME");
     let filename = format!("{}\\{}", home_path, ".myservicebus");
     filename
 }
 
-#[cfg(not(target_os = "windows"))] 
-fn get_settings_filename() -> String{
+#[cfg(not(target_os = "windows"))]
+fn get_settings_filename() -> String {
     let home_path = env!("HOME");
     let filename = format!("{}/{}", home_path, ".myservicebus");
     filename
@@ -83,12 +88,32 @@ impl Into<SettingsModel> for SettingsModelJson {
         let eventually_persistence_delay =
             Duration::from_str(self.eventually_persistence_delay.as_str()).unwrap();
 
+        let delivery_timeout = if let Some(src) = self.delivery_timeout {
+            println!("Delivery timeout is set {}", src);
+
+            let timeout_duration = Duration::from_str(src.as_str());
+
+            if let Err(err) = timeout_duration {
+                panic!(
+                    "Can not parse Delivery Timeout value '{}'. Reason: {}",
+                    src, err
+                );
+            }
+            Some(timeout_duration.unwrap())
+        } else {
+            println!(
+                "Delivery timeout is disabled. To enable please specify DeliveryTimeout: hh:mm:ss"
+            );
+            None
+        };
+
         SettingsModel {
             persistence_grpc_url: self.persistence_grpc_url,
             debug_mode: self.debug_mode,
             queue_gc_timeout,
             eventually_persistence_delay,
             max_delivery_size: self.max_delivery_size,
+            delivery_timeout,
         }
     }
 }

@@ -51,8 +51,7 @@ pub async fn start(app: Arc<AppContext>) {
 }
 
 async fn tick_sessions(app: Arc<AppContext>) {
-    let process_id = app.process_id_generator.get_process_id().await;
-    app.sessions.one_second_tick(process_id).await;
+    app.sessions.one_second_tick().await;
 }
 
 async fn tick_topics(app: Arc<AppContext>) {

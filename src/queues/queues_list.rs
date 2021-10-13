@@ -145,12 +145,9 @@ impl TopicQueuesList {
         let queues = self.get_queues().await;
 
         for queue in queues {
-            let mut queue_read_access = queue.data.write().await;
-
-            let remove_result = queue_read_access
-                .subscribers
-                .remove_by_connection_id(connection_id);
-
+            let remove_result = queue
+                .remove_subscribers_by_connection_id(connection_id)
+                .await;
             if let Some(sub) = remove_result {
                 result.push(sub);
             }

@@ -23,13 +23,11 @@ impl DeliverPayloadBySubscriber {
     }
     pub async fn compile_tcp_packet(
         &self,
-        process_id: i64,
         app: &AppContext,
         topic: &Topic,
         queue_id: &str,
     ) -> TcpContract {
         crate::tcp::tcp_contracts::compile_messages_delivery_contract(
-            process_id,
             app,
             &self.messages,
             topic,

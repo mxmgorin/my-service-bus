@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use my_service_bus_shared::queue::TopicQueueType;
 
@@ -12,6 +12,22 @@ use super::{QueueSubscriber, SubscriberId, SubscriberMetrics};
 pub enum SubscribersData {
     MultiSubscribers(HashMap<SubscriberId, QueueSubscriber>),
     SingleSubscriber(Option<QueueSubscriber>),
+}
+
+pub struct DeadSubscriber {
+    pub subscriber_id: SubscriberId,
+    pub session: Arc<MyServiceBusSession>,
+    pub duration: Duration,
+}
+
+impl DeadSubscriber {
+    pub fn new(subscriber: &QueueSubscriber, duration: Duration) -> Self {
+        Self {
+            session: subscriber.session.clone(),
+            subscriber_id: subscriber.id,
+            duration,
+        }
+    }
 }
 
 pub struct SubscribersList {
@@ -75,23 +91,21 @@ impl SubscribersList {
         &mut self,
         subscriber_id: SubscriberId,
         messages_bucket: MessagesBucket,
-    ) {
-        let subscriber = self.get_by_id_mut(subscriber_id).expect(
-            format!(
-                "Can not set messages on delivery . Subscriber {} is not found",
-                subscriber_id
-            )
-            .as_str(),
-        );
+    ) -> Option<MessagesBucket> {
+        let subscriber_result = self.get_by_id_mut(subscriber_id);
 
-        subscriber.set_messages_on_delivery(messages_bucket);
-        subscriber.metrics.set_started_delivery();
+        if let Some(subscriber) = subscriber_result {
+            subscriber.set_messages_on_delivery(messages_bucket);
+            subscriber.metrics.set_started_delivery();
+            return None;
+        } else {
+            return Some(messages_bucket);
+        }
     }
 
     pub fn subscribe(
         &mut self,
         subscriber_id: SubscriberId,
-        connection_id: ConnectionId,
         topic: Arc<Topic>,
         queue: Arc<TopicQueue>,
         session: Arc<MyServiceBusSession>,
@@ -102,8 +116,7 @@ impl SubscribersList {
                     panic!("Can not add subscriber with {}. Subscriber with the same ID is already in the multilist", subscriber_id);
                 }
 
-                let subscriber =
-                    QueueSubscriber::new(subscriber_id, connection_id, topic, queue, session);
+                let subscriber = QueueSubscriber::new(subscriber_id, topic, queue, session);
 
                 hash_map.insert(subscriber_id, subscriber);
 
@@ -116,13 +129,8 @@ impl SubscribersList {
                     }
                 }
 
-                let mut old_subscriber = Some(QueueSubscriber::new(
-                    subscriber_id,
-                    connection_id,
-                    topic,
-                    queue,
-                    session,
-                ));
+                let mut old_subscriber =
+                    Some(QueueSubscriber::new(subscriber_id, topic, queue, session));
 
                 std::mem::swap(&mut old_subscriber, single);
 
@@ -223,5 +231,38 @@ impl SubscribersList {
     ) -> Option<QueueSubscriber> {
         let subscriber_id = self.resolve_subscriber_id_by_connection_id(connection_id)?;
         self.remove(subscriber_id)
+    }
+
+    pub fn find_subscribers_dead_on_delivery(
+        &self,
+        max_delivery_duration: Duration,
+    ) -> Option<Vec<DeadSubscriber>> {
+        match &self.data {
+            SubscribersData::MultiSubscribers(subscribers) => {
+                let mut result = Vec::new();
+
+                for subscriber in subscribers.values() {
+                    if let Some(duration) = subscriber.is_dead_on_delivery(max_delivery_duration) {
+                        result.push(DeadSubscriber::new(subscriber, duration));
+                    }
+                }
+
+                if result.len() > 0 {
+                    return Some(result);
+                }
+
+                return None;
+            }
+            SubscribersData::SingleSubscriber(state) => match state {
+                Some(subscriber) => {
+                    if let Some(duration) = subscriber.is_dead_on_delivery(max_delivery_duration) {
+                        return Some(vec![DeadSubscriber::new(subscriber, duration)]);
+                    }
+
+                    return None;
+                }
+                None => return None,
+            },
+        }
     }
 }

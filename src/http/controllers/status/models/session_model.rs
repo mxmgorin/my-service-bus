@@ -13,7 +13,7 @@ use super::session_subscriber_model::SessionSubscriberJsonContract;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionJsonResult {
     pub id: i64,
-    pub name: Option<String>,
+    pub name: String,
     pub ip: String,
     pub version: Option<String>,
     pub connected: String,
@@ -33,43 +33,39 @@ pub struct SessionJsonResult {
 }
 
 impl SessionJsonResult {
-    pub async fn new(
-        subscribers: &[SubscriberMetrics],
-        session: &MyServiceBusSession,
-        process_id: i64,
-    ) -> Self {
-        session
-            .app
-            .enter_lock(process_id, "MySbSession.SessionJsonResult.new".to_string())
-            .await;
-        let session_read = session.data.read().await;
-
+    pub async fn new(subscribers: &[SubscriberMetrics], session: &MyServiceBusSession) -> Self {
         let now = DateTimeAsMicroseconds::now();
 
         let mut subscribers_json = Vec::new();
 
-        for subscriber in subscribers {
-            let item = SessionSubscriberJsonContract::new(subscriber);
+        for metrics in subscribers {
+            let item = SessionSubscriberJsonContract::new(metrics);
 
             subscribers_json.push(item);
         }
 
-        session.app.exit_lock(process_id).await;
+        let session_metrics_data = session.get_metrics().await;
+
+        let name = if let Some(name) = session_metrics_data.name {
+            name
+        } else {
+            "???".to_string()
+        };
 
         Self {
-            id: session.id,
-            ip: session.ip.to_string(),
-            name: session_read.get_name(),
-            version: session_read.get_version(),
+            id: session_metrics_data.id,
+            ip: session_metrics_data.ip,
+            name: format!("{}[{}]", name, session_metrics_data.protocol_version),
+            version: session_metrics_data.version,
             connected: duration_to_string(now.duration_since(session.connected)),
             last_incoming: duration_to_string(
                 now.duration_since(session.last_incoming_package.as_date_time()),
             ),
-            read_size: session_read.statistic.read_size,
-            written_size: session_read.statistic.written_size,
-            read_per_sec: session_read.statistic.read_per_sec,
-            written_per_sec: session_read.statistic.written_per_sec,
-            publishers: session_read.statistic.publishers.clone(),
+            read_size: session_metrics_data.metrics.read_size,
+            written_size: session_metrics_data.metrics.written_size,
+            read_per_sec: session_metrics_data.metrics.read_per_sec,
+            written_per_sec: session_metrics_data.metrics.written_per_sec,
+            publishers: session_metrics_data.metrics.publishers.clone(),
             subscribers: subscribers_json,
         }
     }
@@ -85,7 +81,6 @@ pub struct SessionsJsonResult {
 impl SessionsJsonResult {
     pub async fn new(
         app: &AppContext,
-        process_id: i64,
         queues_as_hashmap: &HashMap<String, (usize, Vec<Arc<TopicQueue>>)>,
     ) -> SessionsJsonResult {
         let subscribers_by_connection_id =
@@ -105,7 +100,7 @@ impl SessionsJsonResult {
                 None => &empty,
             };
 
-            let session = SessionJsonResult::new(subscribers, session.as_ref(), process_id).await;
+            let session = SessionJsonResult::new(subscribers, session.as_ref()).await;
             items.push(session);
         }
 

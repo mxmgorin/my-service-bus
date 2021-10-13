@@ -21,23 +21,21 @@ pub async fn on_disconnect(
 }
 
 async fn on_disconnect_process(app: Arc<AppContext>, my_sb_session: Arc<MyServiceBusSession>) {
-    let process_id = app.process_id_generator.get_process_id().await;
-    crate::operations::sessions::disconnect(process_id, app.as_ref(), my_sb_session).await;
+    crate::operations::sessions::disconnect(app.as_ref(), my_sb_session).await;
 }
 
 pub async fn handle_incoming_payload(
     app: Arc<AppContext>,
     tcp_contract: TcpContract,
-    session: &MyServiceBusSession,
+    session: Arc<MyServiceBusSession>,
     attr: &mut ConnectionAttributes,
     process_id: i64,
 ) -> Result<(), MySbSocketError> {
     match tcp_contract {
         TcpContract::Ping {} => {
             crate::operations::sessions::send_package(
-                process_id,
                 app.as_ref(),
-                session,
+                session.as_ref(),
                 TcpContract::Pong,
             )
             .await;
@@ -54,19 +52,13 @@ pub async fn handle_incoming_payload(
 
             if splited.len() == 2 {
                 session
-                    .set_socket_name(
-                        process_id,
-                        splited[0].to_string(),
-                        Some(splited[1].to_string()),
-                    )
+                    .set_socket_name(splited[0].to_string(), Some(splited[1].to_string()))
                     .await;
             } else {
-                session.set_socket_name(process_id, name, None).await;
+                session.set_socket_name(name, None).await;
             }
 
-            session
-                .set_protocol_version(process_id, protocol_version)
-                .await;
+            session.set_protocol_version(protocol_version).await;
             Ok(())
         }
         TcpContract::Publish {
@@ -75,7 +67,7 @@ pub async fn handle_incoming_payload(
             persist_immediately,
             data_to_publish,
         } => {
-            session.add_publisher(process_id, topic_id.as_str()).await;
+            session.add_publisher(topic_id.as_str()).await;
 
             let result = operations::publisher::publish(
                 process_id,
@@ -88,9 +80,8 @@ pub async fn handle_incoming_payload(
 
             if let Err(err) = result {
                 crate::operations::sessions::send_package(
-                    process_id,
                     app.as_ref(),
-                    session,
+                    session.as_ref(),
                     TcpContract::Reject {
                         message: format!("{:?}", err),
                     },
@@ -98,9 +89,8 @@ pub async fn handle_incoming_payload(
                 .await;
             } else {
                 crate::operations::sessions::send_package(
-                    process_id,
                     app.as_ref(),
-                    session,
+                    session.as_ref(),
                     TcpContract::PublishResponse { request_id },
                 )
                 .await;
@@ -124,7 +114,7 @@ pub async fn handle_incoming_payload(
                 topic_id.as_str(),
                 queue_id.as_str(),
                 queue_type,
-                session,
+                session.clone(),
             )
             .await?;
             Ok(())
@@ -157,9 +147,8 @@ pub async fn handle_incoming_payload(
         }
         TcpContract::CreateTopicIfNotExists { topic_id } => {
             operations::publisher::create_topic_if_not_exists(
-                process_id,
                 app,
-                Some(session),
+                Some(session.as_ref()),
                 topic_id.as_str(),
             )
             .await;
@@ -186,9 +175,7 @@ pub async fn handle_incoming_payload(
         }
         TcpContract::PacketVersions { packet_versions } => {
             attr.versions.update(&packet_versions);
-            session
-                .update_packet_versions(process_id, &packet_versions)
-                .await;
+            session.update_packet_versions(&packet_versions).await;
             Ok(())
         }
         TcpContract::Reject { message: _ } => {

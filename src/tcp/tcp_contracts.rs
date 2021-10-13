@@ -9,7 +9,6 @@ use crate::{
 use my_service_bus_tcp_shared::{common_serializers::*, deserializers::serialize_long};
 
 pub async fn compile_messages_delivery_contract(
-    process_id: i64,
     app: &AppContext,
     messages_to_deliver: &MessagesBucket,
     topic: &Topic,
@@ -20,7 +19,7 @@ pub async fn compile_messages_delivery_contract(
 
     let versions = app
         .sessions
-        .get_packet_and_protocol_version(process_id, subscriber_id, tcp_message_id::NEW_MESSAGE)
+        .get_packet_and_protocol_version(subscriber_id, tcp_message_id::NEW_MESSAGE)
         .await;
 
     if queue_id == TEST_QUEUE {
@@ -30,7 +29,7 @@ pub async fn compile_messages_delivery_contract(
     result.push(tcp_message_id::NEW_MESSAGE);
     serialize_pascal_string(&mut result, topic.topic_id.as_str());
     serialize_pascal_string(&mut result, queue_id);
-    serialize_long(&mut result, subscriber_id, &versions);
+    serialize_i64(&mut result, subscriber_id);
 
     serialize_messages(&mut result, &versions, messages_to_deliver).await;
 

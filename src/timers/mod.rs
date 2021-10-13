@@ -1,4 +1,5 @@
 pub mod by_topic;
+pub mod dead_subscribers_kicker;
 pub mod metrics_timer;
 pub mod persist;
 

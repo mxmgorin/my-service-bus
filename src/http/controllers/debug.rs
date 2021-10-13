@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub async fn get(app: &AppContext) -> Result<HttpOkResult, HttpFailResult> {
-    let logs = app.get_locks().await;
+    let logs = app.locks.get_locks().await;
 
     let text = compile_result(&logs);
 

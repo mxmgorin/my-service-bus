@@ -1,13 +1,21 @@
+use std::time::Duration;
+
 use my_service_bus_shared::{
-    date_time::DateTimeAsMicroseconds, queue::TopicQueueType,
-    queue_with_intervals::QueueWithIntervals, MessageId,
+    date_time::DateTimeAsMicroseconds,
+    queue::TopicQueueType,
+    queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
+    MessageId,
 };
 use tokio::sync::{Mutex, RwLock};
 
 use crate::{
+    app::AppContext,
     messages_bucket::MessagesBucket,
-    queue_subscribers::{SubscriberId, SubscriberMetrics},
+    operations::OperationFailResult,
+    queue_subscribers::{DeadSubscriber, QueueSubscriber, SubscriberId, SubscriberMetrics},
+    tcp::tcp_server::ConnectionId,
     topics::TopicQueueSnapshot,
+    utils::rw_locks::RwWriteAccess,
 };
 
 use super::{QueueData, TopicQueueMetrics};
@@ -21,7 +29,7 @@ pub struct TopicQueueGcData {
 pub struct TopicQueue {
     pub topic_id: String,
     pub queue_id: String,
-    pub data: RwLock<QueueData>,
+    data: RwLock<QueueData>,
     pub delivery_lock: Mutex<usize>,
     pub metrics: TopicQueueMetrics,
 }
@@ -115,18 +123,27 @@ impl TopicQueue {
         write_access.subscribers.one_second_tick();
     }
 
-    pub async fn set_messages_on_delivery(
-        &self,
-        subscriber_id: SubscriberId,
-        messages_bucket: MessagesBucket,
-    ) {
-        let mut write_access = self.data.write().await;
-
-        write_access
-            .subscribers
-            .set_messages_on_delivery(subscriber_id, messages_bucket);
+    pub async fn get_write_access<'a>(
+        &'a self,
+        process_id: i64,
+        process: String,
+        app: &AppContext,
+    ) -> RwWriteAccess<'a, QueueData> {
+        let write_access = self.data.write().await;
+        return RwWriteAccess::new(write_access, process_id, process, app.locks.clone());
     }
 
+    /*
+       pub async fn get_read_access<'a>(
+           &'a self,
+           process_id: i64,
+           process: String,
+           app: &AppContext,
+       ) -> RwReadAccess<'a, QueueData> {
+           let read_access = self.data.read().await;
+           return RwReadAccess::new(read_access, process_id, process, app.locks.clone());
+       }
+    */
     pub async fn get_all_subscribers_metrics(&self) -> Vec<SubscriberMetrics> {
         let mut result = Vec::new();
 
@@ -137,5 +154,91 @@ impl TopicQueue {
         result.extend(metrics_vec);
 
         result
+    }
+
+    pub async fn find_subscribers_dead_on_delivery(
+        &self,
+        max_delivery_duration: Duration,
+    ) -> Option<Vec<DeadSubscriber>> {
+        let mut result = Vec::new();
+        let write_access = self.data.write().await;
+
+        let dead_on_delivery = write_access
+            .subscribers
+            .find_subscribers_dead_on_delivery(max_delivery_duration);
+
+        if let Some(dead_on_delivery) = dead_on_delivery {
+            result.extend(dead_on_delivery);
+        }
+
+        if result.len() > 0 {
+            return Some(result);
+        }
+
+        return None;
+    }
+
+    #[inline]
+    pub async fn remove_subscribers_by_connection_id(
+        &self,
+        connection_id: ConnectionId,
+    ) -> Option<QueueSubscriber> {
+        let mut write_access = self.data.write().await;
+
+        write_access
+            .subscribers
+            .remove_by_connection_id(connection_id)
+    }
+
+    pub async fn set_message_id(&self, message_id: MessageId, max_message_id: MessageId) {
+        let mut topic_queue_data = self.data.write().await;
+
+        let mut intervals = Vec::new();
+
+        intervals.push(QueueIndexRange {
+            from_id: message_id,
+            to_id: max_message_id,
+        });
+
+        topic_queue_data.queue.reset(intervals);
+    }
+
+    pub async fn mark_not_delivered(&self, messages_on_delivery: &MessagesBucket) {
+        let mut write_access = self.data.write().await;
+        write_access.mark_not_delivered(messages_on_delivery);
+    }
+
+    pub async fn confirmed_delivered(
+        &self,
+        subscriber_id: SubscriberId,
+    ) -> Result<(), OperationFailResult> {
+        let mut write_access = self.data.write().await;
+        write_access.confirmed_delivered(subscriber_id)
+    }
+
+    pub async fn confirmed_non_delivered(
+        &self,
+        subscriber_id: SubscriberId,
+    ) -> Result<(), OperationFailResult> {
+        let mut write_access = self.data.write().await;
+        write_access.confirmed_non_delivered(subscriber_id)
+    }
+
+    pub async fn confirmed_some_delivered(
+        &self,
+        subscriber_id: SubscriberId,
+        delivered: QueueWithIntervals,
+    ) -> Result<(), OperationFailResult> {
+        let mut write_access = self.data.write().await;
+        write_access.confirmed_some_delivered(subscriber_id, delivered)
+    }
+
+    pub async fn confirmed_some_not_delivered(
+        &self,
+        subscriber_id: SubscriberId,
+        not_delivered: QueueWithIntervals,
+    ) -> Result<(), OperationFailResult> {
+        let mut write_access = self.data.write().await;
+        write_access.confirmed_some_not_delivered(subscriber_id, not_delivered)
     }
 }

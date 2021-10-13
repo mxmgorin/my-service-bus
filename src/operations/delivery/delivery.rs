@@ -33,6 +33,8 @@ async fn deliver_to_queue_spawned(
     topic: Arc<Topic>,
     queue: Arc<TopicQueue>,
 ) {
+    let _lock = queue.delivery_lock.lock().await;
+
     let result =
         try_to_deliver_to_queue(process_id, app.as_ref(), topic.as_ref(), queue.as_ref()).await;
 
@@ -52,25 +54,59 @@ async fn deliver_to_queue_spawned(
 
     for subscriber_data in payloads_collector.subscribers {
         let tcp_contract = subscriber_data
-            .compile_tcp_packet(
-                process_id,
+            .compile_tcp_packet(app.as_ref(), topic.as_ref(), queue.queue_id.as_str())
+            .await;
+
+        let send_packet;
+
+        {
+            let mut queue_write_access = queue
+                .get_write_access(
+                    process_id,
+                    format!(
+                        "deliver_to_queue_spawned[{}/{}]",
+                        queue.topic_id, queue.queue_id
+                    ),
+                    app.as_ref(),
+                )
+                .await;
+
+            let result = queue_write_access
+                .data
+                .subscribers
+                .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages);
+
+            if let Some(messages) = result {
+                let msgs = messages.get_ids();
+                println!(
+                    "Could not find subscriber {} for the {}/{}. Set {} messages back to the queue",
+                    subscriber_data.subscriber_id,
+                    topic.topic_id,
+                    queue_write_access.data.queue_id,
+                    msgs.len()
+                );
+                queue_write_access.data.enqueue_messages(&msgs);
+
+                send_packet = false;
+            } else {
+                send_packet = true;
+            }
+        }
+
+        if send_packet {
+            if topic.topic_id == "bidask" {
+                println!("Sendinf bidask queue: {}", queue.queue_id);
+                println!("Sending bidask {:?}", tcp_contract);
+                println!("--------------")
+            }
+
+            crate::operations::sessions::send_package(
                 app.as_ref(),
-                topic.as_ref(),
-                queue.queue_id.as_str(),
+                subscriber_data.session.as_ref(),
+                tcp_contract,
             )
             .await;
-
-        queue
-            .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages)
-            .await;
-
-        crate::operations::sessions::send_package(
-            process_id,
-            app.as_ref(),
-            subscriber_data.session.as_ref(),
-            tcp_contract,
-        )
-        .await;
+        }
     }
 }
 
@@ -83,29 +119,26 @@ async fn try_to_deliver_to_queue(
     let mut payloads_collector = DeliveryPayloadsCollector::new();
 
     loop {
-        queue.delivery_lock.lock().await;
-
-        app.enter_lock(
-            process_id,
-            format!("deliver_to_queue[{}/{}]", queue.topic_id, queue.queue_id),
-        )
-        .await;
-
         let compile_result: CompileResult;
 
         {
-            let mut queue_write_access = queue.data.write().await;
+            let mut queue_write_access = queue
+                .get_write_access(
+                    process_id,
+                    format!("deliver_to_queue[{}/{}]", queue.topic_id, queue.queue_id),
+                    app,
+                )
+                .await;
 
             compile_result = try_to_complie_next_messages_from_the_queue(
                 app,
                 topic,
-                &mut queue_write_access,
+                &mut queue_write_access.data,
                 &mut payloads_collector,
             )
             .await;
 
-            queue_write_access.update_metrics(&queue.metrics).await;
-            app.exit_lock(process_id).await;
+            queue_write_access.data.update_metrics(&queue.metrics).await;
         }
 
         match compile_result {

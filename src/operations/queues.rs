@@ -1,4 +1,4 @@
-use my_service_bus_shared::queue_with_intervals::QueueIndexRange;
+use my_service_bus_shared::MessageId;
 
 use crate::app::AppContext;
 
@@ -8,7 +8,7 @@ pub async fn set_message_id(
     app: &AppContext,
     topic_id: &str,
     queue_id: &str,
-    message_id: i64,
+    message_id: MessageId,
 ) -> Result<(), OperationFailResult> {
     let topic = app
         .topic_list
@@ -26,18 +26,8 @@ pub async fn set_message_id(
                 queue_id: queue_id.to_string(),
             })?;
 
-    let mut topic_queue_data = topic_queue.data.write().await;
-
     let max_message_id = topic.get_message_id().await;
-
-    let mut intervals = Vec::new();
-
-    intervals.push(QueueIndexRange {
-        from_id: message_id,
-        to_id: max_message_id,
-    });
-
-    topic_queue_data.queue.reset(intervals);
+    topic_queue.set_message_id(message_id, max_message_id).await;
 
     Ok(())
 }
