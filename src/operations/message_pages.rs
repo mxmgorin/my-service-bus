@@ -1,11 +1,8 @@
 use std::time::Duration;
 
-use my_service_bus_shared::page_id::PageId;
+use my_service_bus_shared::{messages_page::MessagesPage, page_id::PageId};
 
-use crate::{
-    app::AppContext, message_pages::MessagesPage, persistence::PersistenceError, topics::Topic,
-    utils::StopWatch,
-};
+use crate::{app::AppContext, persistence::PersistenceError, topics::Topic, utils::StopWatch};
 
 pub async fn restore_page(app: &AppContext, topic: &Topic, page_id: PageId, process: &str) {
     println!(

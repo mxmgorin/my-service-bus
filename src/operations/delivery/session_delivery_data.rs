@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
-use my_service_bus_tcp_shared::TcpContract;
+use my_service_bus_shared::{messages_bucket::MessagesBucket, messages_page::MessagesPage};
 
-use crate::{
-    app::AppContext, messages_bucket::MessagesBucket, queue_subscribers::SubscriberId,
-    sessions::MyServiceBusSession, topics::Topic,
-};
+use crate::{queue_subscribers::SubscriberId, sessions::MyServiceBusSession};
 
 pub struct DeliverPayloadBySubscriber {
     pub messages: MessagesBucket,
@@ -14,26 +11,15 @@ pub struct DeliverPayloadBySubscriber {
 }
 
 impl DeliverPayloadBySubscriber {
-    pub fn new(subscriber_id: SubscriberId, session: Arc<MyServiceBusSession>) -> Self {
+    pub fn new(
+        subscriber_id: SubscriberId,
+        session: Arc<MyServiceBusSession>,
+        page: Arc<MessagesPage>,
+    ) -> Self {
         Self {
             subscriber_id,
             session,
-            messages: MessagesBucket::new(),
+            messages: MessagesBucket::new(page),
         }
-    }
-    pub async fn compile_tcp_packet(
-        &self,
-        app: &AppContext,
-        topic: &Topic,
-        queue_id: &str,
-    ) -> TcpContract {
-        crate::tcp::tcp_contracts::compile_messages_delivery_contract(
-            app,
-            &self.messages,
-            topic,
-            queue_id,
-            self.subscriber_id,
-        )
-        .await
     }
 }

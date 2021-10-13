@@ -20,8 +20,6 @@ use super::{
 
 pub const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-pub const TEST_QUEUE: &str = "test-queue";
-
 pub struct AppContext {
     pub states: GlobalStates,
     pub topic_list: TopicsList,

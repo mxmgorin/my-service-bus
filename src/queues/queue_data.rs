@@ -8,7 +8,6 @@ use my_service_bus_shared::{
 };
 
 use crate::{
-    messages_bucket::MessagesBucket,
     operations::OperationFailResult,
     queue_subscribers::{QueueSubscriber, SubscriberId, SubscribersList},
 };
@@ -152,20 +151,9 @@ impl QueueData {
             .reset_delivery()
             .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
 
-        for msg_id in messages_bucket.get_ids() {
-            self.attempts.remove(&msg_id);
-        }
+        self.process_delivered(&messages_bucket.ids);
 
         Ok(())
-    }
-
-    pub fn mark_not_delivered(&mut self, messages: &MessagesBucket) {
-        for page in messages.pages.values() {
-            for msg_id in page.messages.keys() {
-                self.queue.enqueue(*msg_id);
-                self.add_attempt(*msg_id);
-            }
-        }
     }
 
     pub fn confirmed_non_delivered(
@@ -185,7 +173,7 @@ impl QueueData {
             .reset_delivery()
             .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
 
-        self.mark_not_delivered(&messages_bucket);
+        self.process_not_delivered(&messages_bucket.ids);
 
         Ok(())
     }
@@ -208,36 +196,16 @@ impl QueueData {
             .reset_delivery()
             .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
 
-        for by_page_id in not_delivered.split_by_page_id() {
-            if !messages_bucket.has_page(by_page_id.page_id) {
-                let reason = format!(
-                        "confirmed_some_not_delivered: There is a message in the page {}. But page is not found",
-                        by_page_id.page_id
-                    );
-
-                return Err(OperationFailResult::Other(reason));
-            }
-
-            for message_id in by_page_id.ids {
-                if !messages_bucket.remove_message(by_page_id.page_id, message_id) {
-                    let reason = format!(
-                            "confirmed_some_not_delivered: There is a message as confimred not delivered {}. But it's not found",
-                            message_id
-                        );
-
-                    return Err(OperationFailResult::Other(reason));
-                }
-
-                self.queue.enqueue(message_id);
-                self.add_attempt(message_id);
-            }
+        //We are removing all not delivered and what remains - is what was delivered
+        for not_delivered_message_id in &not_delivered {
+            messages_bucket.remove(not_delivered_message_id);
         }
 
-        for page in messages_bucket.pages.values() {
-            for message_id in &page.ids {
-                self.attempts.remove(&message_id);
-            }
+        if messages_bucket.messages_count() > 0 {
+            self.process_delivered(&messages_bucket.ids);
         }
+
+        self.process_not_delivered(&not_delivered);
 
         return Ok(());
     }
@@ -260,33 +228,32 @@ impl QueueData {
             .reset_delivery()
             .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
 
-        for by_page_id in delivered.split_by_page_id() {
-            if !messages_bucket.has_page(by_page_id.page_id) {
-                let reason = format!(
-                    "confirmed_some_delivered: There is a message in the page {}. But page is not found",
-                    by_page_id.page_id
-                );
-
-                return Err(OperationFailResult::Other(reason));
-            }
-
-            for message_id in by_page_id.ids {
-                if !messages_bucket.remove_message(by_page_id.page_id, message_id) {
-                    let reason = format!(
-                        "confirmed_some_delivered: There is a message as confimred not delivered {}. But it's not found",
-                        message_id
-                    );
-
-                    return Err(OperationFailResult::Other(reason));
-                }
-
-                self.attempts.remove(&message_id);
-            }
+        //Remove delivered and what remains - is not delivered
+        for delivered_message_id in &delivered {
+            messages_bucket.remove(delivered_message_id);
         }
 
-        self.mark_not_delivered(&messages_bucket);
+        self.process_delivered(&delivered);
+
+        if messages_bucket.ids.len() > 0 {
+            self.process_not_delivered(&messages_bucket.ids);
+        }
 
         Ok(())
+    }
+
+    fn process_delivered(&mut self, delivered_ids: &QueueWithIntervals) {
+        for msg_id in delivered_ids {
+            self.attempts.remove(&msg_id);
+        }
+    }
+
+    pub fn process_not_delivered(&mut self, not_delivered_ids: &QueueWithIntervals) {
+        self.queue.merge_with(not_delivered_ids);
+
+        for msg_id in not_delivered_ids {
+            self.add_attempt(msg_id);
+        }
     }
 
     fn add_attempt(&mut self, message_id: MessageId) {

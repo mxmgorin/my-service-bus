@@ -6,11 +6,10 @@ use std::{
 use my_service_bus_shared::{
     page_id::{get_page_id, PageId},
     queue_with_intervals::QueueWithIntervals,
+    MySbMessageContent,
 };
 
-use crate::{
-    app::AppContext, messages::MySbMessageContent, sessions::MyServiceBusSession, topics::Topic,
-};
+use crate::{app::AppContext, sessions::MyServiceBusSession, topics::Topic};
 
 use super::OperationFailResult;
 

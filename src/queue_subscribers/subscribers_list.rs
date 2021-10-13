@@ -1,10 +1,9 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use my_service_bus_shared::queue::TopicQueueType;
+use my_service_bus_shared::{messages_bucket::MessagesBucket, queue::TopicQueueType};
 
 use crate::{
-    messages_bucket::MessagesBucket, queues::TopicQueue, sessions::MyServiceBusSession,
-    tcp::tcp_server::ConnectionId, topics::Topic,
+    queues::TopicQueue, sessions::MyServiceBusSession, tcp::tcp_server::ConnectionId, topics::Topic,
 };
 
 use super::{QueueSubscriber, SubscriberId, SubscriberMetrics};

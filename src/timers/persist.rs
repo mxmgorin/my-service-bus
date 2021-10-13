@@ -1,11 +1,12 @@
 use std::{sync::Arc, time::Duration};
 
-use my_service_bus_shared::{bcl::BclDateTime, queue_with_intervals::QueueWithIntervals};
+use my_service_bus_shared::{
+    bcl::BclDateTime, messages_page::MessagesPage, queue_with_intervals::QueueWithIntervals,
+    MySbMessage,
+};
 
 use crate::{
     app::{logs::Logs, AppContext},
-    message_pages::MessagesPage,
-    messages::MySbMessage,
     persistence::protobuf_models::MessageProtobufModel,
     topics::Topic,
 };

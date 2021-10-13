@@ -1,17 +1,24 @@
 use std::sync::Arc;
 
-use my_service_bus_shared::page_id::{get_page_id, PageId};
+use my_service_bus_shared::{
+    messages_bucket::MessagesBucket,
+    messages_page::{MessageSize, MessagesPage},
+    page_id::{get_page_id, PageId},
+    MessageId,
+};
+use my_service_bus_tcp_shared::TcpContract;
 
 use crate::{
     app::AppContext,
-    message_pages::{MessageSize, MessagesPage},
-    messages_bucket::MessagesBucket,
     operations::OperationFailResult,
+    queue_subscribers::QueueSubscriber,
     queues::{NextMessage, QueueData, TopicQueue},
     topics::Topic,
 };
 
-use super::{DeliverPayloadBySubscriber, DeliveryPayloadsCollector};
+use super::{
+    DeliverPayloadBySubscriber, DeliveryPayloadsCollector, PayloadCollectorCompleteOperation,
+};
 
 pub enum CompileResult {
     Completed,
@@ -53,9 +60,19 @@ async fn deliver_to_queue_spawned(
     let payloads_collector = result.unwrap();
 
     for subscriber_data in payloads_collector.subscribers {
-        let tcp_contract = subscriber_data
-            .compile_tcp_packet(app.as_ref(), topic.as_ref(), queue.queue_id.as_str())
+        let packet_version = subscriber_data
+            .session
+            .get_packet_version(my_service_bus_tcp_shared::tcp_message_id::NEW_MESSAGES)
             .await;
+
+        let tcp_contract = TcpContract::compile_messages_to_deliver(
+            &subscriber_data.messages,
+            topic.topic_id.as_str(),
+            queue.queue_id.as_str(),
+            subscriber_data.subscriber_id,
+            packet_version,
+        )
+        .await;
 
         let send_packet;
 
@@ -77,15 +94,14 @@ async fn deliver_to_queue_spawned(
                 .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages);
 
             if let Some(messages) = result {
-                let msgs = messages.get_ids();
                 println!(
                     "Could not find subscriber {} for the {}/{}. Set {} messages back to the queue",
                     subscriber_data.subscriber_id,
                     topic.topic_id,
                     queue_write_access.data.queue_id,
-                    msgs.len()
+                    messages.ids.len()
                 );
-                queue_write_access.data.enqueue_messages(&msgs);
+                queue_write_access.data.enqueue_messages(&messages.ids);
 
                 send_packet = false;
             } else {
@@ -162,97 +178,103 @@ async fn try_to_complie_next_messages_from_the_queue(
                 .subscribers
                 .get_and_rent_next_subscriber_ready_to_deliver()
             {
-                delivery_data.set_current(DeliverPayloadBySubscriber::new(
-                    subscriber.id,
-                    subscriber.session.clone(),
-                ));
+                let next_message_id = queue.queue.peek();
+
+                if next_message_id.is_none() {
+                    subscriber.cancel_the_rent();
+                    return CompileResult::Completed;
+                }
+
+                match get_payload_subscriber(subscriber, next_message_id.unwrap(), topic).await {
+                    Ok(subscriber) => {
+                        delivery_data.set_current(subscriber);
+                    }
+                    Err(page_id) => {
+                        subscriber.cancel_the_rent();
+                        return CompileResult::LoadPage(page_id);
+                    }
+                }
             } else {
                 return CompileResult::Completed;
             }
-        }
+        };
 
-        let fill_messages_result;
-        let subscriber_id;
+        fill_messages(
+            app,
+            topic,
+            queue,
+            &mut delivery_data.current_subscriber.as_mut().unwrap().messages,
+        )
+        .await;
+
+        if let PayloadCollectorCompleteOperation::Canceled(delivery_subscriber) =
+            delivery_data.complete()
         {
-            let current_subscriber = delivery_data.current_subscriber.as_mut().unwrap();
-            subscriber_id = current_subscriber.subscriber_id;
-
-            fill_messages_result =
-                fill_messages(app, topic, queue, &mut current_subscriber.messages).await;
-        }
-
-        match fill_messages_result {
-            FillMessagesResult::Complete => {
-                if !delivery_data.complete() {
-                    let subscriber = queue
-                        .subscribers
-                        .get_by_id_mut(subscriber_id)
-                        .expect(format!("Subscriber with id {} not found", subscriber_id).as_str());
-
-                    subscriber.cancel_the_rent();
-                }
-
-                return CompileResult::Completed;
-            }
-            FillMessagesResult::LoadPage(page_id) => return CompileResult::LoadPage(page_id),
+            queue
+                .subscribers
+                .get_by_id_mut(delivery_subscriber.subscriber_id)
+                .unwrap()
+                .cancel_the_rent();
         }
     }
 }
 
-pub enum FillMessagesResult {
-    Complete,
-    LoadPage(PageId),
+#[inline]
+async fn get_payload_subscriber(
+    subscriber: &mut QueueSubscriber,
+    next_message_id: MessageId,
+    topic: &Topic,
+) -> Result<DeliverPayloadBySubscriber, PageId> {
+    let page_id = get_page_id(next_message_id);
+
+    let page = topic.messages.get_page(page_id).await;
+
+    if page.is_none() {
+        return Err(page_id);
+    }
+
+    let result =
+        DeliverPayloadBySubscriber::new(subscriber.id, subscriber.session.clone(), page.unwrap());
+
+    return Ok(result);
 }
 
+#[inline]
 async fn fill_messages(
     app: &AppContext,
     topic: &Topic,
     queue: &mut QueueData,
     messages_bucket: &mut MessagesBucket,
-) -> FillMessagesResult {
+) {
     while let Some(next_message) = queue.peek_next_message() {
         let page_id = get_page_id(next_message.message_id);
 
-        let all_messages_size = messages_bucket.total_size;
-
-        if all_messages_size > app.max_delivery_size {}
-        let all_messages_count = messages_bucket.messages_count();
-
-        if !messages_bucket.has_page(page_id) {
-            let page = topic.messages.get(page_id).await;
-
-            if page.is_none() {
-                return FillMessagesResult::LoadPage(page_id);
-            }
-
-            messages_bucket.add_page(page.unwrap());
+        if messages_bucket.page.page_id != page_id {
+            return;
         }
 
-        let bucket_page = messages_bucket.get_page(page_id);
-
         let msg_size =
-            get_message_size(app, topic, &bucket_page.page, &next_message, page_id).await;
+            get_message_size(app, topic, &messages_bucket.page, &next_message, page_id).await;
 
         if let Some(next_msg_size) = msg_size {
-            if all_messages_size + next_msg_size > app.max_delivery_size && all_messages_count > 0 {
-                return FillMessagesResult::Complete;
+            if messages_bucket.messages_size + next_msg_size > app.max_delivery_size
+                && messages_bucket.messages_count() > 0
+            {
+                break;
             }
 
-            bucket_page.add(
+            messages_bucket.add(
                 next_message.message_id,
                 next_message.attempt_no,
                 next_msg_size,
             );
-
-            messages_bucket.add_total_size(next_message.message_id, next_msg_size);
         }
 
         queue.dequeue_next_message();
     }
-
-    return FillMessagesResult::Complete;
 }
 
+#[inline]
 async fn get_message_size(
     app: &AppContext,
     topic: &Topic,
