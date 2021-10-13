@@ -4,12 +4,14 @@ use my_service_bus_shared::{
     messages_bucket::MessagesBucket,
     messages_page::{MessageSize, MessagesPage},
     page_id::{get_page_id, PageId},
+    MessageId,
 };
 use my_service_bus_tcp_shared::TcpContract;
 
 use crate::{
     app::AppContext,
     operations::OperationFailResult,
+    queue_subscribers::QueueSubscriber,
     queues::{NextMessage, QueueData, TopicQueue},
     topics::Topic,
 };
@@ -183,20 +185,15 @@ async fn try_to_complie_next_messages_from_the_queue(
                     return CompileResult::Completed;
                 }
 
-                let page_id = get_page_id(next_message_id.unwrap());
-
-                let page = topic.messages.get_page(page_id).await;
-
-                if page.is_none() {
-                    subscriber.cancel_the_rent();
-                    return CompileResult::LoadPage(page_id);
+                match get_payload_subscriber(subscriber, next_message_id.unwrap(), topic).await {
+                    Ok(subscriber) => {
+                        delivery_data.set_current(subscriber);
+                    }
+                    Err(page_id) => {
+                        subscriber.cancel_the_rent();
+                        return CompileResult::LoadPage(page_id);
+                    }
                 }
-
-                delivery_data.set_current(DeliverPayloadBySubscriber::new(
-                    subscriber.id,
-                    subscriber.session.clone(),
-                    page.unwrap(),
-                ));
             } else {
                 return CompileResult::Completed;
             }
@@ -221,6 +218,28 @@ async fn try_to_complie_next_messages_from_the_queue(
         }
     }
 }
+
+#[inline]
+async fn get_payload_subscriber(
+    subscriber: &mut QueueSubscriber,
+    next_message_id: MessageId,
+    topic: &Topic,
+) -> Result<DeliverPayloadBySubscriber, PageId> {
+    let page_id = get_page_id(next_message_id);
+
+    let page = topic.messages.get_page(page_id).await;
+
+    if page.is_none() {
+        return Err(page_id);
+    }
+
+    let result =
+        DeliverPayloadBySubscriber::new(subscriber.id, subscriber.session.clone(), page.unwrap());
+
+    return Ok(result);
+}
+
+#[inline]
 async fn fill_messages(
     app: &AppContext,
     topic: &Topic,
@@ -255,6 +274,7 @@ async fn fill_messages(
     }
 }
 
+#[inline]
 async fn get_message_size(
     app: &AppContext,
     topic: &Topic,
