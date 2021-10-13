@@ -5,6 +5,11 @@ pub struct DeliveryPayloadsCollector {
     pub current_subscriber: Option<DeliverPayloadBySubscriber>,
 }
 
+pub enum PayloadCollectorCompleteOperation {
+    Completed,
+    Canceled(DeliverPayloadBySubscriber),
+}
+
 impl DeliveryPayloadsCollector {
     pub fn new() -> Self {
         Self {
@@ -18,21 +23,21 @@ impl DeliveryPayloadsCollector {
         self.current_subscriber = Some(session);
     }
 
-    pub fn complete(&mut self) -> bool {
+    pub fn complete(&mut self) -> PayloadCollectorCompleteOperation {
         if self.current_subscriber.is_some() {
             let mut current_subscriber = None;
             std::mem::swap(&mut current_subscriber, &mut self.current_subscriber);
 
             if let Some(current_subscriber) = current_subscriber {
-                if current_subscriber.messages.total_size > 0 {
+                if current_subscriber.messages.messages_count() > 0 {
                     self.subscribers.push(current_subscriber);
-                    return true;
+                    return PayloadCollectorCompleteOperation::Completed;
                 } else {
-                    return false;
+                    return PayloadCollectorCompleteOperation::Canceled(current_subscriber);
                 }
             }
         }
 
-        return false;
+        panic!("Can not complete collection of Payload. No current subscriber");
     }
 }

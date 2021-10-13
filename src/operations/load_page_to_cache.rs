@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use my_service_bus_shared::page_id::PageId;
+use my_service_bus_shared::{messages_page::MessagesPage, page_id::PageId};
 
-use crate::{app::AppContext, message_pages::MessagesPage, topics::Topic};
+use crate::{app::AppContext, topics::Topic};
 
 pub async fn do_it(app: &AppContext, topic: &Topic, page_id: PageId) {
     let mut attempt_no = 0;

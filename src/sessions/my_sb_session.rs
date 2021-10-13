@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use my_service_bus_shared::date_time::{AtomicDateTimeAsMicroseconds, DateTimeAsMicroseconds};
-use my_service_bus_tcp_shared::{PacketProtVer, TcpContract};
+use my_service_bus_tcp_shared::TcpContract;
 use tokio::{io::WriteHalf, net::TcpStream, sync::RwLock};
 
 use crate::{app::AppContext, queue_subscribers::SubscriberId};
@@ -135,11 +135,8 @@ impl MyServiceBusSession {
         }
     }
 
-    pub async fn get_packet_and_protocol_version(&self, packet: u8) -> PacketProtVer {
+    pub async fn get_packet_version(&self, packet: u8) -> i32 {
         let read_access = self.data.read().await;
-        PacketProtVer {
-            packet_version: read_access.attr.versions.get_packet_version(packet),
-            protocol_version: read_access.attr.protocol_version,
-        }
+        read_access.attr.versions.get_packet_version(packet)
     }
 }

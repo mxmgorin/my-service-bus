@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use my_service_bus_shared::{
     date_time::DateTimeAsMicroseconds,
+    messages_bucket::MessagesBucket,
     queue::TopicQueueType,
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
     MessageId,
@@ -10,7 +11,6 @@ use tokio::sync::{Mutex, RwLock};
 
 use crate::{
     app::AppContext,
-    messages_bucket::MessagesBucket,
     operations::OperationFailResult,
     queue_subscribers::{DeadSubscriber, QueueSubscriber, SubscriberId, SubscriberMetrics},
     tcp::tcp_server::ConnectionId,
@@ -205,7 +205,7 @@ impl TopicQueue {
 
     pub async fn mark_not_delivered(&self, messages_on_delivery: &MessagesBucket) {
         let mut write_access = self.data.write().await;
-        write_access.mark_not_delivered(messages_on_delivery);
+        write_access.process_not_delivered(&messages_on_delivery.ids);
     }
 
     pub async fn confirmed_delivered(

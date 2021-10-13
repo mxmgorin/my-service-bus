@@ -1,14 +1,13 @@
 use futures_util::stream;
 use my_service_bus_shared::bcl::{BclDateTime, BclToUnixMicroseconds};
 use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
+use my_service_bus_shared::messages_page::MessagesPage;
 use my_service_bus_shared::page_compressor::CompressedPageReader;
 use my_service_bus_shared::page_id::PageId;
-use my_service_bus_shared::MessageId;
+use my_service_bus_shared::{MessageId, MySbMessage, MySbMessageContent};
 use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 
-use crate::message_pages::MessagesPage;
-use crate::messages::{MySbMessage, MySbMessageContent};
 use crate::settings::SettingsModel;
 use crate::utils::{LazyObject, LazyObjectAccess};
 

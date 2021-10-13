@@ -1,11 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
-use my_service_bus_tcp_shared::PacketProtVer;
 use tokio::sync::RwLock;
 
-use crate::queue_subscribers::SubscriberId;
-
-use super::{my_sb_session::ConnectionId, MyServiceBusSession};
+use super::MyServiceBusSession;
 
 pub struct SessionsListData {
     snapshot_id: usize,
@@ -32,14 +29,6 @@ impl SessionsList {
         let mut write_access = self.data.write().await;
         write_access.sessions.insert(session.id, session);
         write_access.snapshot_id += 1;
-    }
-
-    pub async fn get_by_id(&self, id: ConnectionId) -> Option<Arc<MyServiceBusSession>> {
-        let read_access = self.data.read().await;
-
-        let session = read_access.sessions.get(&id)?;
-
-        Some(session.clone())
     }
 
     pub async fn get_snapshot(&self) -> (usize, Vec<Arc<MyServiceBusSession>>) {
@@ -70,22 +59,6 @@ impl SessionsList {
 
         for session in read_access.sessions.values() {
             session.one_second_tick().await;
-        }
-    }
-
-    pub async fn get_packet_and_protocol_version(
-        &self,
-        subscriber_id: SubscriberId,
-        packet: u8,
-    ) -> PacketProtVer {
-        let found_session = self.get_by_id(subscriber_id).await;
-
-        match found_session {
-            Some(session) => return session.get_packet_and_protocol_version(packet).await,
-            None => PacketProtVer {
-                packet_version: 0,
-                protocol_version: 0,
-            },
         }
     }
 }

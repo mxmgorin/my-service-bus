@@ -1,11 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
-use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
+use my_service_bus_shared::{date_time::DateTimeAsMicroseconds, messages_bucket::MessagesBucket};
 
-use crate::{
-    messages_bucket::MessagesBucket, queues::TopicQueue, sessions::MyServiceBusSession,
-    topics::Topic,
-};
+use crate::{queues::TopicQueue, sessions::MyServiceBusSession, topics::Topic};
 
 use super::{SubscriberId, SubscriberMetrics};
 
