@@ -110,6 +110,9 @@ message GetMessageGrpcRequest {
 message GetMessagesPageGrpcRequest {
   string TopicId = 1;
   int64 PageNo = 2;
+  int64 FromMessageId = 3;
+  int64 ToMessageId = 4;
+  int32 Version = 5;
 }
 
 service MyServiceBusMessagesPersistenceGrpcService {
