@@ -105,13 +105,17 @@ impl TopicQueuesList {
         result
     }
 
-    pub async fn get_snapshot(&self) -> Vec<TopicQueueSnapshot> {
+    pub async fn get_snapshot_to_persist(&self) -> Vec<TopicQueueSnapshot> {
         let mut result = Vec::new();
 
         let read_access = self.data.read().await;
 
         for queue in read_access.queues.values() {
-            result.push(queue.get_snapshot().await);
+            let get_snapshot_to_persist_result = queue.get_snapshot_to_persist().await;
+
+            if let Some(snapshot_to_persist) = get_snapshot_to_persist_result {
+                result.push(snapshot_to_persist);
+            }
         }
         return result;
     }

@@ -51,7 +51,7 @@ async fn persist_tick(app: Arc<AppContext>) {
 }
 
 pub async fn sync_topics_and_queues(app: Arc<AppContext>) {
-    let snapshot = app.topic_list.get_snapshot().await;
+    let snapshot = app.topic_list.get_snapshot_to_persist().await;
     let result = app.topics_and_queues_repo.save(snapshot).await;
 
     if let Err(err) = result {

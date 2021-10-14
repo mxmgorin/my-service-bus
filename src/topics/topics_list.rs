@@ -81,13 +81,13 @@ impl TopicsList {
         return result;
     }
 
-    pub async fn get_snapshot(&self) -> Vec<TopicSnapshot> {
+    pub async fn get_snapshot_to_persist(&self) -> Vec<TopicSnapshot> {
         let mut result = Vec::new();
 
-        let topics = self.get_all();
+        let topics = self.get_all().await;
 
-        for topic in topics.await {
-            let snapshot = topic.get_snapshot().await;
+        for topic in topics {
+            let snapshot = topic.get_snapshot_to_persist().await;
             result.push(snapshot);
         }
 

@@ -91,11 +91,11 @@ impl Topic {
         self.queues.delete_queue(queue_id).await
     }
 
-    pub async fn get_snapshot(&self) -> TopicSnapshot {
+    pub async fn get_snapshot_to_persist(&self) -> TopicSnapshot {
         return TopicSnapshot {
             topic_id: self.topic_id.clone(),
             message_id: self.get_message_id().await,
-            queues: self.queues.get_snapshot().await,
+            queues: self.queues.get_snapshot_to_persist().await,
         };
     }
 
