@@ -80,14 +80,29 @@ impl TopicQueue {
         read_access.queue.get_min_id()
     }
 
-    pub async fn get_snapshot(&self) -> TopicQueueSnapshot {
+    pub async fn get_snapshot_to_persist(&self) -> Option<TopicQueueSnapshot> {
         let read = self.data.read().await;
-        let queue_id = read.queue_id.to_string();
 
-        TopicQueueSnapshot {
-            queue_id,
-            queue_type: read.queue_type.clone(),
-            ranges: read.get_snapshot(),
+        match read.queue_type {
+            TopicQueueType::Permanent => {
+                let result = TopicQueueSnapshot {
+                    queue_id: read.queue_id.to_string(),
+                    queue_type: read.queue_type.clone(),
+                    ranges: read.get_snapshot(),
+                };
+
+                Some(result)
+            }
+            TopicQueueType::DeleteOnDisconnect => None,
+            TopicQueueType::PermanentWithSingleConnection => {
+                let result = TopicQueueSnapshot {
+                    queue_id: read.queue_id.to_string(),
+                    queue_type: read.queue_type.clone(),
+                    ranges: read.get_snapshot(),
+                };
+
+                Some(result)
+            }
         }
     }
 
