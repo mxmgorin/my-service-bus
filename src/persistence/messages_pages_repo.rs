@@ -70,6 +70,9 @@ impl MessagesPagesRepo {
             .get_page_compressed(GetMessagesPageGrpcRequest {
                 topic_id: topic_id.to_string(),
                 page_no: page_id,
+                from_message_id: 0,
+                to_message_id: 0,
+                version: 1,
             })
             .await?;
 
