@@ -143,9 +143,9 @@ impl SubscribersList {
             SubscribersData::MultiSubscribers(hash_map) => hash_map.len(),
             SubscribersData::SingleSubscriber(single) => {
                 if single.is_none() {
-                    1
-                } else {
                     0
+                } else {
+                    1
                 }
             }
         }
