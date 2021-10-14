@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::{app::AppContext, queues::TopicQueue, topics::Topic};
 
 use serde::{Deserialize, Serialize};
-//use sysinfo::SystemExt;
+use sysinfo::SystemExt;
 
 use super::models::{
     queue_model::QueuesJsonResult, session_model::SessionsJsonResult, topic_model::TopicsJsonResult,
@@ -29,9 +29,9 @@ impl StatusJsonResult {
 
         let queues_as_hashmap = get_queues_as_hashmap(&all_topics).await;
 
-        // let mut sys_info = sysinfo::System::new_all();
+        let mut sys_info = sysinfo::System::new_all();
 
-        //sys_info.refresh_all();
+        sys_info.refresh_all();
 
         let topics = TopicsJsonResult::new(app, &all_topics).await;
 
@@ -44,8 +44,8 @@ impl StatusJsonResult {
             queues,
             sessions,
             system: SystemStatusModel {
-                totalmem: 0, //sys_info.total_memory(),
-                usedmem: 0,  //sys_info.used_memory(),
+                totalmem: sys_info.total_memory(),
+                usedmem: sys_info.used_memory(),
             },
         }
     }
