@@ -7,7 +7,7 @@
   },
   "host": "***HOST***",
   "schemes": [
-    "***SHEME***"
+    "***SCHEME***"
   ],
   "paths": {
     "/Connections/KickTcpConnection": {

@@ -35,7 +35,7 @@ futures-util = "*"
 tokio-signal = "*"
 signal-hook = "*"
 rand = "*"
-#sysinfo = "*"
+sysinfo = "*"
 prometheus = "0.13.0"
 uuid = { version = "*", features = ["serde", "v4"] }
 
