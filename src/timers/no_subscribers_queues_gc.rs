@@ -16,9 +16,7 @@ pub async fn execute(app: &AppContext, topic: &Topic) {
                     let since_last_disconnect =
                         now.duration_since(gc_data.last_subscriber_disconnect);
 
-                    if now.duration_since(gc_data.last_subscriber_disconnect)
-                        > app.empty_queue_gc_timeout
-                    {
+                    if since_last_disconnect > app.empty_queue_gc_timeout {
                         topic.delete_queue(queue.queue_id.as_str()).await;
                     }
                 }
