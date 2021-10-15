@@ -12,11 +12,16 @@ pub async fn execute(app: &AppContext, topic: &Topic) {
 
         match gc_data.queue_type {
             my_service_bus_shared::queue::TopicQueueType::DeleteOnDisconnect => {
-                if gc_data.subscribers_amount == 0
-                    && now.duration_since(gc_data.last_subscriber_disconnect)
+                if gc_data.subscribers_amount == 0 {
+                    let since_last_disconnect =
+                        now.duration_since(gc_data.last_subscriber_disconnect);
+                    println!("Detected DeleteOnDisconnect queue {}/{} with 0 subscribers. Last disconnect since {:?}", topic.topic_id, queue.queue_id, since_last_disconnect);
+
+                    if now.duration_since(gc_data.last_subscriber_disconnect)
                         > app.empty_queue_gc_timeout
-                {
-                    topic.delete_queue(queue.queue_id.as_str()).await;
+                    {
+                        topic.delete_queue(queue.queue_id.as_str()).await;
+                    }
                 }
             }
             _ => {}
