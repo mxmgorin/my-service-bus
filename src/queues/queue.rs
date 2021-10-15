@@ -189,9 +189,15 @@ impl TopicQueue {
     ) -> Option<QueueSubscriber> {
         let mut write_access = self.data.write().await;
 
-        write_access
+        let result = write_access
             .subscribers
-            .remove_by_connection_id(connection_id)
+            .remove_by_connection_id(connection_id);
+
+        if result.is_some() {
+            write_access.last_ubsubscribe = DateTimeAsMicroseconds::now();
+        }
+
+        result
     }
 
     pub async fn set_message_id(&self, message_id: MessageId, max_message_id: MessageId) {

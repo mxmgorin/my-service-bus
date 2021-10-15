@@ -15,7 +15,6 @@ pub async fn execute(app: &AppContext, topic: &Topic) {
                 if gc_data.subscribers_amount == 0 {
                     let since_last_disconnect =
                         now.duration_since(gc_data.last_subscriber_disconnect);
-                    println!("Detected DeleteOnDisconnect queue {}/{} with 0 subscribers. Last disconnect since {:?}", topic.topic_id, queue.queue_id, since_last_disconnect);
 
                     if now.duration_since(gc_data.last_subscriber_disconnect)
                         > app.empty_queue_gc_timeout
