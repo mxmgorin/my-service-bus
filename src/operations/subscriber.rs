@@ -4,7 +4,7 @@ use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWi
 
 use crate::{
     app::AppContext,
-    queue_subscribers::{QueueSubscriber, SubscriberId},
+    queue_subscribers::{QueueSubscriber, SubscribeErrorResult, SubscriberId},
     sessions::MyServiceBusSession,
 };
 
@@ -70,11 +70,34 @@ pub async fn subscribe_to_queue(
             .await;
     }
 
-    if let Some(kicked_subscriber) = kicked_subscriber_result {
-        crate::operations::subscriber::handle_subscriber_remove(kicked_subscriber).await;
-    }
+    match kicked_subscriber_result {
+        Ok(kicke_subscriber) => {
+            if let Some(kicked_subscriber) = kicke_subscriber {
+                crate::operations::subscriber::handle_subscriber_remove(kicked_subscriber).await;
+            }
 
-    super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
+            super::delivery::deliver_to_queue(
+                process_id,
+                app.clone(),
+                topic.clone(),
+                topic_queue.clone(),
+            );
+        }
+        Err(err) => match err {
+            SubscribeErrorResult::SubscriberWithIdExists => {
+                panic!(
+                    "Somehow we generated the same ID {} for the new subscriber {}/{}",
+                    subscriber_id, topic_id, queue_id
+                );
+            }
+            SubscribeErrorResult::SubscriberOfSameConnectionExists => {
+                panic!(
+                        "Somehow we subscribe second time to the same queue {}/{} the same session_id {} for the new subscriber. Most probably there is a bug on the client",
+                        topic_id, queue_id, subscriber_id
+                    );
+            }
+        },
+    }
 
     Ok(())
 }

@@ -11,4 +11,4 @@ pub use types::SubscriberId;
 
 pub use subscriber_id_generator::SubscriberIdGenerator;
 
-pub use subscribers_list::{DeadSubscriber, SubscribersList};
+pub use subscribers_list::{DeadSubscriber, SubscribeErrorResult, SubscribersList};
