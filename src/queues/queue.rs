@@ -148,17 +148,6 @@ impl TopicQueue {
         return RwWriteAccess::new(write_access, process_id, process, app.locks.clone());
     }
 
-    /*
-       pub async fn get_read_access<'a>(
-           &'a self,
-           process_id: i64,
-           process: String,
-           app: &AppContext,
-       ) -> RwReadAccess<'a, QueueData> {
-           let read_access = self.data.read().await;
-           return RwReadAccess::new(read_access, process_id, process, app.locks.clone());
-       }
-    */
     pub async fn get_all_subscribers_metrics(&self) -> Vec<SubscriberMetrics> {
         let mut result = Vec::new();
 

@@ -33,6 +33,11 @@ pub struct SubscribersList {
     data: SubscribersData,
 }
 
+pub enum SubscribeErrorResult {
+    SubscriberWithIdExists,
+    SubscriberOfSameConnectionExists,
+}
+
 impl SubscribersList {
     pub fn new(queue_type: TopicQueueType) -> Self {
         match queue_type {
@@ -102,29 +107,56 @@ impl SubscribersList {
         }
     }
 
+    fn check_that_we_has_already_subscriber_for_that_session(
+        &self,
+        connection_id: ConnectionId,
+    ) -> Result<(), SubscribeErrorResult> {
+        match &self.data {
+            SubscribersData::MultiSubscribers(hash_map) => {
+                for subscriber in hash_map.values() {
+                    if subscriber.session.id == connection_id {
+                        return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
+                    }
+                }
+            }
+            SubscribersData::SingleSubscriber(single_subscriber) => {
+                if let Some(subscriber) = single_subscriber {
+                    if subscriber.session.id == connection_id {
+                        return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    ///Returns the subscriber which is kicked
     pub fn subscribe(
         &mut self,
         subscriber_id: SubscriberId,
         topic: Arc<Topic>,
         queue: Arc<TopicQueue>,
         session: Arc<MyServiceBusSession>,
-    ) -> Option<QueueSubscriber> {
+    ) -> Result<Option<QueueSubscriber>, SubscribeErrorResult> {
+        self.check_that_we_has_already_subscriber_for_that_session(session.id)?;
+
         match &mut self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 if hash_map.contains_key(&subscriber_id) {
-                    panic!("Can not add subscriber with {}. Subscriber with the same ID is already in the multilist", subscriber_id);
+                    return Err(SubscribeErrorResult::SubscriberWithIdExists);
                 }
 
                 let subscriber = QueueSubscriber::new(subscriber_id, topic, queue, session);
 
                 hash_map.insert(subscriber_id, subscriber);
 
-                return None;
+                return Ok(None);
             }
             SubscribersData::SingleSubscriber(single) => {
                 if let Some(subscriber) = single {
                     if subscriber.id == subscriber_id {
-                        panic!("Can not add subscriber with {}. Subscriber with the same ID is already in the singlelist", subscriber_id);
+                        return Err(SubscribeErrorResult::SubscriberWithIdExists);
                     }
                 }
 
@@ -133,7 +165,7 @@ impl SubscribersList {
 
                 std::mem::swap(&mut old_subscriber, single);
 
-                return old_subscriber;
+                return Ok(old_subscriber);
             }
         }
     }
