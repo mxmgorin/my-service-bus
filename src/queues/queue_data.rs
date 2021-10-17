@@ -273,6 +273,9 @@ impl QueueData {
 
 fn update_delivery_time(subscriber: &mut QueueSubscriber, positive: bool) {
     let messages_on_delivery = subscriber.get_messages_amount_on_delivery();
+    if messages_on_delivery == 0 {
+        return;
+    }
 
     let delivery_duration =
         DateTimeAsMicroseconds::now().duration_since(subscriber.metrics.start_delivery_time);
