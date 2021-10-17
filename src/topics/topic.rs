@@ -1,9 +1,9 @@
-use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
 use my_service_bus_shared::messages_page::MessagesPagesCache;
 use my_service_bus_shared::page_id::{get_page_id, PageId};
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
 use my_service_bus_shared::MySbMessageContent;
 use my_service_bus_shared::{queue::TopicQueueType, MessageId};
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio::sync::RwLock;
 
 use crate::queues::TopicQueue;
@@ -16,6 +16,11 @@ use super::TopicMetrics;
 
 pub struct TopicData {
     message_id: MessageId,
+}
+
+pub struct GetMinMessageIdResult {
+    pub topic_message_id: MessageId,
+    pub queue_min_message_id: Option<MessageId>,
 }
 
 pub struct Topic {
@@ -131,5 +136,12 @@ impl Topic {
         let persist_queue_size = self.messages.get_persist_queue_size().await;
         self.metrics.one_second_tick(persist_queue_size).await;
         self.queues.one_second_tick().await;
+    }
+
+    pub async fn get_min_message_id(&self) -> GetMinMessageIdResult {
+        GetMinMessageIdResult {
+            topic_message_id: self.get_message_id().await,
+            queue_min_message_id: self.queues.get_min_message_id().await,
+        }
     }
 }

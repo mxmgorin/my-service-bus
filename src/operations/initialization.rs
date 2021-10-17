@@ -1,11 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
+use rust_extensions::StopWatch;
 
-use crate::{
-    topics::{Topic, TopicSnapshot},
-    utils::StopWatch,
-};
+use crate::topics::{Topic, TopicSnapshot};
 
 use crate::app::AppContext;
 
@@ -64,13 +62,7 @@ pub async fn init(app: Arc<AppContext>) {
 
 async fn restore_topic_pages(app: Arc<AppContext>, topic: Arc<Topic>) {
     let page_id = topic.get_current_page().await;
-    crate::operations::message_pages::restore_page(
-        app.as_ref(),
-        topic.as_ref(),
-        page_id,
-        "initialization",
-    )
-    .await
+    crate::operations::page_loader::init_page_to_cache(app.as_ref(), topic.as_ref(), page_id).await
 }
 
 async fn restore_topics_and_queues(app: &AppContext) -> Vec<TopicSnapshot> {

@@ -2,10 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     app::AppContext, queue_subscribers::SubscriberMetrics, queues::TopicQueue,
-    sessions::MyServiceBusSession, tcp::tcp_server::ConnectionId, utils::duration_to_string,
+    sessions::MyServiceBusSession, tcp::tcp_server::ConnectionId,
 };
 
-use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 use serde::{Deserialize, Serialize};
 
 use super::session_subscriber_model::SessionSubscriberJsonContract;
@@ -57,8 +57,10 @@ impl SessionJsonResult {
             ip: session_metrics_data.ip,
             name: format!("{}[{}]", name, session_metrics_data.protocol_version),
             version: session_metrics_data.version,
-            connected: duration_to_string(now.duration_since(session.connected)),
-            last_incoming: duration_to_string(
+            connected: rust_extensions::duration_utils::duration_to_string(
+                now.duration_since(session.connected),
+            ),
+            last_incoming: rust_extensions::duration_utils::duration_to_string(
                 now.duration_since(session.last_incoming_package.as_date_time()),
             ),
             read_size: session_metrics_data.metrics.read_size,

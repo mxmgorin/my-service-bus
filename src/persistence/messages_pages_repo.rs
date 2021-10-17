@@ -1,10 +1,10 @@
 use futures_util::stream;
 use my_service_bus_shared::bcl::{BclDateTime, BclToUnixMicroseconds};
-use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
 use my_service_bus_shared::messages_page::MessagesPage;
 use my_service_bus_shared::page_compressor::CompressedPageReader;
 use my_service_bus_shared::page_id::PageId;
 use my_service_bus_shared::{MessageId, MySbMessage, MySbMessageContent};
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 
@@ -51,6 +51,8 @@ impl MessagesPagesRepo {
         &self,
         topic_id: &str,
         page_id: PageId,
+        from_message_id: MessageId,
+        to_message_id: MessageId,
     ) -> Result<MessagesPage, PersistenceError> {
         let grpc_client_lazy_object = self.get_grpc_client().await?;
 
@@ -70,8 +72,8 @@ impl MessagesPagesRepo {
             .get_page_compressed(GetMessagesPageGrpcRequest {
                 topic_id: topic_id.to_string(),
                 page_no: page_id,
-                from_message_id: 0,
-                to_message_id: 0,
+                from_message_id,
+                to_message_id,
                 version: 1,
             })
             .await?;

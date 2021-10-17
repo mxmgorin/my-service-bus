@@ -1,25 +1,12 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::app::AppContext;
 use crate::topics::Topic;
 
-pub async fn execute(app: &AppContext, topic: &Topic) {
+pub async fn execute(app: Arc<AppContext>, topic: Arc<Topic>) {
     let active_pages = topic.get_active_pages().await;
-    load_pages(app, topic, &active_pages).await;
-    gc_pages(app, topic, &active_pages).await;
-}
-
-async fn load_pages(app: &AppContext, topic: &Topic, active_pages: &HashMap<i64, i64>) {
-    for page_id in active_pages.keys() {
-        if !topic.messages.has_page(page_id).await {
-            print!(
-                "Loading page {}/{} as warm up process",
-                topic.topic_id, page_id
-            );
-            crate::operations::message_pages::restore_page(app, topic, *page_id, "load_pages")
-                .await;
-        }
-    }
+    gc_pages(app.as_ref(), topic.as_ref(), &active_pages).await;
 }
 
 async fn gc_pages(app: &AppContext, topic: &Topic, active_pages: &HashMap<i64, i64>) {

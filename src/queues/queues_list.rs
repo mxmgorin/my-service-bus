@@ -1,6 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
-use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWithIntervals};
+use my_service_bus_shared::{
+    queue::TopicQueueType, queue_with_intervals::QueueWithIntervals, MessageId,
+};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -154,6 +156,35 @@ impl TopicQueuesList {
                 .await;
             if let Some(sub) = remove_result {
                 result.push(sub);
+            }
+        }
+
+        result
+    }
+
+    pub async fn get_min_message_id(&self) -> Option<MessageId> {
+        let queues = self.get_queues().await;
+
+        let mut result = None;
+
+        for queue in queues {
+            let queue_min_message_id = queue.get_min_message_id().await;
+
+            if queue_min_message_id.is_none() {
+                continue;
+            }
+
+            let queue_min_message_id = queue_min_message_id.unwrap();
+
+            result = match result {
+                Some(result_min_message_id) => {
+                    if queue_min_message_id < result_min_message_id {
+                        Some(queue_min_message_id)
+                    } else {
+                        Some(result_min_message_id)
+                    }
+                }
+                None => Some(queue_min_message_id),
             }
         }
 

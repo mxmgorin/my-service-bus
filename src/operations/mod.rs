@@ -1,8 +1,7 @@
 pub mod delivery;
 mod fail_result;
 pub mod initialization;
-mod load_page_to_cache;
-pub mod message_pages;
+mod page_loader;
 
 pub mod publisher;
 pub mod queues;

@@ -1,9 +1,9 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
 use my_service_bus_tcp_shared::{
     ConnectionAttributes, ReadingTcpContractFail, SocketReader, TcpContract,
 };
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use tokio::{
     io::{self, AsyncWriteExt, ReadHalf},
