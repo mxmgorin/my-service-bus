@@ -147,9 +147,18 @@ impl QueueData {
         let subscriber = subscriber.unwrap();
         update_delivery_time(subscriber, true);
 
-        let messages_bucket = subscriber
-            .reset_delivery()
-            .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
+        let messages_bucket = subscriber.reset_delivery();
+
+        if messages_bucket.is_none() {
+            println!(
+                "{}/{} confirmed_delivered: No messages on delivery at subscriber {}",
+                self.topic_id, self.queue_id, subscriber_id
+            );
+
+            return Ok(());
+        };
+
+        let messages_bucket = messages_bucket.unwrap();
 
         self.process_delivered(&messages_bucket.ids);
 
@@ -169,9 +178,18 @@ impl QueueData {
         let subscriber = subscriber.unwrap();
         update_delivery_time(subscriber, false);
 
-        let messages_bucket = subscriber
-            .reset_delivery()
-            .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
+        let messages_bucket = subscriber.reset_delivery();
+
+        if messages_bucket.is_none() {
+            println!(
+                "{}/{} confirmed_non_delivered: No messages on delivery at subscriber {}",
+                self.topic_id, self.queue_id, subscriber_id
+            );
+
+            return Ok(());
+        };
+
+        let messages_bucket = messages_bucket.unwrap();
 
         self.process_not_delivered(&messages_bucket.ids);
 
@@ -192,9 +210,18 @@ impl QueueData {
         let subscriber = subscriber.unwrap();
         update_delivery_time(subscriber, false);
 
-        let mut messages_bucket = subscriber
-            .reset_delivery()
-            .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
+        let messages_bucket = subscriber.reset_delivery();
+
+        if messages_bucket.is_none() {
+            println!(
+                "{}/{} confirmed_some_not_delivered: No messages on delivery at subscriber {}",
+                self.topic_id, self.queue_id, subscriber_id
+            );
+
+            return Ok(());
+        };
+
+        let mut messages_bucket = messages_bucket.unwrap();
 
         //We are removing all not delivered and what remains - is what was delivered
         for not_delivered_message_id in &not_delivered {
@@ -224,9 +251,18 @@ impl QueueData {
         let subscriber = subscriber.unwrap();
         update_delivery_time(subscriber, false);
 
-        let mut messages_bucket = subscriber
-            .reset_delivery()
-            .expect(format!("No messages on delivery at subscriber {}", subscriber_id).as_str());
+        let messages_bucket = subscriber.reset_delivery();
+
+        if messages_bucket.is_none() {
+            println!(
+                "{}/{} confirmed_some_delivered: No messages on delivery at subscriber {}",
+                self.topic_id, self.queue_id, subscriber_id
+            );
+
+            return Ok(());
+        };
+
+        let mut messages_bucket = messages_bucket.unwrap();
 
         //Remove delivered and what remains - is not delivered
         for delivered_message_id in &delivered {
