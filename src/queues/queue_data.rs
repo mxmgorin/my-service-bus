@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use my_service_bus_shared::{
-    date_time::DateTimeAsMicroseconds,
     queue::TopicQueueType,
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
     MessageId,
 };
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{
     operations::OperationFailResult,

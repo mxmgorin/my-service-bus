@@ -1,12 +1,12 @@
 use std::time::Duration;
 
 use my_service_bus_shared::{
-    date_time::DateTimeAsMicroseconds,
     messages_bucket::MessagesBucket,
     queue::TopicQueueType,
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
     MessageId,
 };
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio::sync::{Mutex, RwLock};
 
 use crate::{
@@ -244,5 +244,30 @@ impl TopicQueue {
     ) -> Result<(), OperationFailResult> {
         let mut write_access = self.data.write().await;
         write_access.confirmed_some_not_delivered(subscriber_id, not_delivered)
+    }
+
+    pub async fn get_min_message_id(&self) -> Option<MessageId> {
+        let read_access = self.data.read().await;
+
+        let min_queue_message_id_result = read_access.queue.get_min_id();
+
+        let min_message_id_from_subscribers = read_access.subscribers.get_min_message_id();
+
+        match min_queue_message_id_result {
+            Some(min_queue_message_id) => {
+                if let Some(min_message_id_from_subscribers) = min_message_id_from_subscribers {
+                    if min_message_id_from_subscribers < min_queue_message_id {
+                        return Some(min_message_id_from_subscribers);
+                    } else {
+                        return Some(min_queue_message_id);
+                    }
+                } else {
+                    return Some(min_queue_message_id);
+                }
+            }
+            None => {
+                return min_message_id_from_subscribers;
+            }
+        }
     }
 }

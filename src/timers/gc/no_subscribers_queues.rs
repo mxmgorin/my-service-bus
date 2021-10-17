@@ -1,8 +1,10 @@
-use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
+use std::sync::Arc;
+
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{app::AppContext, topics::Topic};
 
-pub async fn execute(app: &AppContext, topic: &Topic) {
+pub async fn execute(app: Arc<AppContext>, topic: Arc<Topic>) {
     let queues = topic.get_all_queues().await;
 
     let now = DateTimeAsMicroseconds::now();

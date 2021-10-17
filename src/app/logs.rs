@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use my_service_bus_shared::date_time::DateTimeAsMicroseconds;
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Copy)]

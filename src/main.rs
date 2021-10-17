@@ -51,23 +51,7 @@ async fn main() {
         app.clone(),
     )));
 
-    tasks.push(tokio::task::spawn(crate::timers::persist::start(
-        app.clone(),
-    )));
-
-    tasks.push(tokio::task::spawn(crate::timers::metrics_timer::start(
-        app.clone(),
-    )));
-
-    tasks.push(tokio::task::spawn(crate::timers::by_topic::start(
-        app.clone(),
-    )));
-
-    if let Some(delivery_timeout) = app.delivery_timeout {
-        tasks.push(tokio::task::spawn(
-            crate::timers::dead_subscribers_kicker::start(app.clone(), delivery_timeout),
-        ));
-    }
+    tasks.push(tokio::task::spawn(crate::timers::start(app.clone())));
 
     signal_hook::flag::register(
         signal_hook::consts::SIGTERM,

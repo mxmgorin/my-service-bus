@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use crate::utils::FromStr;
 use serde::{Deserialize, Serialize};
 use tokio::{fs::File, io::AsyncReadExt};
 
@@ -83,19 +82,23 @@ fn get_settings_filename() -> String {
 
 impl Into<SettingsModel> for SettingsModelJson {
     fn into(self) -> SettingsModel {
-        let queue_gc_timeout = Duration::from_str(self.queue_gc_timeout.as_str()).unwrap();
+        let queue_gc_timeout =
+            rust_extensions::duration_utils::parse_duration(self.queue_gc_timeout.as_str())
+                .unwrap();
 
-        let eventually_persistence_delay =
-            Duration::from_str(self.eventually_persistence_delay.as_str()).unwrap();
+        let eventually_persistence_delay = rust_extensions::duration_utils::parse_duration(
+            self.eventually_persistence_delay.as_str(),
+        )
+        .unwrap();
 
         let delivery_timeout = if let Some(src) = self.delivery_timeout {
             println!("Delivery timeout is set {}", src);
 
-            let timeout_duration = Duration::from_str(src.as_str());
+            let timeout_duration = rust_extensions::duration_utils::parse_duration(src.as_str());
 
             if let Err(err) = timeout_duration {
                 panic!(
-                    "Can not parse Delivery Timeout value '{}'. Reason: {}",
+                    "Can not parse Delivery Timeout value '{}'. Reason: {:?}",
                     src, err
                 );
             }

@@ -160,7 +160,7 @@ async fn try_to_deliver_to_queue(
                     "We do not have page {} for the topic {} to delivery messages. Restoring",
                     page_id, topic.topic_id
                 );
-                crate::operations::load_page_to_cache::do_it(app, topic, page_id).await;
+                crate::operations::page_loader::load_full_page_to_cache(app, topic, page_id).await;
             }
         }
     }
@@ -199,22 +199,26 @@ async fn try_to_complie_next_messages_from_the_queue(
             }
         };
 
-        fill_messages(
+        let fill_messages_result = fill_messages(
             app,
-            topic,
             queue,
             &mut delivery_data.current_subscriber.as_mut().unwrap().messages,
         )
         .await;
 
-        if let PayloadCollectorCompleteOperation::Canceled(delivery_subscriber) =
-            delivery_data.complete()
-        {
-            queue
-                .subscribers
-                .get_by_id_mut(delivery_subscriber.subscriber_id)
-                .unwrap()
-                .cancel_the_rent();
+        match fill_messages_result {
+            FillMessagesResult::Complete => {
+                if let PayloadCollectorCompleteOperation::Canceled(delivery_subscriber) =
+                    delivery_data.complete()
+                {
+                    queue
+                        .subscribers
+                        .get_by_id_mut(delivery_subscriber.subscriber_id)
+                        .unwrap()
+                        .cancel_the_rent();
+                }
+            }
+            FillMessagesResult::LoadPage(page_id) => return CompileResult::LoadPage(page_id),
         }
     }
 }
@@ -239,67 +243,67 @@ async fn get_payload_subscriber(
     return Ok(result);
 }
 
+pub enum FillMessagesResult {
+    Complete,
+    LoadPage(PageId),
+}
+
 #[inline]
 async fn fill_messages(
     app: &AppContext,
-    topic: &Topic,
     queue: &mut QueueData,
     messages_bucket: &mut MessagesBucket,
-) {
+) -> FillMessagesResult {
     while let Some(next_message) = queue.peek_next_message() {
         let page_id = get_page_id(next_message.message_id);
 
         if messages_bucket.page.page_id != page_id {
-            return;
+            return FillMessagesResult::Complete;
         }
 
-        let msg_size =
-            get_message_size(app, topic, &messages_bucket.page, &next_message, page_id).await;
+        let msg_size_result = get_message_size(&messages_bucket.page, &next_message).await;
 
-        if let Some(next_msg_size) = msg_size {
-            if messages_bucket.messages_size + next_msg_size > app.max_delivery_size
-                && messages_bucket.messages_count() > 0
-            {
-                break;
+        match msg_size_result {
+            GetMessageSizeResult::MessageSize(next_msg_size) => {
+                if messages_bucket.messages_size + next_msg_size > app.max_delivery_size
+                    && messages_bucket.messages_count() > 0
+                {
+                    return FillMessagesResult::Complete;
+                }
+
+                messages_bucket.add(
+                    next_message.message_id,
+                    next_message.attempt_no,
+                    next_msg_size,
+                );
             }
-
-            messages_bucket.add(
-                next_message.message_id,
-                next_message.attempt_no,
-                next_msg_size,
-            );
+            GetMessageSizeResult::LoadPage => return FillMessagesResult::LoadPage(page_id),
+            GetMessageSizeResult::Missing => {}
         }
 
         queue.dequeue_next_message();
     }
+
+    return FillMessagesResult::Complete;
+}
+
+pub enum GetMessageSizeResult {
+    MessageSize(usize),
+    LoadPage,
+    Missing,
 }
 
 #[inline]
-async fn get_message_size(
-    app: &AppContext,
-    topic: &Topic,
-    page: &MessagesPage,
-    next_message: &NextMessage,
-    page_id: PageId,
-) -> Option<usize> {
+async fn get_message_size(page: &MessagesPage, next_message: &NextMessage) -> GetMessageSizeResult {
     let next_message_size_result = page.get_message_size(&next_message.message_id).await;
 
     match next_message_size_result {
         MessageSize::MessageIsReady(next_msg_size) => {
-            return Some(next_msg_size);
+            return GetMessageSizeResult::MessageSize(next_msg_size);
         }
         MessageSize::NotLoaded => {
-            crate::operations::message_pages::restore_page(
-                app,
-                topic,
-                page_id,
-                "get_message_size_first_time",
-            )
-            .await;
-            return None;
+            return GetMessageSizeResult::LoadPage;
         }
-        MessageSize::CanNotBeLoaded => {
-            return None;
-        }
+        MessageSize::Missing => return GetMessageSizeResult::Missing,
     }
 }
