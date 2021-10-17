@@ -16,8 +16,16 @@ pub async fn init_page_to_cache(app: &AppContext, topic: &Topic, page_id: PageId
     match min_message_id.queue_min_message_id {
         Some(queue_min_message_id) => {
             if queue_min_message_id <= page_first_message_id {
+                println!(
+                    "Initializing topic {}/{} with all messages possible",
+                    topic.topic_id, page_id
+                );
                 restore_page_to_cache(app, topic, page_id, 0, 0).await;
             } else {
+                println!(
+                    "Initializing topic {}/{} with messages {}-{}",
+                    topic.topic_id, page_id, queue_min_message_id, min_message_id.topic_message_id
+                );
                 restore_page_to_cache(
                     app,
                     topic,
@@ -29,6 +37,10 @@ pub async fn init_page_to_cache(app: &AppContext, topic: &Topic, page_id: PageId
             }
         }
         None => {
+            println!(
+                "Topic {}/{} is up to date. Initializing with blank pages",
+                topic.topic_id, page_id
+            );
             let messages = generate_not_loaded_messages(
                 page_first_message_id,
                 min_message_id.topic_message_id,
