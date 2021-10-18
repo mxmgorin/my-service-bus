@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{mpsc::UnboundedSender, RwLock};
 
 use crate::{
     persistence::{MessagesPagesRepo, TopcsAndQueuesSnapshotRepo},
@@ -19,6 +19,12 @@ use super::{
 };
 
 pub const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+#[derive(Clone)]
+pub struct DebugTopicAndQueue {
+    pub topic_id: String,
+    pub queue_id: String,
+}
 
 pub struct AppContext {
     pub states: GlobalStates,
@@ -39,6 +45,10 @@ pub struct AppContext {
     pub delivery_timeout: Option<Duration>,
 
     pub locks: Arc<LocksRegistry>,
+
+    pub debug_topic_and_queue: RwLock<Option<DebugTopicAndQueue>>,
+
+    pub auto_create_topic: bool,
 }
 
 impl AppContext {
@@ -60,6 +70,29 @@ impl AppContext {
             process_id_generator: ProcessIdGenerator::new(),
             delivery_timeout: settings.delivery_timeout,
             locks: Arc::new(LocksRegistry::new(locks_sender)),
+            debug_topic_and_queue: RwLock::new(None),
+            auto_create_topic: settings.auto_create_topic,
         }
+    }
+
+    pub async fn get_debug_topic_and_queue(&self) -> Option<DebugTopicAndQueue> {
+        let read_access = self.debug_topic_and_queue.read().await;
+        let result = read_access.as_ref()?;
+        return Some(result.clone());
+    }
+
+    pub async fn set_debug_topic_and_queue(&self, topic_id: &str, queue_id: &str) {
+        let mut write_access = self.debug_topic_and_queue.write().await;
+
+        *write_access = Some(DebugTopicAndQueue {
+            topic_id: topic_id.to_string(),
+            queue_id: queue_id.to_string(),
+        })
+    }
+
+    pub async fn disable_debug_topic_and_queue(&self) {
+        let mut write_access = self.debug_topic_and_queue.write().await;
+
+        *write_access = None;
     }
 }

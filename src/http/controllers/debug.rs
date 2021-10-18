@@ -3,7 +3,7 @@ use rust_extensions::{date_time::DateTimeAsMicroseconds, StringBuilder};
 
 use crate::{
     app::AppContext,
-    http::{HttpFailResult, HttpOkResult},
+    http::{http_ctx::HttpContext, HttpFailResult, HttpOkResult},
 };
 
 pub async fn get(app: &AppContext) -> Result<HttpOkResult, HttpFailResult> {
@@ -25,4 +25,25 @@ fn compile_result(items: &[LockItem]) -> String {
     }
 
     result.to_string_utf8().unwrap()
+}
+
+pub async fn enable(app: &AppContext, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+    let query_string = ctx.get_query_string();
+
+    let topic_id = query_string.get_query_required_string_parameter("topic")?;
+    let queue_id = query_string.get_query_required_string_parameter("queue")?;
+
+    app.set_debug_topic_and_queue(topic_id, queue_id).await;
+
+    Ok(HttpOkResult::Text {
+        text: "Ok".to_string(),
+    })
+}
+
+pub async fn disable(app: &AppContext) -> Result<HttpOkResult, HttpFailResult> {
+    app.disable_debug_topic_and_queue().await;
+
+    Ok(HttpOkResult::Text {
+        text: "Ok".to_string(),
+    })
 }
