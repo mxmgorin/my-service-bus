@@ -116,8 +116,15 @@ impl Into<SettingsModel> for SettingsModelJson {
         };
 
         let auto_create_topic = if let Some(auto_create_topic) = self.auto_create_topic {
+            if auto_create_topic {
+                println!("Auto create topic on publish is enabled");
+            } else {
+                println!("Auto create topic on publish is disabled");
+            }
+
             auto_create_topic
         } else {
+            println!("Auto create topic on publish is disabled. To enable please add parameter AutoCreateTopic: true");
             false
         };
 
