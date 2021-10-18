@@ -39,9 +39,19 @@ pub async fn publish(
         return Err(OperationFailResult::ShuttingDown);
     }
 
-    let topic = app.topic_list.get(topic_id).await;
+    let mut topic = app.topic_list.get(topic_id).await;
 
-    let topic = super::fail_result::into_topic_result(topic, topic_id)?;
+    if topic.is_none() {
+        if app.auto_create_topic {
+            topic = Some(app.topic_list.add_if_not_exists(topic_id).await);
+        } else {
+            return Err(OperationFailResult::TopicNotFound {
+                topic_id: topic_id.to_string(),
+            });
+        }
+    }
+
+    let topic = topic.unwrap();
 
     let messages = topic.publish_messages(messages).await;
 

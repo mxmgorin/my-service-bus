@@ -22,6 +22,9 @@ pub struct SettingsModelJson {
 
     #[serde(rename = "DeliveryTimeout")]
     pub delivery_timeout: Option<String>,
+
+    #[serde(rename = "AutoCreateTopic")]
+    pub auto_create_topic: Option<bool>,
 }
 
 pub struct SettingsModel {
@@ -33,6 +36,8 @@ pub struct SettingsModel {
     pub max_delivery_size: usize,
 
     pub delivery_timeout: Option<Duration>,
+
+    pub auto_create_topic: bool,
 }
 
 pub async fn read() -> SettingsModel {
@@ -110,6 +115,12 @@ impl Into<SettingsModel> for SettingsModelJson {
             None
         };
 
+        let auto_create_topic = if let Some(auto_create_topic) = self.auto_create_topic {
+            auto_create_topic
+        } else {
+            false
+        };
+
         SettingsModel {
             persistence_grpc_url: self.persistence_grpc_url,
             debug_mode: self.debug_mode,
@@ -117,6 +128,7 @@ impl Into<SettingsModel> for SettingsModelJson {
             eventually_persistence_delay,
             max_delivery_size: self.max_delivery_size,
             delivery_timeout,
+            auto_create_topic,
         }
     }
 }
