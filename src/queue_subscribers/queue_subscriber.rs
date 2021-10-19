@@ -95,9 +95,7 @@ impl QueueSubscriber {
 
     pub fn intermediary_confirmed(&mut self, queue: &QueueWithIntervals) {
         if let QueueSubscriberDeliveryState::OnDelivery(state) = &mut self.delivery_state {
-            for msg_id in queue {
-                state.messages.remove(msg_id);
-            }
+            state.messages.intermediary_confirmed(queue);
         }
     }
 
@@ -115,14 +113,6 @@ impl QueueSubscriber {
             "We are setting messages on delivery but previous state is '{}'. Previous state must be 'Rented'",
             self.delivery_state.to_string()
         );
-    }
-
-    pub fn get_messages_amount_on_delivery(&self) -> usize {
-        match &self.delivery_state {
-            QueueSubscriberDeliveryState::ReadyToDeliver => 0,
-            QueueSubscriberDeliveryState::Rented => 0,
-            QueueSubscriberDeliveryState::OnDelivery(state) => state.messages.messages_count(),
-        }
     }
 
     pub fn is_dead_on_delivery(&self, max_delivery_duration: Duration) -> Option<Duration> {

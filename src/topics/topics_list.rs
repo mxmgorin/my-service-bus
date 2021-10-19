@@ -55,9 +55,10 @@ impl TopicsList {
         let mut write_access = self.data.write().await;
 
         if !write_access.topics.contains_key(topic_id) {
+            let topic = Topic::new(topic_id, 0);
             write_access
                 .topics
-                .insert(topic_id.to_string(), Arc::new(Topic::new(topic_id, 0)));
+                .insert(topic_id.to_string(), Arc::new(topic));
             write_access.snapshot_id += 1;
         }
 
@@ -70,7 +71,8 @@ impl TopicsList {
     pub async fn restore(&self, topic_id: &str, message_id: MessageId) -> Arc<Topic> {
         let mut write_access = self.data.write().await;
 
-        let result = Arc::new(Topic::new(topic_id, message_id));
+        let topic = Topic::new(topic_id, message_id);
+        let result = Arc::new(topic);
 
         write_access
             .topics
