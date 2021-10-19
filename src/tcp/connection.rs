@@ -154,20 +154,20 @@ pub async fn handle_incoming_payload(
             .await;
             Ok(())
         }
-        TcpContract::ConfirmMessagesByNotDelivery {
+        TcpContract::IntermediaryConfirm {
             packet_version: _,
             topic_id,
             queue_id,
             confirmation_id,
-            not_delivered,
+            delivered,
         } => {
-            operations::subscriber::some_messages_are_not_confirmed(
+            operations::subscriber::intermediary_confirm(
                 process_id,
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
                 confirmation_id,
-                QueueWithIntervals::restore(not_delivered),
+                QueueWithIntervals::restore(delivered),
             )
             .await?;
 
