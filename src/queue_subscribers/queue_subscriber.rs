@@ -1,6 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
-use my_service_bus_shared::{messages_bucket::MessagesBucket, MessageId};
+use my_service_bus_shared::{
+    messages_bucket::MessagesBucket, queue_with_intervals::QueueWithIntervals, MessageId,
+};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{queues::TopicQueue, sessions::MyServiceBusSession, topics::Topic};
@@ -89,6 +91,14 @@ impl QueueSubscriber {
         }
 
         return None;
+    }
+
+    pub fn intermediary_confirmed(&mut self, queue: &QueueWithIntervals) {
+        if let QueueSubscriberDeliveryState::OnDelivery(state) = &mut self.delivery_state {
+            for msg_id in queue {
+                state.messages.remove(msg_id);
+            }
+        }
     }
 
     pub fn set_messages_on_delivery(&mut self, messages_bucket: MessagesBucket) {

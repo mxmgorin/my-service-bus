@@ -232,14 +232,13 @@ pub async fn some_messages_are_confirmed(
     Ok(())
 }
 
-//TODO - Plug partialy metrics
-pub async fn some_messages_are_not_confirmed(
+pub async fn intermediary_confirm(
     process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
     subscriber_id: SubscriberId,
-    not_confirmed_messages: QueueWithIntervals,
+    confirmed: QueueWithIntervals,
 ) -> Result<(), OperationFailResult> {
     let topic = app
         .topic_list
@@ -258,7 +257,7 @@ pub async fn some_messages_are_not_confirmed(
             })?;
 
     if let Err(err) = topic_queue
-        .confirmed_some_not_delivered(subscriber_id, not_confirmed_messages)
+        .intermediary_confirm(subscriber_id, confirmed)
         .await
     {
         app.logs

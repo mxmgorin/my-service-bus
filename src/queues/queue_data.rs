@@ -145,7 +145,6 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
-        update_delivery_time(subscriber, true);
 
         let messages_bucket = subscriber.reset_delivery();
 
@@ -159,6 +158,8 @@ impl QueueData {
         };
 
         let messages_bucket = messages_bucket.unwrap();
+
+        update_delivery_time(subscriber, &messages_bucket.ids, true);
 
         self.process_delivered(&messages_bucket.ids);
 
@@ -176,7 +177,6 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
-        update_delivery_time(subscriber, false);
 
         let messages_bucket = subscriber.reset_delivery();
 
@@ -191,15 +191,17 @@ impl QueueData {
 
         let messages_bucket = messages_bucket.unwrap();
 
+        update_delivery_time(subscriber, &messages_bucket.ids, false);
+
         self.process_not_delivered(&messages_bucket.ids);
 
         Ok(())
     }
 
-    pub fn confirmed_some_not_delivered(
+    pub fn intermediary_confirmed(
         &mut self,
         subscriber_id: SubscriberId,
-        not_delivered: QueueWithIntervals,
+        confirmed: QueueWithIntervals,
     ) -> Result<(), OperationFailResult> {
         let subscriber = self.subscribers.get_by_id_mut(subscriber_id);
 
@@ -208,31 +210,12 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
-        update_delivery_time(subscriber, false);
 
-        let messages_bucket = subscriber.reset_delivery();
-
-        if messages_bucket.is_none() {
-            println!(
-                "{}/{} confirmed_some_not_delivered: No messages on delivery at subscriber {}",
-                self.topic_id, self.queue_id, subscriber_id
-            );
-
-            return Ok(());
-        };
-
-        let mut messages_bucket = messages_bucket.unwrap();
-
-        //We are removing all not delivered and what remains - is what was delivered
-        for not_delivered_message_id in &not_delivered {
-            messages_bucket.remove(not_delivered_message_id);
+        if confirmed.len() > 0 {
+            update_delivery_time(subscriber, &confirmed, false);
+            subscriber.intermediary_confirmed(&confirmed);
+            self.process_delivered(&confirmed);
         }
-
-        if messages_bucket.messages_count() > 0 {
-            self.process_delivered(&messages_bucket.ids);
-        }
-
-        self.process_not_delivered(&not_delivered);
 
         return Ok(());
     }
@@ -249,7 +232,6 @@ impl QueueData {
         }
 
         let subscriber = subscriber.unwrap();
-        update_delivery_time(subscriber, false);
 
         let messages_bucket = subscriber.reset_delivery();
 
@@ -269,10 +251,12 @@ impl QueueData {
             messages_bucket.remove(delivered_message_id);
         }
 
-        self.process_delivered(&delivered);
+        update_delivery_time(subscriber, &messages_bucket.ids, false);
 
         if messages_bucket.ids.len() > 0 {
             self.process_not_delivered(&messages_bucket.ids);
+        } else {
+            self.process_delivered(&delivered);
         }
 
         Ok(())
@@ -307,9 +291,12 @@ impl QueueData {
     }
 }
 
-fn update_delivery_time(subscriber: &mut QueueSubscriber, positive: bool) {
-    let messages_on_delivery = subscriber.get_messages_amount_on_delivery();
-    if messages_on_delivery == 0 {
+fn update_delivery_time(
+    subscriber: &mut QueueSubscriber,
+    ids: &QueueWithIntervals,
+    positive: bool,
+) {
+    if ids.len() == 0 {
         return;
     }
 
@@ -319,10 +306,10 @@ fn update_delivery_time(subscriber: &mut QueueSubscriber, positive: bool) {
     if positive {
         subscriber
             .metrics
-            .set_delivered_statistic(messages_on_delivery, delivery_duration);
+            .set_delivered_statistic(ids.len() as usize, delivery_duration);
     } else {
         subscriber
             .metrics
-            .set_not_delivered_statistic(messages_on_delivery as i32, delivery_duration);
+            .set_not_delivered_statistic(ids.len() as i32, delivery_duration);
     }
 }

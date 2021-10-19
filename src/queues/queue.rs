@@ -237,13 +237,13 @@ impl TopicQueue {
         write_access.confirmed_some_delivered(subscriber_id, delivered)
     }
 
-    pub async fn confirmed_some_not_delivered(
+    pub async fn intermediary_confirm(
         &self,
         subscriber_id: SubscriberId,
-        not_delivered: QueueWithIntervals,
+        confirmed: QueueWithIntervals,
     ) -> Result<(), OperationFailResult> {
         let mut write_access = self.data.write().await;
-        write_access.confirmed_some_not_delivered(subscriber_id, not_delivered)
+        write_access.intermediary_confirmed(subscriber_id, confirmed)
     }
 
     pub async fn get_min_message_id(&self) -> Option<MessageId> {
