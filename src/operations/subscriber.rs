@@ -18,13 +18,19 @@ pub async fn subscribe_to_queue(
     queue_type: TopicQueueType,
     session: Arc<MyServiceBusSession>,
 ) -> Result<(), OperationFailResult> {
-    let topic = app
-        .topic_list
-        .get(topic_id)
-        .await
-        .ok_or(OperationFailResult::TopicNotFound {
-            topic_id: topic_id.to_string(),
-        })?;
+    let mut topic = app.topic_list.get(topic_id).await;
+
+    if topic.is_none() {
+        if app.auto_create_topic_on_subscribe {
+            topic = Some(app.topic_list.add_if_not_exists(topic_id).await);
+        } else {
+            return Err(OperationFailResult::TopicNotFound {
+                topic_id: topic_id.to_string(),
+            });
+        }
+    }
+
+    let topic = topic.unwrap();
 
     let topic_queue = topic
         .queues

@@ -42,7 +42,7 @@ pub async fn publish(
     let mut topic = app.topic_list.get(topic_id).await;
 
     if topic.is_none() {
-        if app.auto_create_topic {
+        if app.auto_create_topic_on_publish {
             topic = Some(app.topic_list.add_if_not_exists(topic_id).await);
         } else {
             return Err(OperationFailResult::TopicNotFound {

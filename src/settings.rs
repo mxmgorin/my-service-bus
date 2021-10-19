@@ -23,8 +23,11 @@ pub struct SettingsModelJson {
     #[serde(rename = "DeliveryTimeout")]
     pub delivery_timeout: Option<String>,
 
-    #[serde(rename = "AutoCreateTopic")]
-    pub auto_create_topic: Option<bool>,
+    #[serde(rename = "AutoCreateTopicOnPublish")]
+    pub auto_create_topic_on_publish: Option<bool>,
+
+    #[serde(rename = "AutoCreateTopicOnSubscribe")]
+    pub auto_create_topic_on_subscribe: Option<bool>,
 }
 
 pub struct SettingsModel {
@@ -37,7 +40,8 @@ pub struct SettingsModel {
 
     pub delivery_timeout: Option<Duration>,
 
-    pub auto_create_topic: bool,
+    pub auto_create_topic_on_publish: bool,
+    pub auto_create_topic_on_subscribe: bool,
 }
 
 pub async fn read() -> SettingsModel {
@@ -115,7 +119,9 @@ impl Into<SettingsModel> for SettingsModelJson {
             None
         };
 
-        let auto_create_topic = if let Some(auto_create_topic) = self.auto_create_topic {
+        let auto_create_topic_on_publish = if let Some(auto_create_topic) =
+            self.auto_create_topic_on_publish
+        {
             if auto_create_topic {
                 println!("Auto create topic on publish is enabled");
             } else {
@@ -124,7 +130,22 @@ impl Into<SettingsModel> for SettingsModelJson {
 
             auto_create_topic
         } else {
-            println!("Auto create topic on publish is disabled. To enable please add parameter AutoCreateTopic: true");
+            println!("Auto create topic on publish is disabled. To enable please add parameter AutoCreateTopicPublish: true");
+            false
+        };
+
+        let auto_create_topic_on_subscribe = if let Some(auto_create_topic_on_subscribe) =
+            self.auto_create_topic_on_subscribe
+        {
+            if auto_create_topic_on_subscribe {
+                println!("Auto create topic on subscribe is enabled");
+            } else {
+                println!("Auto create topic on subscribe is disabled");
+            }
+
+            auto_create_topic_on_subscribe
+        } else {
+            println!("Auto create topic on subscribe is disabled. To enable please add parameter AutoCreateTopicOnSubscribe: true");
             false
         };
 
@@ -135,7 +156,8 @@ impl Into<SettingsModel> for SettingsModelJson {
             eventually_persistence_delay,
             max_delivery_size: self.max_delivery_size,
             delivery_timeout,
-            auto_create_topic,
+            auto_create_topic_on_publish,
+            auto_create_topic_on_subscribe,
         }
     }
 }

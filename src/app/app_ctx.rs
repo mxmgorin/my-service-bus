@@ -48,7 +48,8 @@ pub struct AppContext {
 
     pub debug_topic_and_queue: RwLock<Option<DebugTopicAndQueue>>,
 
-    pub auto_create_topic: bool,
+    pub auto_create_topic_on_publish: bool,
+    pub auto_create_topic_on_subscribe: bool,
 }
 
 impl AppContext {
@@ -71,7 +72,8 @@ impl AppContext {
             delivery_timeout: settings.delivery_timeout,
             locks: Arc::new(LocksRegistry::new(locks_sender)),
             debug_topic_and_queue: RwLock::new(None),
-            auto_create_topic: settings.auto_create_topic,
+            auto_create_topic_on_publish: settings.auto_create_topic_on_publish,
+            auto_create_topic_on_subscribe: settings.auto_create_topic_on_subscribe,
         }
     }
 
