@@ -56,7 +56,7 @@ pub async fn get_on_delivery(
 
     let topic_id = query_string.get_query_required_string_parameter("topic")?;
     let queue_id = query_string.get_query_required_string_parameter("queue")?;
-    let subscriber_id = query_string.get_query_required_parameter::<i64>("queue")?;
+    let subscriber_id = query_string.get_query_required_parameter::<i64>("subscriberid")?;
 
     let topic = app.topic_list.get(topic_id).await;
     if topic.is_none() {
