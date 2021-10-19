@@ -25,6 +25,13 @@ async fn handle_after_disconnect(app: &AppContext, session: &MyServiceBusSession
             .await;
 
         for removed_subscriber in removed_subscribers {
+            println!(
+                "Subscriber {} with connection_id {} is removed during the session [{}]/{} disconnect process",
+                removed_subscriber.id,
+                removed_subscriber.session.id,
+                session.id,
+                session.get_name().await
+            );
             crate::operations::subscriber::handle_subscriber_remove(removed_subscriber).await;
         }
     }

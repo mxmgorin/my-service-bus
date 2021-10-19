@@ -239,14 +239,16 @@ impl SubscribersList {
         match &self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 for sub in hash_map.values() {
-                    if sub.metrics.connection_id == connection_id {
+                    if sub.session.id == connection_id {
                         return Some(sub.id);
                     }
                 }
             }
             SubscribersData::SingleSubscriber(single) => {
                 if let Some(sub) = single {
-                    return Some(sub.id);
+                    if sub.session.id == connection_id {
+                        return Some(sub.id);
+                    }
                 }
             }
         }
@@ -285,19 +287,21 @@ impl SubscribersList {
     ) -> Option<Vec<DeadSubscriber>> {
         match &self.data {
             SubscribersData::MultiSubscribers(subscribers) => {
-                let mut result = Vec::new();
+                let mut result = None;
 
                 for subscriber in subscribers.values() {
                     if let Some(duration) = subscriber.is_dead_on_delivery(max_delivery_duration) {
-                        result.push(DeadSubscriber::new(subscriber, duration));
+                        if result.is_none() {
+                            result = Some(Vec::new());
+                        }
+
+                        if let Some(result) = &mut result {
+                            result.push(DeadSubscriber::new(subscriber, duration));
+                        }
                     }
                 }
 
-                if result.len() > 0 {
-                    return Some(result);
-                }
-
-                return None;
+                return result;
             }
             SubscribersData::SingleSubscriber(state) => match state {
                 Some(subscriber) => {
