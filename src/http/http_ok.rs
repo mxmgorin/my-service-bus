@@ -101,7 +101,7 @@ impl Into<Response<Body>> for HttpOkResult {
 
 fn compile_html(title: String, body: String) -> String {
     format!(
-        r###"<html><head><title>{ver} MyNoSQLServer {title}</title>
+        r###"<html><head><title>{ver} MyServiceBus {title}</title>
         <link href="/css/bootstrap.css" rel="stylesheet" type="text/css" />
         </head><body>{body}</body></html>"###,
         ver = crate::app::APP_VERSION,

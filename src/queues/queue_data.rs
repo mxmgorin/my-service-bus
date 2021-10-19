@@ -159,7 +159,11 @@ impl QueueData {
 
         let messages_bucket = messages_bucket.unwrap();
 
-        update_delivery_time(subscriber, &messages_bucket.ids, true);
+        update_delivery_time(
+            subscriber,
+            messages_bucket.messages_count_with_intermediary_confirmed(),
+            true,
+        );
 
         self.process_delivered(&messages_bucket.ids);
 
@@ -191,7 +195,11 @@ impl QueueData {
 
         let messages_bucket = messages_bucket.unwrap();
 
-        update_delivery_time(subscriber, &messages_bucket.ids, false);
+        update_delivery_time(
+            subscriber,
+            messages_bucket.messages_count_with_intermediary_confirmed(),
+            false,
+        );
 
         self.process_not_delivered(&messages_bucket.ids);
 
@@ -212,7 +220,6 @@ impl QueueData {
         let subscriber = subscriber.unwrap();
 
         if confirmed.len() > 0 {
-            update_delivery_time(subscriber, &confirmed, false);
             subscriber.intermediary_confirmed(&confirmed);
             self.process_delivered(&confirmed);
         }
@@ -251,7 +258,11 @@ impl QueueData {
             messages_bucket.remove(delivered_message_id);
         }
 
-        update_delivery_time(subscriber, &messages_bucket.ids, false);
+        update_delivery_time(
+            subscriber,
+            messages_bucket.messages_count_with_intermediary_confirmed(),
+            false,
+        );
 
         if messages_bucket.ids.len() > 0 {
             self.process_not_delivered(&messages_bucket.ids);
@@ -291,25 +302,17 @@ impl QueueData {
     }
 }
 
-fn update_delivery_time(
-    subscriber: &mut QueueSubscriber,
-    ids: &QueueWithIntervals,
-    positive: bool,
-) {
-    if ids.len() == 0 {
-        return;
-    }
-
+fn update_delivery_time(subscriber: &mut QueueSubscriber, amount: usize, positive: bool) {
     let delivery_duration =
         DateTimeAsMicroseconds::now().duration_since(subscriber.metrics.start_delivery_time);
 
     if positive {
         subscriber
             .metrics
-            .set_delivered_statistic(ids.len() as usize, delivery_duration);
+            .set_delivered_statistic(amount, delivery_duration);
     } else {
         subscriber
             .metrics
-            .set_not_delivered_statistic(ids.len() as i32, delivery_duration);
+            .set_not_delivered_statistic(amount as i32, delivery_duration);
     }
 }

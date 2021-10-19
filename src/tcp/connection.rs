@@ -135,7 +135,7 @@ pub async fn handle_incoming_payload(
             queue_id,
             confirmation_id,
         } => {
-            operations::subscriber::confirm_delivery(
+            operations::delivery_confirmation::all_confirmed(
                 process_id,
                 app,
                 topic_id.as_str(),
@@ -161,8 +161,7 @@ pub async fn handle_incoming_payload(
             confirmation_id,
             delivered,
         } => {
-            operations::subscriber::intermediary_confirm(
-                process_id,
+            operations::delivery_confirmation::intermediary_confirm(
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
@@ -187,7 +186,7 @@ pub async fn handle_incoming_payload(
             queue_id,
             confirmation_id,
         } => {
-            operations::subscriber::confirm_non_delivery(
+            operations::delivery_confirmation::all_fail(
                 process_id,
                 app,
                 topic_id.as_str(),
@@ -205,7 +204,7 @@ pub async fn handle_incoming_payload(
             confirmation_id,
             delivered,
         } => {
-            operations::subscriber::some_messages_are_confirmed(
+            operations::delivery_confirmation::some_messages_are_confirmed(
                 process_id,
                 app,
                 topic_id.as_str(),

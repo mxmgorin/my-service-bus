@@ -109,7 +109,7 @@ pub async fn route_requests(
 
 fn get_index_page_content(app: &AppContext) -> HttpOkResult {
     let content = format!(
-        r###"<html><head><title>{} MyNoSQLServer</title>
+        r###"<html><head><title>{} MyServiceBus</title>
         <link href="/css/bootstrap.css" rel="stylesheet" type="text/css" />
         <link href="/css/site.css?ver={rnd}" rel="stylesheet" type="text/css" />
         <script src="/js/jquery.js"></script><script src="/js/app.js?ver={rnd}"></script>

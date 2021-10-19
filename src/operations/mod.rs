@@ -3,6 +3,7 @@ mod fail_result;
 pub mod initialization;
 mod page_loader;
 
+pub mod delivery_confirmation;
 pub mod publisher;
 pub mod queues;
 pub mod sessions;
