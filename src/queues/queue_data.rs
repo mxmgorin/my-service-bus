@@ -300,6 +300,15 @@ impl QueueData {
             }
         }
     }
+
+    pub async fn get_messages_on_delivery(
+        &self,
+        subscriber_id: SubscriberId,
+    ) -> Option<QueueWithIntervals> {
+        let subscriber = self.subscribers.get_by_id(subscriber_id)?;
+
+        return subscriber.get_messages_on_delivery();
+    }
 }
 
 fn update_delivery_time(subscriber: &mut QueueSubscriber, amount: usize, positive: bool) {
