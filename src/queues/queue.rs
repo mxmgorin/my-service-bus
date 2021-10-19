@@ -164,22 +164,11 @@ impl TopicQueue {
         &self,
         max_delivery_duration: Duration,
     ) -> Option<Vec<DeadSubscriber>> {
-        let mut result = Vec::new();
         let write_access = self.data.write().await;
 
-        let dead_on_delivery = write_access
+        return write_access
             .subscribers
             .find_subscribers_dead_on_delivery(max_delivery_duration);
-
-        if let Some(dead_on_delivery) = dead_on_delivery {
-            result.extend(dead_on_delivery);
-        }
-
-        if result.len() > 0 {
-            return Some(result);
-        }
-
-        return None;
     }
 
     #[inline]

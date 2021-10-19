@@ -1,6 +1,6 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use crate::app::AppContext;
+use crate::{app::AppContext, tcp::tcp_server::ConnectionId};
 
 pub async fn start(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
     let duration = Duration::from_secs(10);
@@ -44,6 +44,8 @@ pub async fn kick_them(app: Arc<AppContext>, delivery_timeout_duration: Duration
 async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
     let topics = app.topic_list.get_all().await;
 
+    let mut kicked_connections = HashMap::new();
+
     for topic in topics {
         let queues = topic.get_all_queues().await;
 
@@ -68,8 +70,18 @@ async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
                         )
                         .await;
 
-                    crate::operations::sessions::disconnect(app.as_ref(), dead_subscriber.session)
+                    if !kicked_connections.contains_key(&dead_subscriber.session.id) {
+                        kicked_connections
+                            .insert(dead_subscriber.session.id, dead_subscriber.subscriber_id);
+                        crate::operations::sessions::disconnect(
+                            app.as_ref(),
+                            dead_subscriber.session,
+                        )
                         .await;
+                    } else {
+                        let kicked = kicked_connections.get(&dead_subscriber.session.id);
+                        println!("We already kicked session {} the moment we were kicking the subscriber {:?}.", dead_subscriber.session.id, kicked);
+                    }
                 }
             }
         }
