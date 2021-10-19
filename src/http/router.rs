@@ -41,6 +41,10 @@ pub async fn route_requests(
             return super::controllers::debug::disable(app.as_ref()).await;
         }
 
+        (&Method::GET, "/debug/ondelivery") => {
+            return super::controllers::debug::get_on_delivery(app.as_ref(), ctx).await;
+        }
+
         (&Method::GET, "/queues") => {
             return super::controllers::queues::get_queues(app.as_ref(), ctx).await;
         }

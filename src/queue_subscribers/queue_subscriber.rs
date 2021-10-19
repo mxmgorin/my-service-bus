@@ -115,6 +115,14 @@ impl QueueSubscriber {
         );
     }
 
+    pub fn get_messages_on_delivery(&self) -> Option<QueueWithIntervals> {
+        match &self.delivery_state {
+            QueueSubscriberDeliveryState::ReadyToDeliver => None,
+            QueueSubscriberDeliveryState::Rented => None,
+            QueueSubscriberDeliveryState::OnDelivery(state) => Some(state.messages.ids.clone()),
+        }
+    }
+
     pub fn is_dead_on_delivery(&self, max_delivery_duration: Duration) -> Option<Duration> {
         match &self.delivery_state {
             QueueSubscriberDeliveryState::ReadyToDeliver => None,

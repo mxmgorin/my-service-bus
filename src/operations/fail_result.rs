@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use crate::{queue_subscribers::SubscriberId, topics::Topic};
+use crate::queue_subscribers::SubscriberId;
 
 #[derive(Debug)]
 pub enum OperationFailResult {
@@ -13,17 +11,4 @@ pub enum OperationFailResult {
     TonicError(tonic::Status),
     Other(String),
     ShuttingDown,
-}
-
-#[inline]
-pub fn into_topic_result(
-    src: Option<Arc<Topic>>,
-    topic_id: &str,
-) -> Result<Arc<Topic>, OperationFailResult> {
-    match src {
-        Some(topic) => Ok(topic),
-        None => Err(OperationFailResult::TopicNotFound {
-            topic_id: topic_id.to_string(),
-        }),
-    }
 }

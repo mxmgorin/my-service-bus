@@ -94,6 +94,22 @@ async fn deliver_to_queue_spawned(
                 .set_messages_on_delivery(subscriber_data.subscriber_id, subscriber_data.messages);
 
             if let Some(messages) = result {
+                let debug_data = app.get_debug_topic_and_queue().await;
+
+                if let Some(debug_data) = debug_data {
+                    if topic.topic_id == debug_data.topic_id
+                        && queue.queue_id == debug_data.queue_id
+                    {
+                        println!(
+                            "Sending delivery packet to {}/{}. Subscriber: {}. Messages: {:?}",
+                            topic.topic_id,
+                            queue.queue_id,
+                            subscriber_data.subscriber_id,
+                            messages.ids
+                        );
+                    }
+                }
+
                 println!(
                     "Could not find subscriber {} for the {}/{}. Set {} messages back to the queue",
                     subscriber_data.subscriber_id,

@@ -252,6 +252,14 @@ impl TopicQueue {
         write_access.intermediary_confirmed(subscriber_id, confirmed)
     }
 
+    pub async fn get_messages_on_delivery(
+        &self,
+        subscriber_id: SubscriberId,
+    ) -> Option<QueueWithIntervals> {
+        let read_access = self.data.read().await;
+        return read_access.get_messages_on_delivery(subscriber_id).await;
+    }
+
     pub async fn get_min_message_id(&self) -> Option<MessageId> {
         let read_access = self.data.read().await;
 

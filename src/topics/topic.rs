@@ -1,4 +1,4 @@
-use my_service_bus_shared::messages_page::{MessagesPage, MessagesPagesCache};
+use my_service_bus_shared::messages_page::MessagesPagesCache;
 use my_service_bus_shared::page_id::{get_page_id, PageId};
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
 use my_service_bus_shared::MySbMessageContent;

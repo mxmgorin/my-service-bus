@@ -76,6 +76,21 @@ impl SubscribersList {
         None
     }
 
+    pub fn get_by_id(&self, subscriber_id: SubscriberId) -> Option<&QueueSubscriber> {
+        match &self.data {
+            SubscribersData::MultiSubscribers(hash_map) => return hash_map.get(&subscriber_id),
+            SubscribersData::SingleSubscriber(single) => {
+                if let Some(subscriber) = single {
+                    if subscriber.id == subscriber_id {
+                        return Some(subscriber);
+                    }
+                }
+
+                return None;
+            }
+        }
+    }
+
     pub fn get_by_id_mut(&mut self, subscriber_id: SubscriberId) -> Option<&mut QueueSubscriber> {
         match &mut self.data {
             SubscribersData::MultiSubscribers(hash_map) => return hash_map.get_mut(&subscriber_id),
