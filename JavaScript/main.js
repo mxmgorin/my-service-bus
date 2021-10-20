@@ -15,6 +15,26 @@ var main = /** @class */ (function () {
         this.layoutElement.setAttribute('style', this.generatePosition(0, 0, width, height - sbHeight));
         this.statusBarElement.setAttribute('style', 'position:absolute; ' + this.generatePosition(0, height - sbHeight, width, sbHeight));
     };
+    main.filterLines = function (filterPhrase) {
+        var filter_lines = document.getElementsByClassName("filter-line");
+        for (var i = 0; i < filter_lines.length; i++) {
+            var el = filter_lines.item(i);
+            if (Utils.filterIt(el.innerHTML, filterPhrase)) {
+                if (i == 0) {
+                    console.log("Hiding first line. " + filterPhrase);
+                    console.log(el.innerHTML.substr(0, 30));
+                }
+                el.classList.add('hidden');
+            }
+            else {
+                if (i == 0) {
+                    console.log("Showing first line. " + filterPhrase);
+                    console.log(el.innerHTML.substr(0, 30));
+                }
+                el.classList.remove('hidden');
+            }
+        }
+    };
     main.background = function () {
         var _this = this;
         if (!this.body) {
@@ -32,7 +52,11 @@ var main = /** @class */ (function () {
         $.ajax({ url: '/status', type: 'get' })
             .then(function (result) {
             _this.requested = false;
-            if (ServiceLocator.checkIfTopicsAreChanged(result.topics)) {
+            var filterPhrase = document.getElementById('filter').value;
+            filterPhrase == filterPhrase.trim();
+            var filterPhraseChanged = filterPhrase != ServiceLocator.prevFilterPhrase || !ServiceLocator.prevFilterPhrase;
+            ServiceLocator.prevFilterPhrase = filterPhrase;
+            if (ServiceLocator.checkIfTopicsAreChanged(result.topics) || filterPhraseChanged) {
                 _this.topicsElement.innerHTML = HtmlTopics.renderTopics(result.topics);
                 ServiceLocator.topics = result.topics;
             }
@@ -49,6 +73,7 @@ var main = /** @class */ (function () {
             HtmlTopics.updateTopicSessions(result);
             HtmlTopics.updateTopicQueues(result);
             HtmlStatusBar.updateStatusbar(result);
+            _this.filterLines(filterPhrase);
         }).fail(function () {
             _this.requested = false;
             HtmlStatusBar.updateOffline();

@@ -6,7 +6,7 @@ class HtmlSessions {
 
 
         for (let session of sessions.items.sort((a, b) => a.name > b.name ? 1 : -1)) {
-            result += '<tr><td>' + session.id + '</td>' +
+            result += '<tr class="filter-line"><td>' + session.id + '</td>' +
                 '<td><b>' + session.name + '</b><div>' + session.version + '</div>' +
                 '<div><b>Ip:</b>' + session.ip + '</div>' +
 

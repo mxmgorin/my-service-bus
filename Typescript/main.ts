@@ -37,6 +37,33 @@ class main {
 
     }
 
+    static filterLines(filterPhrase: string) {
+        let filter_lines = document.getElementsByClassName("filter-line");
+
+        for (let i = 0; i < filter_lines.length; i++) {
+
+            let el = filter_lines.item(i);
+
+            if (Utils.filterIt(el.innerHTML, filterPhrase)) {
+                if (i == 0) {
+                    console.log("Hiding first line. " + filterPhrase);
+                    console.log(el.innerHTML.substr(0, 30));
+                }
+                el.classList.add('hidden');
+            }
+            else {
+                if (i == 0) {
+                    console.log("Showing first line. " + filterPhrase);
+                    console.log(el.innerHTML.substr(0, 30));
+                }
+
+                el.classList.remove('hidden');
+
+            }
+
+        }
+    }
+
     static background() {
 
         if (!this.body) {
@@ -62,7 +89,15 @@ class main {
             .then((result: IStatus) => {
                 this.requested = false;
 
-                if (ServiceLocator.checkIfTopicsAreChanged(result.topics)) {
+                let filterPhrase = (<HTMLInputElement>document.getElementById('filter')).value;
+
+                filterPhrase == filterPhrase.trim();
+
+                let filterPhraseChanged = filterPhrase != ServiceLocator.prevFilterPhrase || !ServiceLocator.prevFilterPhrase;
+
+                ServiceLocator.prevFilterPhrase = filterPhrase;
+
+                if (ServiceLocator.checkIfTopicsAreChanged(result.topics) || filterPhraseChanged) {
                     this.topicsElement.innerHTML = HtmlTopics.renderTopics(result.topics);
                     ServiceLocator.topics = result.topics;
                 }
@@ -83,6 +118,11 @@ class main {
                 HtmlTopics.updateTopicQueues(result);
 
                 HtmlStatusBar.updateStatusbar(result);
+
+                this.filterLines(filterPhrase);
+
+
+
             }).fail(() => {
                 this.requested = false;
                 HtmlStatusBar.updateOffline();
