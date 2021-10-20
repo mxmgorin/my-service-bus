@@ -1,6 +1,11 @@
 var Utils = /** @class */ (function () {
     function Utils() {
     }
+    Utils.filterIt = function (line, filterPhrase) {
+        if (filterPhrase == "")
+            return false;
+        return line.indexOf(filterPhrase) == -1;
+    };
     Utils.getMax = function (c) {
         var result = 0;
         for (var _i = 0, c_1 = c; _i < c_1.length; _i++) {

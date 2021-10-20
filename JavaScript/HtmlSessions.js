@@ -6,7 +6,7 @@ var HtmlSessions = /** @class */ (function () {
             '<tr><th style="width:50px">Id</th><th style="width:120px">Info</th><th>Publisher</th><th>Subscriber</th></tr>';
         for (var _i = 0, _a = sessions.items.sort(function (a, b) { return a.name > b.name ? 1 : -1; }); _i < _a.length; _i++) {
             var session = _a[_i];
-            result += '<tr><td>' + session.id + '</td>' +
+            result += '<tr class="filter-line"><td>' + session.id + '</td>' +
                 '<td><b>' + session.name + '</b><div>' + session.version + '</div>' +
                 '<div><b>Ip:</b>' + session.ip + '</div>' +
                 '<div id="session-info-' + session.id + '">' + this.renderSessionData(session) + '</div>' +

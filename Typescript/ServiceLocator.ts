@@ -1,6 +1,7 @@
 class ServiceLocator {
     public static topics: ITopics;
     public static sessions: ISessions;
+    public static prevFilterPhrase: string;
 
 
     public static checkIfTopicsAreChanged(topics: ITopics): boolean {

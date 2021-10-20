@@ -2,7 +2,7 @@ var HtmlMain = /** @class */ (function () {
     function HtmlMain() {
     }
     HtmlMain.layout = function () {
-        return '<div id="main"><div id="topics"></div><h1>Connections</h1><div id="connections"></div></div>' +
+        return '<div id="main"><div>Filter:<input id="filter" class="form-control" style="width:300px; background-color:gray; color:white"></input></div><div id="topics"></div><h1>Connections</h1><div id="connections"></div></div>' +
             HtmlStatusBar.layout();
     };
     HtmlMain.drawLed = function (enabled, color) {

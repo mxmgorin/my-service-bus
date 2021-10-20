@@ -9,6 +9,14 @@ interface ITopicSession {
 
 class Utils {
 
+
+    public static filterIt(line: string, filterPhrase: string): boolean {
+        if (filterPhrase == "")
+            return false;
+
+        return line.indexOf(filterPhrase) == -1;
+    }
+
     public static getMax(c: number[]): number {
         let result = 0;
 
