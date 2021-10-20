@@ -17,6 +17,18 @@ class Utils {
         return line.indexOf(filterPhrase) == -1;
     }
 
+    public static copyToClipboardHtml(text: string): string {
+        return ' style="cursor:pointer" clipboard=' + text + ' onclick="Utils.copyToClipboard()"';
+    }
+
+    public static copyToClipboard(el: HTMLElement) {
+        let attr = el.attributes.getNamedItem('clipboard');
+        if (attr) {
+            navigator.clipboard.writeText(attr.value);
+        }
+
+    }
+
     public static getMax(c: number[]): number {
         let result = 0;
 
