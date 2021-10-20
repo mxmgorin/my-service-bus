@@ -6,6 +6,15 @@ var Utils = /** @class */ (function () {
             return false;
         return line.indexOf(filterPhrase) == -1;
     };
+    Utils.copyToClipboardHtml = function (text) {
+        return ' style="cursor:pointer" clipboard=' + text + ' onclick="Utils.copyToClipboard(this)"';
+    };
+    Utils.copyToClipboard = function (el) {
+        var attr = el.attributes.getNamedItem('clipboard');
+        if (attr) {
+            navigator.clipboard.writeText(attr.value);
+        }
+    };
     Utils.getMax = function (c) {
         var result = 0;
         for (var _i = 0, c_1 = c; _i < c_1.length; _i++) {

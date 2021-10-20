@@ -12,7 +12,7 @@ class HtmlTopics {
 
                 let subscribers = Utils.getQueueSubscribers(status, topic, queue.id);
 
-                html += '<tr><td style="width:100%"><div>' + queue.id + '</div>' +
+                html += '<tr><td style="width:100%"><div' + Utils.copyToClipboardHtml(queue.id) + '>' + queue.id + '</div>' +
                     '<div>' + HtmlQueue.renderQueueSubscribersCountBadge(subscribers.length) + ' ' + HtmlQueue.renderQueueTypeBadge(queue) + " " + HtmlQueue.renderQueueSizeBadge(queue) + " " + HtmlQueue.renderQueueRanges(queue) + '</div></td>' +
                     '<td style="width:100px">' + HtmlQueue.renderQueueSubscribers(subscribers) + '</td>';
             }
@@ -68,7 +68,7 @@ class HtmlTopics {
 
 
         for (let topic of topics.items.sort((a, b) => a.id > b.id ? 1 : -1)) {
-            result += '<tr class="filter-line"><td><b>' + topic.id + '</b><div style="font-size:10px" id="topic-data-' + topic.id + '">' + this.renderTopicData(topic) + '</div></td>' +
+            result += '<tr class="filter-line"><td><b' + Utils.copyToClipboardHtml(topic.id) + '>' + topic.id + '</b><div style="font-size:10px" id="topic-data-' + topic.id + '">' + this.renderTopicData(topic) + '</div></td>' +
                 '<td id="topic-sessions-' + topic.id + '"></td>' +
                 '<td id="topic-queues-' + topic.id + '"></td>';
         }
