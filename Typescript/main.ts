@@ -41,26 +41,14 @@ class main {
         let filter_lines = document.getElementsByClassName("filter-line");
 
         for (let i = 0; i < filter_lines.length; i++) {
-
             let el = filter_lines.item(i);
 
             if (Utils.filterIt(el.innerHTML, filterPhrase)) {
-                if (i == 0) {
-                    console.log("Hiding first line. " + filterPhrase);
-                    console.log(el.innerHTML.substr(0, 30));
-                }
                 el.classList.add('hidden');
             }
             else {
-                if (i == 0) {
-                    console.log("Showing first line. " + filterPhrase);
-                    console.log(el.innerHTML.substr(0, 30));
-                }
-
                 el.classList.remove('hidden');
-
             }
-
         }
     }
 
