@@ -22,7 +22,7 @@ use super::{QueueData, TopicQueueMetrics};
 
 pub struct TopicQueueGcData {
     pub subscribers_amount: usize,
-    pub subscribers_with_no_connection: Option<Vec<QueueSubscriber>>,
+    pub subscribers_with_no_connection: Option<Vec<SubscriberId>>,
     pub queue_type: TopicQueueType,
     pub last_subscriber_disconnect: DateTimeAsMicroseconds,
 }
@@ -108,17 +108,17 @@ impl TopicQueue {
     }
 
     pub async fn get_gc_data(&self) -> TopicQueueGcData {
-        let mut write_access = self.data.write().await;
+        let read_access = self.data.read().await;
 
-        let subscribers_with_no_connection = write_access
+        let subscribers_with_no_connection = read_access
             .subscribers
             .get_with_disconnected_sockets()
             .await;
 
         TopicQueueGcData {
-            queue_type: write_access.queue_type,
-            subscribers_amount: write_access.subscribers.get_amount(),
-            last_subscriber_disconnect: write_access.last_ubsubscribe,
+            queue_type: read_access.queue_type,
+            subscribers_amount: read_access.subscribers.get_amount(),
+            last_subscriber_disconnect: read_access.last_ubsubscribe,
             subscribers_with_no_connection,
         }
     }
@@ -240,6 +240,18 @@ impl TopicQueue {
     ) -> Result<(), OperationFailResult> {
         let mut write_access = self.data.write().await;
         write_access.intermediary_confirmed(subscriber_id, confirmed)
+    }
+
+    pub async fn remove_subscribers(&self, ids: Vec<SubscriberId>) -> Vec<QueueSubscriber> {
+        let mut result = Vec::new();
+        let mut write_access = self.data.write().await;
+        for sub_id in ids {
+            if let Some(subscriber) = write_access.subscribers.remove(sub_id) {
+                result.push(subscriber);
+            }
+        }
+
+        result
     }
 
     pub async fn get_messages_on_delivery(

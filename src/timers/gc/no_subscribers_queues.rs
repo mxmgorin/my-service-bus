@@ -13,7 +13,7 @@ pub async fn execute(app: Arc<AppContext>, topic: Arc<Topic>) {
         let gc_data = queue.get_gc_data().await;
 
         if let Some(subscribers) = gc_data.subscribers_with_no_connection {
-            for subscriber in subscribers {
+            for subscriber in queue.remove_subscribers(subscribers).await {
                 println!(
                     "{}/{} Subscriber {} with dead connection is removed",
                     subscriber.queue.topic_id, subscriber.queue.queue_id, subscriber.id
