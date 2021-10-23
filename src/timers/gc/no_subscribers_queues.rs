@@ -14,6 +14,10 @@ pub async fn execute(app: Arc<AppContext>, topic: Arc<Topic>) {
 
         if let Some(subscribers) = gc_data.subscribers_with_no_connection {
             for subscriber in subscribers {
+                println!(
+                    "{}/{} Subscriber {} with dead connection is removed",
+                    subscriber.queue.topic_id, subscriber.queue.queue_id, subscriber.id
+                );
                 crate::operations::subscriber::handle_subscriber_remove(subscriber).await;
             }
         }
