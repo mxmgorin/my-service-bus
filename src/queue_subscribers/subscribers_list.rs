@@ -106,6 +106,45 @@ impl SubscribersList {
         }
     }
 
+    pub async fn get_with_disconnected_sockets(&mut self) -> Option<Vec<QueueSubscriber>> {
+        let mut result = None;
+
+        match &mut self.data {
+            SubscribersData::MultiSubscribers(subscribers) => {
+                let mut subscribers_to_remove = Vec::new();
+
+                for subscriber in subscribers.values() {
+                    if !subscriber.session.is_connected().await {
+                        subscribers_to_remove.push(subscriber.id);
+                    }
+                }
+
+                for subscriber_id in subscribers_to_remove {
+                    if result.is_none() {
+                        result = Some(Vec::new());
+                    }
+
+                    let removed = subscribers.remove(&subscriber_id);
+
+                    if let Some(removed) = removed {
+                        result.as_mut().unwrap().push(removed);
+                    }
+                }
+            }
+            SubscribersData::SingleSubscriber(queue_subscriber) => {
+                if let Some(sub) = queue_subscriber {
+                    if !sub.session.is_connected().await {
+                        let mut removed = None;
+                        std::mem::swap(&mut removed, queue_subscriber);
+                        result = Some(vec![removed.unwrap()]);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
     pub fn set_messages_on_delivery(
         &mut self,
         subscriber_id: SubscriberId,

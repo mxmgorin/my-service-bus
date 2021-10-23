@@ -22,6 +22,7 @@ use super::{QueueData, TopicQueueMetrics};
 
 pub struct TopicQueueGcData {
     pub subscribers_amount: usize,
+    pub subscribers_with_no_connection: Option<Vec<QueueSubscriber>>,
     pub queue_type: TopicQueueType,
     pub last_subscriber_disconnect: DateTimeAsMicroseconds,
 }
@@ -107,12 +108,18 @@ impl TopicQueue {
     }
 
     pub async fn get_gc_data(&self) -> TopicQueueGcData {
-        let read_access = self.data.read().await;
+        let mut write_access = self.data.write().await;
+
+        let subscribers_with_no_connection = write_access
+            .subscribers
+            .get_with_disconnected_sockets()
+            .await;
 
         TopicQueueGcData {
-            queue_type: read_access.queue_type,
-            subscribers_amount: read_access.subscribers.get_amount(),
-            last_subscriber_disconnect: read_access.last_ubsubscribe,
+            queue_type: write_access.queue_type,
+            subscribers_amount: write_access.subscribers.get_amount(),
+            last_subscriber_disconnect: write_access.last_ubsubscribe,
+            subscribers_with_no_connection,
         }
     }
 

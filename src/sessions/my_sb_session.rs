@@ -139,4 +139,9 @@ impl MyServiceBusSession {
         let read_access = self.data.read().await;
         read_access.attr.versions.get_packet_version(packet)
     }
+
+    pub async fn is_connected(&self) -> bool {
+        let read_access = self.data.read().await;
+        read_access.connected_state.is_some()
+    }
 }
