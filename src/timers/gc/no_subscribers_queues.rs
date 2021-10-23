@@ -12,18 +12,28 @@ pub async fn execute(app: Arc<AppContext>, topic: Arc<Topic>) {
     for queue in queues {
         let gc_data = queue.get_gc_data().await;
 
-        match gc_data.queue_type {
-            my_service_bus_shared::queue::TopicQueueType::DeleteOnDisconnect => {
-                if gc_data.subscribers_amount == 0 {
-                    let since_last_disconnect =
-                        now.duration_since(gc_data.last_subscriber_disconnect);
 
-                    if since_last_disconnect > app.empty_queue_gc_timeout {
-                        topic.delete_queue(queue.queue_id.as_str()).await;
-                    }
+        if let Some(subscribers) = gc_data.subscribers_with_no_connection {
+            for subscriber in queue.remove_subscribers(subscribers).await {
+                println!(
+                    "{}/{} Subscriber {} with dead connection is removed",
+                    subscriber.queue.topic_id, subscriber.queue.queue_id, subscriber.id
+                );
+                crate::operations::subscriber::handle_subscriber_remove(subscriber).await;
+            }
+        }
+
+        if let my_service_bus_shared::queue::TopicQueueType::DeleteOnDisconnect = gc_data.queue_type
+        {
+            let since_last_disconnect = now.duration_since(gc_data.last_subscriber_disconnect);
+
+            if gc_data.subscribers_amount == 0 {
+                println!("Detected DeleteOnDisconnect queue {}/{} with 0 subscribers. Last disconnect since {:?}", topic.topic_id, queue.queue_id, since_last_disconnect);
+                if since_last_disconnect > app.empty_queue_gc_timeout {
+                    topic.delete_queue(queue.queue_id.as_str()).await;
+
                 }
             }
-            _ => {}
         }
     }
 }

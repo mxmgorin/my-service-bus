@@ -106,6 +106,32 @@ impl SubscribersList {
         }
     }
 
+    pub async fn get_with_disconnected_sockets(&self) -> Option<Vec<SubscriberId>> {
+        let mut result = None;
+
+        match &self.data {
+            SubscribersData::MultiSubscribers(subscribers) => {
+                for subscriber in subscribers.values() {
+                    if !subscriber.session.is_connected().await {
+                        if result.is_none() {
+                            result = Some(Vec::new());
+                        }
+                        result.as_mut().unwrap().push(subscriber.id);
+                    }
+                }
+            }
+            SubscribersData::SingleSubscriber(queue_subscriber) => {
+                if let Some(sub) = queue_subscriber {
+                    if !sub.session.is_connected().await {
+                        result = Some(vec![sub.id]);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
     pub fn set_messages_on_delivery(
         &mut self,
         subscriber_id: SubscriberId,
