@@ -1,5 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio::sync::RwLock;
 
 use super::MyServiceBusSession;
@@ -60,5 +61,30 @@ impl SessionsList {
         for session in read_access.sessions.values() {
             session.one_second_tick().await;
         }
+    }
+
+    pub async fn get_dead_connections(
+        &self,
+        timeout: Duration,
+    ) -> Option<Vec<Arc<MyServiceBusSession>>> {
+        let now = DateTimeAsMicroseconds::now();
+
+        let mut result = None;
+
+        let read_access = self.data.read().await;
+
+        for session in read_access.sessions.values() {
+            let last_incoming_package = session.last_incoming_package.as_date_time();
+
+            if now.duration_since(last_incoming_package) > timeout {
+                if result.is_none() {
+                    result = Some(Vec::new());
+                }
+
+                result.as_mut().unwrap().push(session.clone());
+            }
+        }
+
+        result
     }
 }
