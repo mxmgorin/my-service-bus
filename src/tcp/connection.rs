@@ -21,7 +21,7 @@ pub async fn on_disconnect(
 }
 
 async fn on_disconnect_process(app: Arc<AppContext>, my_sb_session: Arc<MyServiceBusSession>) {
-    crate::operations::sessions::disconnect(app.as_ref(), my_sb_session).await;
+    crate::operations::sessions::disconnect(app.as_ref(), my_sb_session.id).await;
 }
 
 pub async fn handle_incoming_payload(
@@ -29,16 +29,11 @@ pub async fn handle_incoming_payload(
     tcp_contract: TcpContract,
     session: Arc<MyServiceBusSession>,
     attr: &mut ConnectionAttributes,
-    process_id: i64,
 ) -> Result<(), MySbSocketError> {
     match tcp_contract {
         TcpContract::Ping {} => {
-            crate::operations::sessions::send_package(
-                app.as_ref(),
-                session.as_ref(),
-                TcpContract::Pong,
-            )
-            .await;
+            crate::operations::sessions::send_package(app.as_ref(), session.id, TcpContract::Pong)
+                .await;
             Ok(())
         }
         TcpContract::Pong {} => Ok(()),
@@ -67,21 +62,19 @@ pub async fn handle_incoming_payload(
             persist_immediately,
             data_to_publish,
         } => {
-            session.add_publisher(topic_id.as_str()).await;
-
             let result = operations::publisher::publish(
-                process_id,
                 app.clone(),
-                topic_id.as_str(),
+                topic_id,
                 data_to_publish,
                 persist_immediately,
+                session.id,
             )
             .await;
 
             if let Err(err) = result {
                 crate::operations::sessions::send_package(
                     app.as_ref(),
-                    session.as_ref(),
+                    session.id,
                     TcpContract::Reject {
                         message: format!("{:?}", err),
                     },
@@ -90,7 +83,7 @@ pub async fn handle_incoming_payload(
             } else {
                 crate::operations::sessions::send_package(
                     app.as_ref(),
-                    session.as_ref(),
+                    session.id,
                     TcpContract::PublishResponse { request_id },
                 )
                 .await;
@@ -108,13 +101,17 @@ pub async fn handle_incoming_payload(
             queue_id,
             queue_type,
         } => {
+            let delivery_version_id = session
+                .get_packet_version(my_service_bus_tcp_shared::tcp_message_id::NEW_MESSAGES)
+                .await;
+
             operations::subscriber::subscribe_to_queue(
-                process_id,
                 app,
-                topic_id.as_str(),
-                queue_id.as_str(),
+                topic_id,
+                queue_id,
                 queue_type,
-                session.clone(),
+                session.id,
+                delivery_version_id,
             )
             .await?;
             Ok(())
@@ -136,7 +133,6 @@ pub async fn handle_incoming_payload(
             confirmation_id,
         } => {
             operations::delivery_confirmation::all_confirmed(
-                process_id,
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
@@ -187,7 +183,6 @@ pub async fn handle_incoming_payload(
             confirmation_id,
         } => {
             operations::delivery_confirmation::all_fail(
-                process_id,
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),
@@ -205,7 +200,6 @@ pub async fn handle_incoming_payload(
             delivered,
         } => {
             operations::delivery_confirmation::some_messages_are_confirmed(
-                process_id,
                 app,
                 topic_id.as_str(),
                 queue_id.as_str(),

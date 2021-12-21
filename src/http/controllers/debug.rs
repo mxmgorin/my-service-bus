@@ -1,31 +1,7 @@
-use my_service_bus_shared::debug::LockItem;
-use rust_extensions::{date_time::DateTimeAsMicroseconds, StringBuilder};
-
 use crate::{
     app::AppContext,
     http::{http_ctx::HttpContext, HttpFailResult, HttpOkResult},
 };
-
-pub async fn get(app: &AppContext) -> Result<HttpOkResult, HttpFailResult> {
-    let logs = app.locks.get_locks().await;
-
-    let text = compile_result(&logs);
-
-    Ok(HttpOkResult::Text { text })
-}
-
-fn compile_result(items: &[LockItem]) -> String {
-    let mut result = StringBuilder::new();
-
-    for itm in items {
-        let date = DateTimeAsMicroseconds::new(itm.date);
-        result.append_line(
-            format!("{} {} [{}]", date.to_rfc3339(), itm.to_string(), itm.id,).as_str(),
-        );
-    }
-
-    result.to_string_utf8().unwrap()
-}
 
 pub async fn enable(app: &AppContext, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
     let query_string = ctx.get_query_string();
@@ -65,15 +41,19 @@ pub async fn get_on_delivery(
 
     let topic = topic.unwrap();
 
-    let queue = topic.get_queue(queue_id).await;
+    let ids = {
+        let topic_data = topic.data.lock().await;
 
-    if queue.is_none() {
-        return Err(HttpFailResult::as_not_found("Queue not found".to_string()));
-    }
+        let queue = topic_data.queues.get(queue_id);
 
-    let queue = queue.unwrap();
+        if queue.is_none() {
+            return Err(HttpFailResult::as_not_found("Queue not found".to_string()));
+        }
 
-    let ids = queue.get_messages_on_delivery(subscriber_id).await;
+        let queue = queue.unwrap();
+
+        queue.get_messages_on_delivery(subscriber_id)
+    };
 
     return Ok(HttpOkResult::Text {
         text: format!("{:?}", ids),

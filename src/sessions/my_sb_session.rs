@@ -6,10 +6,7 @@ use tokio::{io::WriteHalf, net::TcpStream, sync::RwLock};
 
 use crate::{app::AppContext, queue_subscribers::SubscriberId};
 
-use super::{
-    my_sb_session_data::ConnectedState, MySbSessionMetrics, MyServiceBusSessionData,
-    SessionOperationError,
-};
+use super::{MySbSessionMetrics, MyServiceBusSessionData};
 
 pub type ConnectionId = i64;
 
@@ -21,8 +18,6 @@ pub struct MyServiceBusSession {
     pub last_incoming_package: AtomicDateTimeAsMicroseconds,
     pub app: Arc<AppContext>,
 }
-
-const BADGE_HIGHLIGHT_TIMOUT: u8 = 2;
 
 pub struct SessionMetrics {
     pub name: Option<String>,
@@ -54,7 +49,7 @@ impl MyServiceBusSession {
 
     pub async fn increase_read_size(&self, read_size: usize) {
         let mut data = self.data.write().await;
-        data.metrics.increase_read_size(read_size).await;
+        data.metrics.increase_read_size(read_size);
     }
 
     pub async fn set_socket_name(&self, set_socket_name: String, client_version: Option<String>) {
@@ -101,47 +96,21 @@ impl MyServiceBusSession {
         }
     }
 
-    pub async fn send(&self, tcp_contract: TcpContract) -> Result<(), SessionOperationError> {
+    pub async fn send(&self, tcp_contract: TcpContract) -> bool {
         let buf = tcp_contract.serialize();
 
         let mut write_access = self.data.write().await;
-        let result = write_access.send(&buf).await;
-
-        result
+        return write_access.send(&buf).await;
     }
 
-    pub async fn add_publisher(&self, topic: &str) {
-        let mut data = self.data.write().await;
-
-        data.metrics
-            .publishers
-            .insert(topic.to_string(), BADGE_HIGHLIGHT_TIMOUT);
-
-        if !data.metrics.publishers.contains_key(topic) {
-            data.metrics
-                .publishers
-                .insert(topic.to_string(), BADGE_HIGHLIGHT_TIMOUT);
-        }
-    }
-
-    pub async fn disconnect(&self) -> Result<ConnectedState, ()> {
+    pub async fn disconnect(&self) {
         let mut write_access = self.data.write().await;
 
-        let result = write_access.disconnect().await;
-
-        match result {
-            Some(state) => Ok(state),
-            None => Err(()),
-        }
+        write_access.disconnect().await;
     }
 
     pub async fn get_packet_version(&self, packet: u8) -> i32 {
         let read_access = self.data.read().await;
         read_access.attr.versions.get_packet_version(packet)
-    }
-
-    pub async fn is_connected(&self) -> bool {
-        let read_access = self.data.read().await;
-        read_access.connected_state.is_some()
     }
 }

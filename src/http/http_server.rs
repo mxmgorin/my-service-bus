@@ -9,14 +9,12 @@ use crate::app::AppContext;
 use std::sync::Arc;
 
 pub async fn start(addr: SocketAddr, app: Arc<AppContext>) {
-    app.logs
-        .add_info(
-            None,
-            crate::app::logs::SystemProcess::System,
-            "Starting http server".to_string(),
-            addr.to_string(),
-        )
-        .await;
+    app.logs.add_info(
+        None,
+        crate::app::logs::SystemProcess::System,
+        "Starting http server".to_string(),
+        addr.to_string(),
+    );
 
     let app_to_move = app.clone();
 

@@ -20,21 +20,19 @@ pub async fn init(app: Arc<AppContext>) {
     for topic_and_queues in topics_and_queues {
         let topic = app
             .topic_list
-            .restore(
-                topic_and_queues.topic_id.as_str(),
-                topic_and_queues.message_id,
-            )
+            .restore(topic_and_queues.topic_id, topic_and_queues.message_id)
             .await;
 
         for queue in topic_and_queues.queues {
             let queue_with_intervals = QueueWithIntervals::restore(queue.ranges);
-            topic
-                .restore_queue(
-                    queue.queue_id.as_str(),
-                    queue.queue_type,
-                    queue_with_intervals,
-                )
-                .await;
+
+            let mut topic_data = topic.data.lock().await;
+            topic_data.queues.restore(
+                topic.topic_id.to_string(),
+                queue.queue_id.to_string(),
+                queue.queue_type,
+                queue_with_intervals,
+            );
         }
     }
 
@@ -45,24 +43,28 @@ pub async fn init(app: Arc<AppContext>) {
     app.states.set_initialized();
     sw.pause();
 
-    app.logs
-        .add_info(
-            None,
-            crate::app::logs::SystemProcess::Init,
-            format!("Initialization is done in {:?}", sw.duration()),
-            format!(
-                "Application is initialized. Topics amount is: {}",
-                topics_count
-            ),
-        )
-        .await;
+    app.logs.add_info(
+        None,
+        crate::app::logs::SystemProcess::Init,
+        format!("Initialization is done in {:?}", sw.duration()),
+        format!(
+            "Application is initialized. Topics amount is: {}",
+            topics_count
+        ),
+    );
 
     println!("Application is initialized in {:?}", sw.duration());
 }
 
 async fn restore_topic_pages(app: Arc<AppContext>, topic: Arc<Topic>) {
     let page_id = topic.get_current_page().await;
-    crate::operations::page_loader::init_page_to_cache(app.as_ref(), topic.as_ref(), page_id).await
+    crate::operations::page_loader::load_page_to_cache(
+        topic,
+        &app.messages_pages_repo,
+        Some(app.logs.as_ref()),
+        page_id,
+    )
+    .await
 }
 
 async fn restore_topics_and_queues(app: &AppContext) -> Vec<TopicSnapshot> {
@@ -72,14 +74,12 @@ async fn restore_topics_and_queues(app: &AppContext) -> Vec<TopicSnapshot> {
 
         let topics_and_queues = app.topics_and_queues_repo.load().await;
 
-        app.logs
-            .add_info(
-                None,
-                crate::app::logs::SystemProcess::Init,
-                "restore_topics_and_queues".to_string(),
-                format!("Restoring topics and queues. Attempt {}", attempt),
-            )
-            .await;
+        app.logs.add_info(
+            None,
+            crate::app::logs::SystemProcess::Init,
+            "restore_topics_and_queues".to_string(),
+            format!("Restoring topics and queues. Attempt {}", attempt),
+        );
 
         if let Ok(result) = topics_and_queues {
             return result;
@@ -87,15 +87,13 @@ async fn restore_topics_and_queues(app: &AppContext) -> Vec<TopicSnapshot> {
 
         let err = topics_and_queues.err().unwrap();
 
-        app.logs
-            .add_error(
-                None,
-                crate::app::logs::SystemProcess::Init,
-                "restore_topics_and_queues".to_string(),
-                "Can not restore topics and queues".to_string(),
-                Some(format!("{:?}", err)),
-            )
-            .await;
+        app.logs.add_error(
+            None,
+            crate::app::logs::SystemProcess::Init,
+            "restore_topics_and_queues".to_string(),
+            "Can not restore topics and queues".to_string(),
+            Some(format!("{:?}", err)),
+        );
 
         tokio::time::sleep(Duration::from_secs(5)).await;
     }

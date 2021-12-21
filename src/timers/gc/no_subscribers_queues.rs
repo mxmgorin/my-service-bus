@@ -1,39 +1,41 @@
-use std::sync::Arc;
-
+use my_service_bus_shared::queue::TopicQueueType;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::{app::AppContext, topics::Topic};
+use crate::{app::AppContext, topics::TopicData};
 
-pub async fn execute(app: Arc<AppContext>, topic: Arc<Topic>) {
-    let queues = topic.get_all_queues().await;
-
+pub fn execute(app: &AppContext, topic_data: &mut TopicData) {
     let now = DateTimeAsMicroseconds::now();
 
-    for queue in queues {
-        let gc_data = queue.get_gc_data().await;
+    let queues_with_no_subscribers = topic_data.queues.get_queues_with_no_subscribers();
 
+    if queues_with_no_subscribers.is_none() {
+        return;
+    }
 
-        if let Some(subscribers) = gc_data.subscribers_with_no_connection {
-            for subscriber in queue.remove_subscribers(subscribers).await {
-                println!(
-                    "{}/{} Subscriber {} with dead connection is removed",
-                    subscriber.queue.topic_id, subscriber.queue.queue_id, subscriber.id
-                );
-                crate::operations::subscriber::handle_subscriber_remove(subscriber).await;
+    let mut queues_to_delete = None;
+
+    for topic_queue in queues_with_no_subscribers.unwrap() {
+        if let TopicQueueType::DeleteOnDisconnect = topic_queue.queue_type {
+            if now.duration_since(topic_queue.subscribers.last_unsubscribe)
+                > app.empty_queue_gc_timeout
+            {
+                println!("Detected DeleteOnDisconnect queue {}/{} with 0 subscribers. Last disconnect since {:?}", topic_data.topic_id, topic_queue.queue_id, topic_queue.subscribers.last_unsubscribe);
+
+                if queues_to_delete.is_none() {
+                    queues_to_delete = Some(Vec::new());
+                }
+
+                queues_to_delete
+                    .as_mut()
+                    .unwrap()
+                    .push(topic_queue.queue_id.to_string());
             }
         }
+    }
 
-        if let my_service_bus_shared::queue::TopicQueueType::DeleteOnDisconnect = gc_data.queue_type
-        {
-            let since_last_disconnect = now.duration_since(gc_data.last_subscriber_disconnect);
-
-            if gc_data.subscribers_amount == 0 {
-                println!("Detected DeleteOnDisconnect queue {}/{} with 0 subscribers. Last disconnect since {:?}", topic.topic_id, queue.queue_id, since_last_disconnect);
-                if since_last_disconnect > app.empty_queue_gc_timeout {
-                    topic.delete_queue(queue.queue_id.as_str()).await;
-
-                }
-            }
+    if let Some(queues_to_delete) = queues_to_delete {
+        for queue_id in queues_to_delete {
+            topic_data.queues.remove(queue_id.as_str());
         }
     }
 }

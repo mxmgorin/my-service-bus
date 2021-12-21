@@ -29,10 +29,6 @@ pub async fn route_requests(
             return super::controllers::metrics::get(app.as_ref()).await;
         }
 
-        (&Method::GET, "/locks") => {
-            return super::controllers::debug::get(app.as_ref()).await;
-        }
-
         (&Method::POST, "/debug/enable") => {
             return super::controllers::debug::enable(app.as_ref(), ctx).await;
         }

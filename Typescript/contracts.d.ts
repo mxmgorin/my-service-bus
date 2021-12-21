@@ -3,7 +3,8 @@ interface IStatus {
     topics: ITopics,
     queues: object,
     sessions: ISessions
-    system: ISystemStatus
+    system: ISystemStatus,
+    subscribers: ISubscriber[]
 }
 interface ISession {
     id: number,
@@ -16,8 +17,6 @@ interface ISession {
     writtenSize: number,
     readPerSec: number,
     writtenPerSec: number,
-    publishers: object,
-    subscribers: ISubscriber[]
 }
 
 interface ISessions {
@@ -30,6 +29,10 @@ interface ITopics {
     items: ITopic[],
 }
 
+interface ITopicPublisher {
+    sessionId: number,
+    active: number
+}
 
 interface ITopic {
     id: string,
@@ -37,8 +40,9 @@ interface ITopic {
     packetPerSec: number,
     messagesPerSec: number,
     persistSize: number,
-    publishHistory: number[]
-    pages: IPage[]
+    publishHistory: number[],
+    pages: IPage[],
+    publishers: ITopicPublisher[]
 }
 
 interface IPage {
@@ -64,6 +68,7 @@ interface ITopicQueue {
 
 interface ISubscriber {
     id: number,
+    sessionId: number;
     topicId: string,
     queueId: string,
     active: number,

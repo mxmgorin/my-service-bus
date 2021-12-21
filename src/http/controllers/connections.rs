@@ -9,16 +9,14 @@ pub async fn delete(app: &AppContext, ctx: HttpContext) -> Result<HttpOkResult, 
 
     let id: i64 = query.get_query_required_parameter("id")?;
 
-    let session = app.sessions.remove(&id).await;
+    let result = operations::sessions::disconnect(app, id).await;
 
-    if session.is_none() {
+    if result.is_none() {
         return Err(HttpFailResult::as_not_found(format!(
             "Session {} is not found",
-            &id
+            id
         )));
     }
-
-    operations::sessions::disconnect(app, session.unwrap()).await;
 
     let result = HttpOkResult::Text {
         text: "Session is removed".to_string(),

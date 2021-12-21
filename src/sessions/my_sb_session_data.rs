@@ -8,7 +8,7 @@ use tokio::{
 
 use crate::app::AppContext;
 
-use super::{MySbSessionMetrics, SessionOperationError};
+use super::MySbSessionMetrics;
 
 pub struct ConnectedState {
     tcp_stream: WriteHalf<TcpStream>,
@@ -53,44 +53,36 @@ impl MyServiceBusSessionData {
         return Some(result.to_string());
     }
 
-    fn get_connected_state_mut(&mut self) -> Result<&mut ConnectedState, SessionOperationError> {
-        match &mut self.connected_state {
-            Some(state) => Ok(state),
-            None => Err(SessionOperationError::Disconnected),
+    pub async fn send(&mut self, buf: &[u8]) -> bool {
+        if self.connected_state.is_none() {
+            return false;
         }
-    }
 
-    pub async fn send(&mut self, buf: &[u8]) -> Result<(), SessionOperationError> {
-        let connected_state = self.get_connected_state_mut()?;
+        let connected_state = self.connected_state.as_mut().unwrap();
 
         let result = connected_state.tcp_stream.write_all(buf).await;
 
         if let Err(err) = result {
-            println!("Could not send to the connection. Disconnecting Session");
-            let disconnect_result = self.disconnect().await;
-
-            if let Some(_) = disconnect_result {
-                return Err(SessionOperationError::JustDisconnected);
-            };
-
-            return Err(SessionOperationError::CanNotSendOperationToSocket(format!(
-                "Can not send to the socket {:?}. Err:{}",
+            println!(
+                "Could not send to the connection {:?}. Err {}",
                 self.name, err
-            )));
-        } else {
-            self.metrics.increase_written_size(buf.len()).await;
-        }
+            );
+            self.disconnect().await;
 
-        Ok(())
+            return false;
+        } else {
+            self.metrics.increase_written_size(buf.len());
+            return true;
+        }
     }
 
-    pub async fn disconnect(&mut self) -> Option<ConnectedState> {
+    pub async fn disconnect(&mut self) {
+        if self.connected_state.is_none() {
+            return;
+        }
+
         let mut connected_state = None;
         std::mem::swap(&mut connected_state, &mut self.connected_state);
-
-        if connected_state.is_none() {
-            return None;
-        }
 
         let mut connected_state = connected_state.unwrap();
         self.metrics.disconnected = true;
@@ -104,7 +96,5 @@ impl MyServiceBusSessionData {
                 err
             );
         }
-
-        Some(connected_state)
     }
 }

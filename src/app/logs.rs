@@ -1,7 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
-use tokio::sync::RwLock;
+use tokio::sync::{
+    mpsc::{UnboundedReceiver, UnboundedSender},
+    RwLock,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum SystemProcess {
@@ -101,8 +104,27 @@ struct LogsData {
     items_by_process: HashMap<u8, Vec<Arc<LogItem>>>,
 }
 
+impl LogsData {
+    async fn add(&mut self, item: LogItem) {
+        let item = Arc::new(item);
+
+        let process_id = item.as_ref().process.as_u8();
+
+        add_topic_data(&mut self.items_by_process, &process_id, item.clone());
+
+        if let Some(topic_name) = &item.topic {
+            add_topic_data(&mut self.items_by_topic, topic_name, item.clone());
+        }
+
+        let items = &mut self.items;
+        items.push(item);
+        gc_logs(items);
+    }
+}
+
 pub struct Logs {
-    data: RwLock<LogsData>,
+    data: Arc<RwLock<LogsData>>,
+    sender: UnboundedSender<LogItem>,
 }
 
 impl Logs {
@@ -112,34 +134,19 @@ impl Logs {
             items_by_topic: HashMap::new(),
             items_by_process: HashMap::new(),
         };
+        let logs_data = Arc::new(RwLock::new(logs_data));
+
+        let (sender, recv) = tokio::sync::mpsc::unbounded_channel();
+
+        tokio::spawn(log_writer_thread(recv, logs_data.clone()));
 
         Self {
-            data: RwLock::new(logs_data),
+            data: logs_data,
+            sender,
         }
     }
 
-    async fn add(&self, item: LogItem) {
-        let item = Arc::new(item);
-        let mut wirte_access = self.data.write().await;
-
-        let process_id = item.as_ref().process.as_u8();
-
-        add_topc_data(
-            &mut wirte_access.items_by_process,
-            &process_id,
-            item.clone(),
-        );
-
-        if let Some(topic_name) = &item.topic {
-            add_topc_data(&mut wirte_access.items_by_topic, topic_name, item.clone());
-        }
-
-        let items = &mut wirte_access.items;
-        items.push(item);
-        gc_logs(items);
-    }
-
-    pub async fn add_info(
+    pub fn add_info(
         &self,
         topic: Option<String>,
         process: SystemProcess,
@@ -156,10 +163,18 @@ impl Logs {
             err_ctx: None,
         };
 
-        self.add(item).await;
+        self.add_item(item);
     }
 
-    pub async fn add_error(
+    fn add_item(&self, item: LogItem) {
+        let result = self.sender.send(item);
+
+        if let Err(err) = result {
+            println!("Can not write log item. Reason: {:?}", err);
+        }
+    }
+
+    pub fn add_error(
         &self,
         topic: Option<String>,
         process: SystemProcess,
@@ -178,25 +193,20 @@ impl Logs {
         };
 
         println!(
-            "{dt} {level:?} {proces:?}\n Topic:{topic:?}\n Process:{processname}\n Message:{message}\n Ctx:{err_ctx:?}",
-            topic= item.topic,
-            dt = item.date.to_rfc3339(),
-            level = item.level,
-            proces = item.process,
-            processname = item.process_name,
-            message = item.message,
-            err_ctx = item.err_ctx
-        );
+                "{dt} {level:?} {proces:?}\n Topic:{topic:?}\n Process:{processname}\n Message:{message}\n Ctx:{err_ctx:?}",
+                topic= item.topic,
+                dt = item.date.to_rfc3339(),
+                level = item.level,
+                proces = item.process,
+                processname = item.process_name,
+                message = item.message,
+                err_ctx = item.err_ctx
+            );
         println!("-------------");
-        self.add(item).await;
+        self.add_item(item);
     }
 
-    pub async fn add_fatal_error(
-        &self,
-        process: SystemProcess,
-        process_name: String,
-        message: String,
-    ) {
+    pub fn add_fatal_error(&self, process: SystemProcess, process_name: String, message: String) {
         let item = LogItem {
             date: DateTimeAsMicroseconds::now(),
             level: LogLevel::FatalError,
@@ -216,7 +226,8 @@ impl Logs {
             message = item.message
         );
         println!("-------------");
-        self.add(item).await;
+
+        self.add_item(item);
     }
 
     pub async fn get(&self) -> Vec<Arc<LogItem>> {
@@ -237,7 +248,7 @@ impl Logs {
     }
 }
 
-fn add_topc_data<T>(
+fn add_topic_data<T>(
     items_by_topic: &mut HashMap<T, Vec<Arc<LogItem>>>,
     category: &T,
     item: Arc<LogItem>,
@@ -259,5 +270,12 @@ fn add_topc_data<T>(
 fn gc_logs(items: &mut Vec<Arc<LogItem>>) {
     while items.len() > 100 {
         items.remove(0);
+    }
+}
+
+async fn log_writer_thread(mut recv: UnboundedReceiver<LogItem>, logs_data: Arc<RwLock<LogsData>>) {
+    while let Some(next_item) = recv.recv().await {
+        let mut write_access = logs_data.as_ref().write().await;
+        write_access.add(next_item).await;
     }
 }

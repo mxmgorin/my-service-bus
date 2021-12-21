@@ -39,13 +39,13 @@ impl PrometheusMetrics {
         };
     }
 
-    pub async fn update_persist_queue_size(&self, topic_id: &str, value: i64) {
+    pub fn update_persist_queue_size(&self, topic_id: &str, value: i64) {
         self.persist_queue_size
             .with_label_values(&[topic_id])
             .set(value);
     }
 
-    pub async fn update_topic_queue_size(&self, topic_id: &str, queue_id: &str, value: i64) {
+    pub fn update_topic_queue_size(&self, topic_id: &str, queue_id: &str, value: i64) {
         self.topic_queue_size
             .with_label_values(&[topic_id, queue_id])
             .set(value);

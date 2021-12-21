@@ -1,13 +1,4 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-};
-
-use my_service_bus_shared::{
-    page_id::{get_page_id, PageId},
-    queue_with_intervals::QueueWithIntervals,
-    MySbMessageContent,
-};
+use std::sync::Arc;
 
 use crate::{app::AppContext, sessions::MyServiceBusSession, topics::Topic};
 
@@ -18,82 +9,66 @@ pub async fn create_topic_if_not_exists(
     session: Option<&MyServiceBusSession>,
     topic_id: &str,
 ) -> Arc<Topic> {
-    let topic = app.topic_list.add_if_not_exists(topic_id).await;
-    tokio::task::spawn(crate::timers::persist::sync_topics_and_queues(app));
+    let topic = app.topic_list.add_if_not_exists(topic_id.to_string()).await;
+    tokio::task::spawn(crate::timers::persist::save_topics_and_queues(app.clone()));
+    tokio::task::spawn(crate::timers::persist::save_messages_for_topic(
+        app,
+        topic.clone(),
+    ));
 
-    if let Some(session) = session {
-        session.add_publisher(topic_id).await;
+    {
+        let mut topic_data = topic.data.lock().await;
+
+        if let Some(session) = session {
+            topic_data.set_publisher_as_active(session.id);
+        }
     }
 
     return topic;
 }
 
 pub async fn publish(
-    process_id: i64,
     app: Arc<AppContext>,
-    topic_id: &str,
+    topic_id: String,
     messages: Vec<Vec<u8>>,
     persist_immediately: bool,
+    session_id: i64,
 ) -> Result<(), OperationFailResult> {
     if app.states.is_shutting_down() {
         return Err(OperationFailResult::ShuttingDown);
     }
 
-    let mut topic = app.topic_list.get(topic_id).await;
+    let topic = app.topic_list.get(topic_id.as_str()).await;
 
-    if topic.is_none() {
-        if app.auto_create_topic_on_publish {
-            topic = Some(app.topic_list.add_if_not_exists(topic_id).await);
-        } else {
-            return Err(OperationFailResult::TopicNotFound {
-                topic_id: topic_id.to_string(),
-            });
+    match topic {
+        Some(topic) => {
+            let mut topic_data = topic.data.lock().await;
+
+            let messages_count = messages.len();
+
+            topic_data.publish_messages(session_id, messages);
+
+            topic_data.metrics.update_topic_metrics(messages_count);
+
+            if persist_immediately {
+                tokio::task::spawn(crate::timers::persist::save_messages_for_topic(
+                    app.clone(),
+                    topic.clone(),
+                ));
+            }
+
+            super::delivery::try_to_deliver(app, &topic, &mut topic_data);
         }
-    }
-
-    let topic = topic.unwrap();
-
-    let messages = topic.publish_messages(messages).await;
-
-    if persist_immediately {
-        tokio::task::spawn(crate::timers::persist::sync_topics_and_queues(app.clone()));
-    }
-
-    let (msgs_by_pages, msg_ids) = split_to_pages(messages);
-
-    topic.messages.new_messages(msgs_by_pages).await;
-
-    let queues = topic.get_all_queues().await;
-
-    for queue in queues {
-        queue.enqueue_messages(&msg_ids).await;
-        crate::operations::delivery::deliver_to_queue(
-            process_id,
-            app.clone(),
-            topic.clone(),
-            queue.clone(),
-        );
+        None => {
+            if app.auto_create_topic_on_publish {
+                app.topic_list.add_if_not_exists(topic_id).await;
+            } else {
+                return Err(OperationFailResult::TopicNotFound {
+                    topic_id: topic_id.to_string(),
+                });
+            }
+        }
     }
 
     Ok(())
-}
-
-//TODO - UnitTest It
-fn split_to_pages(
-    mut messages: VecDeque<MySbMessageContent>,
-) -> (HashMap<PageId, Vec<MySbMessageContent>>, QueueWithIntervals) {
-    let mut result = HashMap::new();
-
-    let mut msg_ids = QueueWithIntervals::new();
-    for msg in messages.drain(..) {
-        msg_ids.enqueue(msg.id);
-        let page_id = get_page_id(msg.id);
-
-        if !result.contains_key(&page_id) {
-            result.insert(page_id, Vec::new());
-        }
-
-        result.get_mut(&page_id).unwrap().push(msg);
-    }
-    (result, msg_ids)
 }

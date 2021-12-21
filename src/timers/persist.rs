@@ -1,14 +1,10 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use my_service_bus_shared::{
-    bcl::BclDateTime, messages_page::MessagesPage, queue_with_intervals::QueueWithIntervals,
-    MySbMessage,
-};
+use my_service_bus_shared::{page_id::PageId, queue_with_intervals::QueueWithIntervals};
 
 use crate::{
-    app::{logs::Logs, AppContext},
-    persistence::protobuf_models::MessageProtobufModel,
-    topics::Topic,
+    app::AppContext,
+    topics::{Topic, TopicSnapshot},
 };
 
 pub async fn start(app: Arc<AppContext>) {
@@ -17,28 +13,24 @@ pub async fn start(app: Arc<AppContext>) {
         tokio::time::sleep(duration).await;
     }
 
-    app.logs
-        .add_info(
-            None,
-            crate::app::logs::SystemProcess::Timer,
-            "Persist timer".to_string(),
-            "Started".to_string(),
-        )
-        .await;
+    app.logs.add_info(
+        None,
+        crate::app::logs::SystemProcess::Timer,
+        "Persist timer".to_string(),
+        "Started".to_string(),
+    );
 
     while !app.states.app_is_shutted_down() {
         let persist_handle = tokio::task::spawn(persist_tick(app.clone()));
 
         if let Err(err) = persist_handle.await {
-            app.logs
-                .add_error(
-                    None,
-                    crate::app::logs::SystemProcess::Timer,
-                    "Persist tick".to_string(),
-                    "Error during doing Persist one second timer iteration".to_string(),
-                    Some(format!("{:?}", err)),
-                )
-                .await;
+            app.logs.add_error(
+                None,
+                crate::app::logs::SystemProcess::Timer,
+                "Persist tick".to_string(),
+                "Error during doing Persist one second timer iteration".to_string(),
+                Some(format!("{:?}", err)),
+            );
         }
 
         tokio::time::sleep(duration).await
@@ -46,140 +38,105 @@ pub async fn start(app: Arc<AppContext>) {
 }
 
 async fn persist_tick(app: Arc<AppContext>) {
-    sync_topics_and_queues(app.clone()).await;
-    persist_messages(app.as_ref()).await;
-}
+    save_topics_and_queues(app.clone()).await;
 
-pub async fn sync_topics_and_queues(app: Arc<AppContext>) {
-    let snapshot = app.topic_list.get_snapshot_to_persist().await;
-    let result = app.topics_and_queues_repo.save(snapshot).await;
-
-    if let Err(err) = result {
-        app.logs
-            .add_error(
-                None,
-                crate::app::logs::SystemProcess::TcpSocket,
-                "persist::sync_topics_and_queues".to_string(),
-                "Failed to save topics and queues snapshot".to_string(),
-                Some(format!("{:?}", err)),
-            )
-            .await;
+    for topic in app.topic_list.get_all().await {
+        save_messages_for_topic(app.clone(), topic.clone()).await;
     }
 }
 
-async fn persist_messages(app: &AppContext) {
+pub async fn save_topics_and_queues(app: Arc<AppContext>) {
+    let mut topics_snapshots = Vec::new();
+
     let topics = app.topic_list.get_all().await;
 
     for topic in topics {
-        persit_messages_for_topic(app, topic.as_ref()).await;
-    }
-}
+        save_messages_for_topic(app.clone(), topic.clone()).await;
 
-pub async fn persit_messages_for_topic(app: &AppContext, topic: &Topic) {
-    let pages = topic.messages.get_pages().await;
+        {
+            let topic_data = topic.data.lock().await;
 
-    for page in pages {
-        let messages_to_persist =
-            get_messages_to_persist(page.as_ref(), app.logs.as_ref(), topic.topic_id.as_str())
-                .await;
+            let topic_snapshot = TopicSnapshot {
+                message_id: topic_data.message_id,
+                topic_id: topic_data.topic_id.to_string(),
+                queues: topic_data.queues.get_snapshot_to_persist(),
+            };
 
-        if let Some(messages) = messages_to_persist {
-            let result = app
-                .messages_pages_repo
-                .save_messages(topic.topic_id.as_str(), messages.0, app.max_delivery_size)
-                .await;
-
-            if let Err(err) = result {
-                app.logs
-                    .add_error(
-                        Some(topic.topic_id.to_string()),
-                        crate::app::logs::SystemProcess::Timer,
-                        "persist_messages".to_string(),
-                        format!(
-                            "Can not persist messages min:{:?} max:{:?}",
-                            messages.1.get_min_id(),
-                            messages.1.get_max_id()
-                        ),
-                        Some(format!("{:?}", err)),
-                    )
-                    .await;
-
-                put_messages_to_persist_back(page.as_ref(), &messages.1).await;
-            } else {
-                messages_are_persisted_ok(page.as_ref()).await;
-            }
+            topics_snapshots.push(topic_snapshot);
         }
     }
+
+    let result = app.topics_and_queues_repo.save(topics_snapshots).await;
+
+    if let Err(err) = result {
+        app.logs.add_error(
+            None,
+            crate::app::logs::SystemProcess::TcpSocket,
+            "persist::sync_topics_and_queues".to_string(),
+            "Failed to save topics and queues snapshot".to_string(),
+            Some(format!("{:?}", err)),
+        );
+    }
 }
 
-async fn get_messages_to_persist(
-    page: &MessagesPage,
-    logs: &Logs,
-    topic_id: &str,
-) -> Option<(Vec<MessageProtobufModel>, QueueWithIntervals)> {
+pub async fn save_messages_for_topic(app: Arc<AppContext>, topic: Arc<Topic>) {
+    let mut messages_to_persist_by_page = None;
+
     {
-        let read_access = page.data.read().await;
+        let topic_data = topic.data.lock().await;
 
-        if read_access.to_be_persisted.len() == 0 {
-            return None;
-        }
-    }
-
-    let mut result = Vec::new();
-
-    let mut write_access = page.data.write().await;
-
-    let queue_result = write_access.to_be_persisted.clone();
-
-    while let Some(msg_id) = write_access.to_be_persisted.dequeue() {
-        let msg = write_access.messages.get(&msg_id);
-
-        if let Some(my_sb_message) = msg {
-            if let MySbMessage::Loaded(msg) = my_sb_message {
-                let create = BclDateTime::from(msg.time);
-
-                result.push(MessageProtobufModel {
-                    created: Some(create),
-                    data: msg.content.to_vec(),
-                    message_id: msg_id,
-                    metadata: Vec::new(),
-                });
-            } else {
-                logs.add_error(
-                    Some(topic_id.to_string()),
-                    crate::app::logs::SystemProcess::Persistence,
-                    format!("Getting messages to persist for page: {}", page.page_id),
-                    "Somehow we do not have loaded message but we have to persist it. Bug..."
-                        .to_string(),
-                    None,
-                )
-                .await;
-
-                //TODO - Make sure that we do not GC Messages before we persist them.
+        while let Some((page_id, messages)) = topic_data.pages.get_messages_to_persist() {
+            if messages_to_persist_by_page.is_none() {
+                messages_to_persist_by_page = Some(HashMap::new());
             }
+
+            let hash_map = messages_to_persist_by_page.as_mut().unwrap();
+
+            hash_map.insert(page_id, messages);
         }
     }
 
-    if queue_result.len() == 0 {
-        return None;
+    if messages_to_persist_by_page.is_none() {
+        return;
     }
 
-    write_access.is_being_persisted = true;
+    let messages_to_persist_by_page = messages_to_persist_by_page.unwrap();
 
-    Some((result, queue_result))
-}
+    for (page_id, messages_to_persist) in messages_to_persist_by_page {
+        let mut msg_ids = QueueWithIntervals::new();
 
-async fn put_messages_to_persist_back(page: &MessagesPage, msgs: &QueueWithIntervals) {
-    let mut write_access = page.data.write().await;
+        for msg in &messages_to_persist {
+            msg_ids.enqueue(msg.message_id);
+        }
 
-    for msg_id in msgs.clone() {
-        write_access.to_be_persisted.enqueue(msg_id);
+        let result = app
+            .messages_pages_repo
+            .save_messages(
+                topic.topic_id.as_str(),
+                messages_to_persist,
+                app.max_delivery_size,
+            )
+            .await;
+
+        if let Err(err) = result {
+            app.logs.add_error(
+                Some(topic.topic_id.to_string()),
+                crate::app::logs::SystemProcess::Timer,
+                "persist_messages".to_string(),
+                format!(
+                    "Can not persist messages min:{:?} max:{:?}",
+                    msg_ids.get_min_id(),
+                    msg_ids.get_max_id()
+                ),
+                Some(format!("{:?}", err)),
+            );
+        } else {
+            messages_are_persisted_ok(topic.as_ref(), page_id, msg_ids).await;
+        }
     }
-
-    write_access.is_being_persisted = false;
 }
 
-async fn messages_are_persisted_ok(page: &MessagesPage) {
-    let mut write_access = page.data.write().await;
-    write_access.is_being_persisted = false;
+async fn messages_are_persisted_ok(topic: &Topic, page_id: PageId, messages: QueueWithIntervals) {
+    let mut topic_data = topic.data.lock().await;
+    topic_data.pages.persisted(page_id, messages);
 }

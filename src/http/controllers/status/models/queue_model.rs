@@ -1,6 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
-
-use crate::queues::TopicQueue;
+use crate::{queues::TopicQueue, topics::TopicData};
 
 use serde::{Deserialize, Serialize};
 
@@ -12,39 +10,16 @@ pub struct QueuesJsonResult {
 }
 
 impl QueuesJsonResult {
-    pub async fn new(
-        queues: &HashMap<String, (usize, Vec<Arc<TopicQueue>>)>,
-    ) -> HashMap<String, Self> {
-        let mut result = HashMap::new();
+    pub fn new(topic_data: &TopicData) -> Self {
+        let mut result = QueuesJsonResult {
+            snapshot_id: topic_data.queues.get_snapshot_id(),
+            queues: Vec::new(),
+        };
 
-        for (topic_id, (snapshot_id, topic_queues)) in queues {
-            let mut queues = Vec::new();
-
-            for topic_queue in topic_queues {
-                let monitoring_data = topic_queue.metrics.get().await;
-
-                queues.push(QueueJsonContract {
-                    id: monitoring_data.id,
-                    queue_type: monitoring_data.queue_type.into_u8(),
-                    size: monitoring_data.size,
-                    data: monitoring_data
-                        .queue
-                        .iter()
-                        .map(|itm| QueueIndex {
-                            from_id: itm.from_id,
-                            to_id: itm.to_id,
-                        })
-                        .collect(),
-                });
-            }
-
-            result.insert(
-                topic_id.to_string(),
-                QueuesJsonResult {
-                    queues,
-                    snapshot_id: *snapshot_id,
-                },
-            );
+        for topic_queue in topic_data.queues.get_all() {
+            result
+                .queues
+                .push(QueueJsonContract::from_queue(topic_queue));
         }
 
         result
@@ -60,10 +35,36 @@ pub struct QueueJsonContract {
     data: Vec<QueueIndex>,
 }
 
+impl QueueJsonContract {
+    pub fn from_queue(topic_queue: &TopicQueue) -> Self {
+        Self {
+            id: topic_queue.queue_id.to_string(),
+            queue_type: topic_queue.queue_type.into_u8(),
+            size: topic_queue.get_queue_size(),
+            data: QueueIndex::get_queue_snapshot(topic_queue),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct QueueIndex {
     #[serde(rename = "fromId")]
     pub from_id: i64,
     #[serde(rename = "toId")]
     pub to_id: i64,
+}
+
+impl QueueIndex {
+    pub fn get_queue_snapshot(topic_queue: &TopicQueue) -> Vec<Self> {
+        let mut result = Vec::new();
+
+        for queue_index in &topic_queue.queue.intervals {
+            result.push(Self {
+                from_id: queue_index.from_id,
+                to_id: queue_index.to_id,
+            })
+        }
+
+        result
+    }
 }

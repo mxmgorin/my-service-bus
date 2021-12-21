@@ -48,12 +48,13 @@ pub async fn get_queues(
 
     let topic = topic.unwrap();
 
-    let queues = topic.queues.get_queues().await;
-
     let mut result = Vec::new();
 
-    for queue in queues {
-        result.push(queue.queue_id.clone());
+    {
+        let topic_data = topic.data.lock().await;
+        for queue in topic_data.queues.get_queues() {
+            result.push(queue.queue_id.clone());
+        }
     }
 
     return HttpOkResult::create_json_response(result);

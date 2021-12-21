@@ -5,7 +5,7 @@ use tokio::sync::RwLock;
 
 use super::MyServiceBusSession;
 
-pub struct SessionsListData {
+struct SessionsListData {
     snapshot_id: usize,
     sessions: HashMap<i64, Arc<MyServiceBusSession>>,
 }
@@ -32,24 +32,14 @@ impl SessionsList {
         write_access.snapshot_id += 1;
     }
 
-    pub async fn get_snapshot(&self) -> (usize, Vec<Arc<MyServiceBusSession>>) {
+    pub async fn get(&self, session_id: i64) -> Option<Arc<MyServiceBusSession>> {
         let read_access = self.data.read().await;
-
-        let result = read_access
-            .sessions
-            .values()
-            .into_iter()
-            .map(|itm| itm.clone())
-            .collect();
-
-        (read_access.snapshot_id, result)
+        return Some(read_access.sessions.get(&session_id)?.clone());
     }
 
     pub async fn remove(&self, id: &i64) -> Option<Arc<MyServiceBusSession>> {
         let mut write_access = self.data.write().await;
-
         let result = write_access.sessions.remove(id)?;
-
         write_access.snapshot_id += 1;
 
         return Some(result);
@@ -57,10 +47,21 @@ impl SessionsList {
 
     pub async fn one_second_tick(&self) {
         let read_access = self.data.read().await;
-
         for session in read_access.sessions.values() {
             session.one_second_tick().await;
         }
+    }
+
+    pub async fn get_snapshot(&self) -> (usize, Vec<Arc<MyServiceBusSession>>) {
+        let read_access = self.data.read().await;
+
+        let mut sessions_result = Vec::new();
+
+        for session in read_access.sessions.values() {
+            sessions_result.push(session.clone());
+        }
+
+        return (read_access.snapshot_id, sessions_result);
     }
 
     pub async fn get_dead_connections(
