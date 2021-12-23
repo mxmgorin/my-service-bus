@@ -3,6 +3,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
 use crate::{
+    operations::delivery::DeliveryDependecies,
     persistence::{MessagesPagesGrpcRepo, TopcsAndQueuesSnapshotRepo},
     queue_subscribers::SubscriberIdGenerator,
     sessions::SessionsList,
@@ -78,5 +79,42 @@ impl AppContext {
         let mut write_access = self.debug_topic_and_queue.write().await;
 
         *write_access = None;
+    }
+}
+
+impl DeliveryDependecies for Arc<AppContext> {
+    fn get_max_delivery_size(&self) -> usize {
+        return self.max_delivery_size;
+    }
+
+    fn send_package(
+        &self,
+        session_id: crate::tcp::tcp_server::ConnectionId,
+        tcp_packet: my_service_bus_tcp_shared::TcpContract,
+    ) {
+        let app = self.clone();
+
+        tokio::spawn(async move {
+            crate::operations::sessions::send_package(app.as_ref(), session_id, tcp_packet).await;
+        });
+    }
+
+    fn load_page(
+        &self,
+        topic: Arc<crate::topics::Topic>,
+        page_id: my_service_bus_shared::page_id::PageId,
+    ) {
+        let app = self.clone();
+        tokio::spawn(async move {
+            crate::operations::page_loader::load_full_page_to_cache(
+                topic.clone(),
+                &app.messages_pages_repo,
+                Some(app.logs.as_ref()),
+                page_id,
+            )
+            .await;
+            let mut topic_data = topic.data.lock().await;
+            crate::operations::delivery::try_to_deliver(&app, &topic, &mut topic_data);
+        });
     }
 }

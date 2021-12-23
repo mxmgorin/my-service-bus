@@ -57,7 +57,7 @@ pub async fn publish(
                 ));
             }
 
-            super::delivery::try_to_deliver(app, &topic, &mut topic_data);
+            super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
         }
         None => {
             if app.auto_create_topic_on_publish {

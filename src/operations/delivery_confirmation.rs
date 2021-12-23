@@ -40,7 +40,7 @@ pub async fn all_confirmed(
         }
     }
 
-    super::delivery::try_to_deliver(app, &topic, &mut topic_data);
+    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
 
     Ok(())
 }
@@ -79,7 +79,7 @@ pub async fn all_fail(
         }
     }
 
-    super::delivery::try_to_deliver(app, &topic, &mut topic_data);
+    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
 
     Ok(())
 }
@@ -119,7 +119,7 @@ pub async fn intermediary_confirm(
         }
     }
 
-    super::delivery::try_to_deliver(app.clone(), &topic, &mut topic_data);
+    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
 
     Ok(())
 }
@@ -158,7 +158,7 @@ pub async fn some_messages_are_confirmed(
         }
     }
 
-    super::delivery::try_to_deliver(app, &topic, &mut topic_data);
+    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
 
     Ok(())
 }
