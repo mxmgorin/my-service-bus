@@ -32,7 +32,14 @@ pub fn try_to_deliver<TDeliveryDependecies: DeliveryDependecies>(
                     content,
                     attempt_no,
                 } => {
-                    delivery_package_builder.add_message(content, attempt_no);
+                    if delivery_package_builder.payload_size == 0
+                        || delivery_package_builder.payload_size + content.content.len()
+                            <= max_delivery_size
+                    {
+                        delivery_package_builder.add_message(content, attempt_no);
+                    } else {
+                        break;
+                    }
                 }
                 crate::queues::delivery_iterator::NextMessageResult::LoadDataRequired(page_id) => {
                     if delivery_package_builder.len() > 0 {
@@ -85,46 +92,20 @@ fn deliver_messages<TDeliveryDependecies: DeliveryDependecies>(
 #[cfg(test)]
 mod tests {
 
-    use std::sync::Mutex;
+    use my_service_bus_shared::{messages_page::MessagesPage, queue::TopicQueueType};
 
-    use my_service_bus_shared::queue::TopicQueueType;
-    use my_service_bus_tcp_shared::TcpContract;
+    use super::super::delivery_dependency_mock::DeliveryDependeciesMock;
+    use crate::queue_subscribers::QueueSubscriberDeliveryState;
 
     use super::*;
 
-    struct DeliveryDependeciesMock {
-        sent_packets: Mutex<Vec<(ConnectionId, TcpContract)>>,
-    }
-
-    impl DeliveryDependeciesMock {
-        pub fn new() -> Self {
-            Self {
-                sent_packets: Mutex::new(Vec::new()),
-            }
-        }
-    }
-
-    impl DeliveryDependecies for DeliveryDependeciesMock {
-        fn get_max_delivery_size(&self) -> usize {
-            16
-        }
-
-        fn send_package(&self, session_id: ConnectionId, tcp_packet: TcpContract) {
-            let mut sent_packets = self.sent_packets.lock().unwrap();
-            sent_packets.push((session_id, tcp_packet));
-        }
-
-        fn load_page(&self, topic: Arc<Topic>, page_id: my_service_bus_shared::page_id::PageId) {
-            todo!()
-        }
-    }
-
     #[tokio::test]
-    async fn test_one_publish_one_delivery() {
+    async fn test_two_publish_two_delivery() {
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
         const SESSION_ID: ConnectionId = 13;
+        const DELIVERY_SIZE: usize = 16;
 
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
 
@@ -149,17 +130,146 @@ mod tests {
                 .unwrap();
         }
 
-        let messages = vec![vec![0u8, 1u8, 2u8]];
+        let messages = vec![vec![0u8, 1u8, 2u8], vec![3u8, 4u8, 5u8]];
         topic_data.publish_messages(SESSION_ID, messages);
 
-        let delivery_dependecies = DeliveryDependeciesMock::new();
+        let delivery_dependecies = DeliveryDependeciesMock::new(DELIVERY_SIZE);
 
         try_to_deliver(&delivery_dependecies, &topic, &mut topic_data);
 
-        let sent_packets = delivery_dependecies.sent_packets.lock().unwrap();
+        let sent_packets = delivery_dependecies.get_sent_packets();
 
         assert_eq!(sent_packets.len(), 1);
 
         assert_eq!(sent_packets[0].0, SESSION_ID);
+
+        let queue = topic_data.queues.get(QUEUE_NAME).unwrap();
+
+        let subscriber = queue.subscribers.get_by_id(SUBSCRIBER_ID).unwrap();
+
+        if let QueueSubscriberDeliveryState::OnDelivery(data) = &subscriber.delivery_state {
+            assert_eq!(data.bucket.ids.len(), 2);
+        } else {
+            panic!("Should not be here");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_two_publish_one_delivery() {
+        const TOPIC_NAME: &str = "TestTopic";
+        const QUEUE_NAME: &str = "TestQueue";
+        const SUBSCRIBER_ID: i64 = 15;
+        const SESSION_ID: ConnectionId = 13;
+        const DELIVERY_SIZE: usize = 4;
+
+        let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
+
+        let mut topic_data = topic.data.lock().await;
+
+        {
+            let queue = topic_data.queues.add_queue_if_not_exists(
+                TOPIC_NAME.to_string(),
+                QUEUE_NAME.to_string(),
+                TopicQueueType::Permanent,
+            );
+
+            queue
+                .subscribers
+                .subscribe(
+                    SUBSCRIBER_ID,
+                    TOPIC_NAME.to_string(),
+                    QUEUE_NAME.to_string(),
+                    SESSION_ID,
+                    1,
+                )
+                .unwrap();
+        }
+
+        let messages = vec![vec![0u8, 1u8, 2u8], vec![3u8, 4u8, 5u8]];
+        topic_data.publish_messages(SESSION_ID, messages);
+
+        let delivery_dependecies = DeliveryDependeciesMock::new(DELIVERY_SIZE);
+
+        try_to_deliver(&delivery_dependecies, &topic, &mut topic_data);
+
+        let sent_packets = delivery_dependecies.get_sent_packets();
+
+        assert_eq!(sent_packets.len(), 1);
+
+        assert_eq!(sent_packets[0].0, SESSION_ID);
+
+        let queue = topic_data.queues.get(QUEUE_NAME).unwrap();
+
+        let subscriber = queue.subscribers.get_by_id(SUBSCRIBER_ID).unwrap();
+
+        if let QueueSubscriberDeliveryState::OnDelivery(data) = &subscriber.delivery_state {
+            assert_eq!(data.bucket.ids.len(), 1);
+        } else {
+            panic!("Should not be here");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_with_first_not_loaded_message() {
+        const TOPIC_NAME: &str = "TestTopic";
+        const QUEUE_NAME: &str = "TestQueue";
+        const SUBSCRIBER_ID: i64 = 15;
+        const SESSION_ID: ConnectionId = 13;
+        const DELIVERY_SIZE: usize = 4;
+
+        let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
+
+        let mut topic_data = topic.data.lock().await;
+
+        {
+            let queue = topic_data.queues.add_queue_if_not_exists(
+                TOPIC_NAME.to_string(),
+                QUEUE_NAME.to_string(),
+                TopicQueueType::Permanent,
+            );
+
+            queue
+                .subscribers
+                .subscribe(
+                    SUBSCRIBER_ID,
+                    TOPIC_NAME.to_string(),
+                    QUEUE_NAME.to_string(),
+                    SESSION_ID,
+                    1,
+                )
+                .unwrap();
+        }
+
+        //Restoring Page with Not Loaded first page;
+        {
+            let page = MessagesPage::new_with_missing_messages(0, 1, 1);
+
+            topic_data.pages.restore_page(page);
+            let queue = topic_data.queues.get_mut(QUEUE_NAME).unwrap();
+
+            queue.queue.enqueue(0);
+            queue.queue.enqueue(1);
+        }
+
+        let delivery_dependecies = DeliveryDependeciesMock::new(DELIVERY_SIZE);
+
+        try_to_deliver(&delivery_dependecies, &topic, &mut topic_data);
+
+        {
+            let sent_packets = delivery_dependecies.get_sent_packets();
+            assert_eq!(sent_packets.len(), 0);
+        }
+
+        let queue = topic_data.queues.get(QUEUE_NAME).unwrap();
+
+        let subscriber = queue.subscribers.get_by_id(SUBSCRIBER_ID).unwrap();
+
+        if let QueueSubscriberDeliveryState::ReadyToDeliver = &subscriber.delivery_state {
+            let (topic, page_id) = delivery_dependecies.get_load_page_event_data();
+            assert_eq!(TOPIC_NAME, topic.topic_id.as_str());
+            assert_eq!(page_id, 0);
+        } else {
+            panic!("Should not be here");
+        }
     }
 }

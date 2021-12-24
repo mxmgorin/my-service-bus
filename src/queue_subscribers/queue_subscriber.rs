@@ -8,7 +8,7 @@ use crate::queues::DeliveryBucket;
 use super::{SubscriberId, SubscriberMetrics};
 
 pub struct OnDeliveryStateData {
-    bucket: DeliveryBucket,
+    pub bucket: DeliveryBucket,
     inserted: DateTimeAsMicroseconds,
 }
 pub enum QueueSubscriberDeliveryState {
