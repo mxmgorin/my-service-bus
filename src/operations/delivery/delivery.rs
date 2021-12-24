@@ -92,7 +92,10 @@ fn deliver_messages<TDeliveryDependecies: DeliveryDependecies>(
 #[cfg(test)]
 mod tests {
 
-    use my_service_bus_shared::{messages_page::MessagesPage, queue::TopicQueueType};
+    use my_service_bus_shared::{
+        messages_page::MessagesPage, queue::TopicQueueType, MySbMessage, MySbMessageContent,
+    };
+    use rust_extensions::date_time::DateTimeAsMicroseconds;
 
     use super::super::delivery_dependency_mock::DeliveryDependeciesMock;
     use crate::queue_subscribers::QueueSubscriberDeliveryState;
@@ -242,7 +245,14 @@ mod tests {
 
         //Restoring Page with Not Loaded first page;
         {
-            let page = MessagesPage::new_with_missing_messages(0, 1, 1);
+            let page = MessagesPage::restore(
+                0,
+                vec![MySbMessage::Loaded(MySbMessageContent::new(
+                    1,
+                    vec![0u8, 1u8, 2u8],
+                    DateTimeAsMicroseconds::now(),
+                ))],
+            );
 
             topic_data.pages.restore_page(page);
             let queue = topic_data.queues.get_mut(QUEUE_NAME).unwrap();
