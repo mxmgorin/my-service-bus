@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 use my_service_bus_shared::{page_id::PageId, MessageId, MySbMessageContent};
@@ -12,5 +12,5 @@ pub trait MessagesPagesRepo {
         page_id: PageId,
         from_message_id: MessageId,
         to_message_id: MessageId,
-    ) -> Result<Option<BTreeMap<MessageId, MySbMessageContent>>, PersistenceError>;
+    ) -> Result<Option<HashMap<MessageId, MySbMessageContent>>, PersistenceError>;
 }

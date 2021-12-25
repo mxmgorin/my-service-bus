@@ -92,8 +92,12 @@ fn deliver_messages<TDeliveryDependecies: DeliveryDependecies>(
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+
     use my_service_bus_shared::{
-        messages_page::MessagesPage, queue::TopicQueueType, MySbMessage, MySbMessageContent,
+        messages_page::{MessagesPage, MessagesPageRestoreSnapshot},
+        queue::TopicQueueType,
+        MySbMessageContent,
     };
     use rust_extensions::date_time::DateTimeAsMicroseconds;
 
@@ -243,16 +247,19 @@ mod tests {
                 .unwrap();
         }
 
-        //Restoring Page with Not Loaded first page;
+        //Restoring Page with  #0 - NotLoaded, #1 - Loaded;
         {
-            let page = MessagesPage::restore(
-                0,
-                vec![MySbMessage::Loaded(MySbMessageContent::new(
-                    1,
-                    vec![0u8, 1u8, 2u8],
-                    DateTimeAsMicroseconds::now(),
-                ))],
+            let mut messages = HashMap::new();
+
+            messages.insert(
+                1,
+                MySbMessageContent::new(1, vec![0u8, 1u8, 2u8], DateTimeAsMicroseconds::now()),
             );
+
+            let restore_snapshot =
+                MessagesPageRestoreSnapshot::new_with_messages(0, 1, 1, messages);
+
+            let page = MessagesPage::restore(restore_snapshot);
 
             topic_data.pages.restore_page(page);
             let queue = topic_data.queues.get_mut(QUEUE_NAME).unwrap();
@@ -278,6 +285,70 @@ mod tests {
             let (topic, page_id) = delivery_dependecies.get_load_page_event_data();
             assert_eq!(TOPIC_NAME, topic.topic_id.as_str());
             assert_eq!(page_id, 0);
+        } else {
+            panic!("Should not be here");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_with_all_messages_missing() {
+        const TOPIC_NAME: &str = "TestTopic";
+        const QUEUE_NAME: &str = "TestQueue";
+        const SUBSCRIBER_ID: i64 = 15;
+        const SESSION_ID: ConnectionId = 13;
+        const DELIVERY_SIZE: usize = 4;
+
+        let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
+
+        let mut topic_data = topic.data.lock().await;
+
+        {
+            let queue = topic_data.queues.add_queue_if_not_exists(
+                TOPIC_NAME.to_string(),
+                QUEUE_NAME.to_string(),
+                TopicQueueType::Permanent,
+            );
+
+            queue
+                .subscribers
+                .subscribe(
+                    SUBSCRIBER_ID,
+                    TOPIC_NAME.to_string(),
+                    QUEUE_NAME.to_string(),
+                    SESSION_ID,
+                    1,
+                )
+                .unwrap();
+        }
+
+        //Restoring Page with  #0 - NotLoaded, #1 - Loaded;
+        {
+            let restore_snapshot = MessagesPageRestoreSnapshot::new(0, 0, 1);
+
+            let page = MessagesPage::restore(restore_snapshot);
+
+            topic_data.pages.restore_page(page);
+            let queue = topic_data.queues.get_mut(QUEUE_NAME).unwrap();
+
+            queue.queue.enqueue(0);
+            queue.queue.enqueue(1);
+        }
+
+        let delivery_dependecies = DeliveryDependeciesMock::new(DELIVERY_SIZE);
+
+        try_to_deliver(&delivery_dependecies, &topic, &mut topic_data);
+
+        {
+            let sent_packets = delivery_dependecies.get_sent_packets();
+            assert_eq!(sent_packets.len(), 0);
+        }
+
+        let queue = topic_data.queues.get(QUEUE_NAME).unwrap();
+
+        let subscriber = queue.subscribers.get_by_id(SUBSCRIBER_ID).unwrap();
+
+        if let QueueSubscriberDeliveryState::ReadyToDeliver = &subscriber.delivery_state {
+            assert_eq!(0, queue.queue.len());
         } else {
             panic!("Should not be here");
         }

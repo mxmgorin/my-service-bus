@@ -1,7 +1,7 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
 use my_service_bus_shared::{
-    messages_page::MessagesPage, page_id::PageId, MessageId, MySbMessageContent,
+    messages_page::MessagesPageRestoreSnapshot, page_id::PageId, MessageId, MySbMessageContent,
 };
 
 use crate::{app::logs::Logs, persistence::MessagesPagesRepo, topics::Topic};
@@ -13,7 +13,7 @@ pub async fn load_page<TMessagesPagesRepo: MessagesPagesRepo>(
     page_id: PageId,
     from_message_id: MessageId,
     to_message_id: MessageId,
-) -> MessagesPage {
+) -> MessagesPageRestoreSnapshot {
     let messages = load_page_from_repo(
         topic,
         messages_pages_repo,
@@ -24,11 +24,15 @@ pub async fn load_page<TMessagesPagesRepo: MessagesPagesRepo>(
     )
     .await;
 
-    if messages.is_none() {
-        return MessagesPage::new_with_missing_messages(page_id, from_message_id, to_message_id);
+    match messages {
+        Some(messages) => MessagesPageRestoreSnapshot::new_with_messages(
+            page_id,
+            from_message_id,
+            to_message_id,
+            messages,
+        ),
+        None => MessagesPageRestoreSnapshot::new(page_id, from_message_id, to_message_id),
     }
-
-    return MessagesPage::new(page_id, from_message_id, to_message_id, messages.unwrap());
 }
 
 #[inline]
@@ -39,7 +43,7 @@ async fn load_page_from_repo<TMessagesPagesRepo: MessagesPagesRepo>(
     page_id: PageId,
     from_message_id: MessageId,
     to_message_id: MessageId,
-) -> Option<BTreeMap<MessageId, MySbMessageContent>> {
+) -> Option<HashMap<MessageId, MySbMessageContent>> {
     let mut attempt_no = 0;
     loop {
         let result = messages_pages_repo

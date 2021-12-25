@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use futures_util::stream;
 use my_service_bus_shared::bcl::{BclDateTime, BclToUnixMicroseconds};
@@ -107,7 +107,7 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
         page_id: PageId,
         from_message_id: MessageId,
         to_message_id: MessageId,
-    ) -> Result<Option<BTreeMap<MessageId, MySbMessageContent>>, PersistenceError> {
+    ) -> Result<Option<HashMap<MessageId, MySbMessageContent>>, PersistenceError> {
         let grpc_client_lazy_object = self.get_grpc_client().await?;
 
         let mut grpc_client = grpc_client_lazy_object.get_mut().await;
@@ -156,7 +156,7 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
             return Ok(None);
         }
 
-        let mut msgs = BTreeMap::new();
+        let mut msgs = HashMap::new();
 
         for message in grpc_model.unwrap().messages {
             let time = parse_date_time_from_bcl(message.message_id, message.created);
