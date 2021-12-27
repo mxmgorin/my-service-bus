@@ -20,11 +20,11 @@ class Iterators {
     }
 
     public static topicPublishersBySession(status: IStatusApiContract, sessionId: number, callback: (topic: ITopic, publisher: ITopicPublisherApiContract) => void) {
-        for (let topic of status.topics.items) {
+        for (let topic of status.topics.items)
             for (let publisher of topic.publishers)
                 if (publisher.sessionId = sessionId)
                     callback(topic, publisher);
-        }
+
     }
 
     public static queueSubscribersBySession(status: IStatusApiContract, sessionId: number, callback: (topic: ITopic, subscriber: ISubscriberApiContract) => void) {
@@ -36,7 +36,7 @@ class Iterators {
 
 
     public static getQueueSubscribers(status: IStatusApiContract, topic: ITopic, queueId: string): IQueueSubscriber[] {
-        let result = [];
+        let result: IQueueSubscriber[] = [];
 
         for (let subscriber of topic.subscribers) {
             if (subscriber.queueId == queueId) {
