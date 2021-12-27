@@ -13,7 +13,7 @@ class Iterators {
 
     public static findSession(status: IStatusApiContract, sessionId: number): ISession {
         for (let session of status.sessions.items) {
-            if (session.id == sessionId) {
+            if (session.id === sessionId) {
                 return session;
             }
         }
@@ -22,7 +22,7 @@ class Iterators {
     public static topicPublishersBySession(status: IStatusApiContract, sessionId: number, callback: (topic: ITopic, publisher: ITopicPublisherApiContract) => void) {
         for (let topic of status.topics.items)
             for (let publisher of topic.publishers)
-                if (publisher.sessionId = sessionId)
+                if (publisher.sessionId === sessionId)
                     callback(topic, publisher);
 
     }
@@ -30,7 +30,7 @@ class Iterators {
     public static queueSubscribersBySession(status: IStatusApiContract, sessionId: number, callback: (topic: ITopic, subscriber: ISubscriberApiContract) => void) {
         for (let topic of status.topics.items)
             for (let subscriber of topic.subscribers)
-                if (subscriber.sessionId = sessionId)
+                if (subscriber.sessionId === sessionId)
                     callback(topic, subscriber);
     }
 

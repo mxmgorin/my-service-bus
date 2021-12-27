@@ -4,7 +4,7 @@ var Iterators = /** @class */ (function () {
     Iterators.findSession = function (status, sessionId) {
         for (var _i = 0, _a = status.sessions.items; _i < _a.length; _i++) {
             var session = _a[_i];
-            if (session.id == sessionId) {
+            if (session.id === sessionId) {
                 return session;
             }
         }
@@ -14,7 +14,7 @@ var Iterators = /** @class */ (function () {
             var topic = _a[_i];
             for (var _b = 0, _c = topic.publishers; _b < _c.length; _b++) {
                 var publisher = _c[_b];
-                if (publisher.sessionId = sessionId)
+                if (publisher.sessionId === sessionId)
                     callback(topic, publisher);
             }
         }
@@ -24,7 +24,7 @@ var Iterators = /** @class */ (function () {
             var topic = _a[_i];
             for (var _b = 0, _c = topic.subscribers; _b < _c.length; _b++) {
                 var subscriber = _c[_b];
-                if (subscriber.sessionId = sessionId)
+                if (subscriber.sessionId === sessionId)
                     callback(topic, subscriber);
             }
         }

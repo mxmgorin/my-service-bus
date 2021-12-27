@@ -63,7 +63,8 @@ class HtmlTopics {
 
 
         for (let topic of topics.items.sort((a, b) => a.id > b.id ? 1 : -1)) {
-            result += '<tr class="filter-line"><td><b' + Utils.copyToClipboardHtml(topic.id) + '>' + topic.id + '</b><div style="font-size:10px" id="topic-data-' + topic.id + '">' + this.renderTopicData(topic) + '</div></td>' +
+            result += '<tr class="filter-line"><td><b' + Utils.copyToClipboardHtml(topic.id) + '>' + topic.id + '</b>' +
+                '<div style="font-size:10px" id="topic-data-' + topic.id + '">' + this.renderTopicData(topic) + '</div></td>' +
                 '<td id="topic-sessions-' + topic.id + '"></td>' +
                 '<td id="topic-queues-' + topic.id + '"></td>';
         }
