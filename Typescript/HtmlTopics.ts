@@ -3,12 +3,10 @@ class HtmlTopics {
 
     public static updateTopicQueues(status: IStatusApiContract) {
 
-
-        Utils.iterateTopicQueues(status, (topic, queues) => {
-
+        for (let topic of status.topics.items) {
             let html = '<table class="table table-dark" style="width:100%">';
 
-            for (let queue of queues.queues) {
+            for (let queue of Iterators.iterateTopicQueues(status, topic)) {
 
                 let subscribers = Iterators.getQueueSubscribers(status, topic, queue.id);
 
@@ -17,15 +15,12 @@ class HtmlTopics {
                     '<td style="width:100px">' + HtmlQueue.renderQueueSubscribers(subscribers) + '</td>';
             }
 
-            let el = document.getElementById("topic-queues-" + topic);
+            let el = document.getElementById("topic-queues-" + topic.id);
 
             if (el) {
                 el.innerHTML = html + "</table>";
             }
-
-
-        });
-
+        }
     }
 
 

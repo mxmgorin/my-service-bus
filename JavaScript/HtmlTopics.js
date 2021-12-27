@@ -2,20 +2,21 @@ var HtmlTopics = /** @class */ (function () {
     function HtmlTopics() {
     }
     HtmlTopics.updateTopicQueues = function (status) {
-        Utils.iterateTopicQueues(status, function (topic, queues) {
+        for (var _i = 0, _a = status.topics.items; _i < _a.length; _i++) {
+            var topic = _a[_i];
             var html = '<table class="table table-dark" style="width:100%">';
-            for (var _i = 0, _a = queues.queues; _i < _a.length; _i++) {
-                var queue = _a[_i];
+            for (var _b = 0, _c = Iterators.iterateTopicQueues(status, topic); _b < _c.length; _b++) {
+                var queue = _c[_b];
                 var subscribers = Iterators.getQueueSubscribers(status, topic, queue.id);
                 html += '<tr><td style="width:100%"><div' + Utils.copyToClipboardHtml(queue.id) + '>' + queue.id + '</div>' +
                     '<div>' + HtmlQueue.renderQueueSubscribersCountBadge(subscribers.length) + ' ' + HtmlQueue.renderQueueTypeBadge(queue) + " " + HtmlQueue.renderQueueSizeBadge(queue) + " " + HtmlQueue.renderQueueRanges(queue) + '</div></td>' +
                     '<td style="width:100px">' + HtmlQueue.renderQueueSubscribers(subscribers) + '</td>';
             }
-            var el = document.getElementById("topic-queues-" + topic);
+            var el = document.getElementById("topic-queues-" + topic.id);
             if (el) {
                 el.innerHTML = html + "</table>";
             }
-        });
+        }
     };
     HtmlTopics.renderTopicData = function (topic) {
         var queuesizeColor = topic.persistSize < 1000 ? "lightgray" : "red";

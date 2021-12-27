@@ -59,12 +59,6 @@ class Utils {
     }
 
 
-    public static iterateTopicQueues(status: IStatusApiContract, callback: (topic: string, queues: ITopicQueues) => void) {
-        let topics = Object.keys(status.queues)
-        for (let topic of topics) {
-            callback(topic, status.queues[topic]);
-        }
-    }
 
 
 

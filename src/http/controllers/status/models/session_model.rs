@@ -1,4 +1,4 @@
-use crate::sessions::MyServiceBusSession;
+use crate::{app::AppContext, sessions::MyServiceBusSession};
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use serde::{Deserialize, Serialize};
@@ -58,4 +58,22 @@ pub struct SessionsJsonResult {
     #[serde(rename = "snapshotId")]
     pub snapshot_id: usize,
     pub items: Vec<SessionJsonResult>,
+}
+
+impl SessionsJsonResult {
+    pub async fn new(app: &AppContext) -> Self {
+        let (sessions_snapshot_id, all_sessions) = app.sessions.get_snapshot().await;
+
+        let mut result = SessionsJsonResult {
+            snapshot_id: sessions_snapshot_id,
+            items: Vec::new(),
+        };
+
+        for session in &all_sessions {
+            let session_json_model = SessionJsonResult::new(session.as_ref()).await;
+            result.items.push(session_json_model);
+        }
+
+        result
+    }
 }

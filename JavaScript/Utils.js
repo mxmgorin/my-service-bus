@@ -42,13 +42,6 @@ var Utils = /** @class */ (function () {
         n = n / 1024;
         return n.toFixed(2) + "Gb";
     };
-    Utils.iterateTopicQueues = function (status, callback) {
-        var topics = Object.keys(status.queues);
-        for (var _i = 0, topics_1 = topics; _i < topics_1.length; _i++) {
-            var topic = topics_1[_i];
-            callback(topic, status.queues[topic]);
-        }
-    };
     Utils.format_duration = function (micros) {
         if (micros == 0)
             return "0";

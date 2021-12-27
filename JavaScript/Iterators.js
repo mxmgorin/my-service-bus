@@ -29,18 +29,15 @@ var Iterators = /** @class */ (function () {
             }
         }
     };
-    Iterators.getQueueSubscribers = function (status, topicId, queueId) {
+    Iterators.getQueueSubscribers = function (status, topic, queueId) {
         var result = [];
-        for (var _i = 0, _a = status.topics.items; _i < _a.length; _i++) {
-            var topic = _a[_i];
-            for (var _b = 0, _c = topic.subscribers; _b < _c.length; _b++) {
-                var subscriber = _c[_b];
-                if (topic.id == topicId && subscriber.queueId == queueId) {
-                    for (var _d = 0, _e = status.sessions.items; _d < _e.length; _d++) {
-                        var session = _e[_d];
-                        if (session.id == subscriber.sessionId) {
-                            result.push({ subscriber: subscriber, session: session });
-                        }
+        for (var _i = 0, _a = topic.subscribers; _i < _a.length; _i++) {
+            var subscriber = _a[_i];
+            if (subscriber.queueId == queueId) {
+                for (var _b = 0, _c = status.sessions.items; _b < _c.length; _b++) {
+                    var session = _c[_b];
+                    if (session.id == subscriber.sessionId) {
+                        result.push({ subscriber: subscriber, session: session });
                     }
                 }
             }
@@ -57,6 +54,12 @@ var Iterators = /** @class */ (function () {
             }
         }
         return result;
+    };
+    Iterators.iterateTopicQueues = function (status, topic) {
+        var queues = status.queues[topic.id];
+        if (!queues)
+            return [];
+        return queues.queues;
     };
     return Iterators;
 }());

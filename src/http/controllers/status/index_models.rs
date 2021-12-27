@@ -7,7 +7,7 @@ use sysinfo::SystemExt;
 
 use super::models::{
     queue_model::QueuesJsonResult,
-    session_model::{SessionJsonResult, SessionsJsonResult},
+    session_model::SessionsJsonResult,
     topic_model::{TopicJsonContract, TopicsJsonResult},
 };
 
@@ -40,20 +40,7 @@ impl StatusJsonResult {
             items: Vec::new(),
         };
 
-        let (sessions_snapshot_id, all_sessions) = app.sessions.get_snapshot().await;
-
-        let mut sessions_json_result = SessionsJsonResult {
-            snapshot_id: sessions_snapshot_id,
-            items: Vec::new(),
-        };
-
-        let mut sessions_as_hashmap = HashMap::new();
-
-        for session in &all_sessions {
-            let session_json_model = SessionJsonResult::new(session.as_ref()).await;
-            sessions_json_result.items.push(session_json_model);
-            sessions_as_hashmap.insert(session.id, session.clone());
-        }
+        let sessions = SessionsJsonResult::new(app).await;
 
         for topic in all_topics {
             let topic_data = topic.data.lock().await;
@@ -63,23 +50,12 @@ impl StatusJsonResult {
             );
 
             topics.items.push(TopicJsonContract::new(&topic_data));
-
-            for topic_queue in topic_data.queues.get_all() {
-                if let Some(subscribers) = topic_queue.subscribers.get_all() {
-                    for subscriber in subscribers {
-                        if let Some(session) = sessions_as_hashmap.get(&subscriber.session_id) {
-                            let json_model = SessionJsonResult::new(session.as_ref()).await;
-                            sessions_json_result.items.push(json_model)
-                        }
-                    }
-                }
-            }
         }
 
         Self {
             topics,
             queues,
-            sessions: sessions_json_result,
+            sessions,
             system: SystemStatusModel {
                 totalmem: sys_info.total_memory(),
                 usedmem: sys_info.used_memory(),
