@@ -74,7 +74,7 @@ class main {
 
 
         $.ajax({ url: '/status', type: 'get' })
-            .then((result: IStatus) => {
+            .then((result: IStatusApiContract) => {
                 this.requested = false;
 
                 let filterPhrase = (<HTMLInputElement>document.getElementById('filter')).value;
@@ -94,11 +94,11 @@ class main {
                 }
 
                 if (ServiceLocator.checkIfSessionsAreChanged(result.sessions)) {
-                    this.connectionsElement.innerHTML = HtmlSessions.renderSessions(result.sessions);
+                    this.connectionsElement.innerHTML = HtmlSessions.renderSessions(result);
                     ServiceLocator.sessions = result.sessions;
                 }
                 else {
-                    HtmlSessions.updateSessionData(result.sessions);
+                    HtmlSessions.updateSessionData(result);
                 }
 
                 HtmlTopics.updateTopicSessions(result);

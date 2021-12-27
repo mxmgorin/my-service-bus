@@ -6,7 +6,7 @@ var HtmlTopics = /** @class */ (function () {
             var html = '<table class="table table-dark" style="width:100%">';
             for (var _i = 0, _a = queues.queues; _i < _a.length; _i++) {
                 var queue = _a[_i];
-                var subscribers = Utils.getQueueSubscribers(status, topic, queue.id);
+                var subscribers = Iterators.getQueueSubscribers(status, topic, queue.id);
                 html += '<tr><td style="width:100%"><div' + Utils.copyToClipboardHtml(queue.id) + '>' + queue.id + '</div>' +
                     '<div>' + HtmlQueue.renderQueueSubscribersCountBadge(subscribers.length) + ' ' + HtmlQueue.renderQueueTypeBadge(queue) + " " + HtmlQueue.renderQueueSizeBadge(queue) + " " + HtmlQueue.renderQueueRanges(queue) + '</div></td>' +
                     '<td style="width:100px">' + HtmlQueue.renderQueueSubscribers(subscribers) + '</td>';
@@ -55,9 +55,9 @@ var HtmlTopics = /** @class */ (function () {
         for (var _i = 0, _a = status.topics.items; _i < _a.length; _i++) {
             var topic = _a[_i];
             var html = "";
-            for (var _b = 0, _c = Utils.iterateBySessionsWithTopic(status, topic.id).sort(function (a, b) { return a.session.name > b.session.name ? 1 : -1; }); _b < _c.length; _b++) {
+            for (var _b = 0, _c = Iterators.getTopicPublishers(status, topic).sort(function (a, b) { return a.session.name > b.session.name ? 1 : -1; }); _b < _c.length; _b++) {
                 var itm = _c[_b];
-                html += '<table class="table table-dark" style=" width:100%; box-shadow: 0 0 3px black;"><tr><td>' + HtmlMain.drawLed(itm.active, 'green') + '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-secondary">' + itm.session.id + '</span></div></td>' +
+                html += '<table class="table table-dark" style=" width:100%; box-shadow: 0 0 3px black;"><tr><td>' + HtmlMain.drawLed(itm.publisher.active > 0, 'green') + '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-secondary">' + itm.session.id + '</span></div></td>' +
                     '<td><b>' + itm.session.name + '</b><div>' + itm.session.version + '</div><div>' + itm.session.ip + '</div></td></tr></table>';
             }
             var el = document.getElementById("topic-sessions-" + topic.id);

@@ -56,11 +56,11 @@ var main = /** @class */ (function () {
                 HtmlTopics.updateTopicData(result.topics);
             }
             if (ServiceLocator.checkIfSessionsAreChanged(result.sessions)) {
-                _this.connectionsElement.innerHTML = HtmlSessions.renderSessions(result.sessions);
+                _this.connectionsElement.innerHTML = HtmlSessions.renderSessions(result);
                 ServiceLocator.sessions = result.sessions;
             }
             else {
-                HtmlSessions.updateSessionData(result.sessions);
+                HtmlSessions.updateSessionData(result);
             }
             HtmlTopics.updateTopicSessions(result);
             HtmlTopics.updateTopicQueues(result);

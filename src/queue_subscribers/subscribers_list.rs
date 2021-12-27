@@ -30,6 +30,7 @@ impl DeadSubscriber {
 
 pub struct SubscribersList {
     data: SubscribersData,
+    pub snapshot_id: usize,
     pub last_unsubscribe: DateTimeAsMicroseconds,
 }
 
@@ -44,14 +45,17 @@ impl SubscribersList {
         let last_unsubscribe = DateTimeAsMicroseconds::now();
         match queue_type {
             TopicQueueType::Permanent => Self {
+                snapshot_id: 0,
                 data: SubscribersData::MultiSubscribers(HashMap::new()),
                 last_unsubscribe,
             },
             TopicQueueType::DeleteOnDisconnect => Self {
+                snapshot_id: 0,
                 data: SubscribersData::MultiSubscribers(HashMap::new()),
                 last_unsubscribe,
             },
             TopicQueueType::PermanentWithSingleConnection => Self {
+                snapshot_id: 0,
                 data: SubscribersData::SingleSubscriber(None),
                 last_unsubscribe,
             },
@@ -161,6 +165,7 @@ impl SubscribersList {
         delivery_packet_version: i32,
     ) -> Result<Option<QueueSubscriber>, SubscribeErrorResult> {
         self.check_that_we_has_already_subscriber_for_that_session(session_id)?;
+        self.snapshot_id += 1;
 
         match &mut self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
@@ -261,7 +266,7 @@ impl SubscribersList {
                 if result.is_some() {
                     self.last_unsubscribe = DateTimeAsMicroseconds::now();
                 }
-
+                self.snapshot_id += 1;
                 result
             }
             SubscribersData::SingleSubscriber(single) => {
@@ -273,7 +278,7 @@ impl SubscribersList {
                         std::mem::swap(&mut result, single);
                     }
                 }
-
+                self.snapshot_id += 1;
                 result
             }
         }

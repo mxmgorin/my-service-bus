@@ -7,6 +7,7 @@ gulp.task('default', function () {
     return gulp
         .src([
             './JavaScript/Utils.js',
+            './JavaScript/Iterators.js',
             './JavaScript/ServiceLocator.js',
             './JavaScript/HtmlGraph.js',
             './JavaScript/HtmlSessions.js',

@@ -1,7 +1,7 @@
 class HtmlTopics {
 
 
-    public static updateTopicQueues(status: IStatus) {
+    public static updateTopicQueues(status: IStatusApiContract) {
 
 
         Utils.iterateTopicQueues(status, (topic, queues) => {
@@ -10,7 +10,7 @@ class HtmlTopics {
 
             for (let queue of queues.queues) {
 
-                let subscribers = Utils.getQueueSubscribers(status, topic, queue.id);
+                let subscribers = Iterators.getQueueSubscribers(status, topic, queue.id);
 
                 html += '<tr><td style="width:100%"><div' + Utils.copyToClipboardHtml(queue.id) + '>' + queue.id + '</div>' +
                     '<div>' + HtmlQueue.renderQueueSubscribersCountBadge(subscribers.length) + ' ' + HtmlQueue.renderQueueTypeBadge(queue) + " " + HtmlQueue.renderQueueSizeBadge(queue) + " " + HtmlQueue.renderQueueRanges(queue) + '</div></td>' +
@@ -80,13 +80,13 @@ class HtmlTopics {
 
 
 
-    public static updateTopicSessions(status: IStatus) {
+    public static updateTopicSessions(status: IStatusApiContract) {
         for (let topic of status.topics.items) {
 
             let html = "";
 
-            for (let itm of Utils.iterateBySessionsWithTopic(status, topic.id).sort((a, b) => a.session.name > b.session.name ? 1 : -1)) {
-                html += '<table class="table table-dark" style=" width:100%; box-shadow: 0 0 3px black;"><tr><td>' + HtmlMain.drawLed(itm.active, 'green') + '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-secondary">' + itm.session.id + '</span></div></td>' +
+            for (let itm of Iterators.getTopicPublishers(status, topic).sort((a, b) => a.session.name > b.session.name ? 1 : -1)) {
+                html += '<table class="table table-dark" style=" width:100%; box-shadow: 0 0 3px black;"><tr><td>' + HtmlMain.drawLed(itm.publisher.active > 0, 'green') + '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-secondary">' + itm.session.id + '</span></div></td>' +
                     '<td><b>' + itm.session.name + '</b><div>' + itm.session.version + '</div><div>' + itm.session.ip + '</div></td></tr></table>';
             }
 

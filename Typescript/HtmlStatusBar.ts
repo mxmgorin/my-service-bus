@@ -37,7 +37,7 @@ class HtmlStatusBar {
             '</tr></table></div>';
     }
 
-    public static updateStatusbar(data: IStatus) {
+    public static updateStatusbar(data: IStatusApiContract) {
 
         if (!this.connected) {
             this.connected = true;
@@ -82,7 +82,7 @@ class HtmlStatusBar {
     }
 
 
-    private static getPersistSize(data: IStatus): { persist_size: number, pages_size: number, msgs_per_sec: number, bytesReadPerSec: number, bytesWrittenPerSec: number } {
+    private static getPersistSize(data: IStatusApiContract): { persist_size: number, pages_size: number, msgs_per_sec: number, bytesReadPerSec: number, bytesWrittenPerSec: number } {
         let persist_size = 0;
         let pages_size = 0;
         let msgs_per_sec = 0;
