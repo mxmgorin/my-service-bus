@@ -34,11 +34,9 @@ var Iterators = /** @class */ (function () {
         for (var _i = 0, _a = topic.subscribers; _i < _a.length; _i++) {
             var subscriber = _a[_i];
             if (subscriber.queueId == queueId) {
-                for (var _b = 0, _c = status.sessions.items; _b < _c.length; _b++) {
-                    var session = _c[_b];
-                    if (session.id == subscriber.sessionId) {
-                        result.push({ subscriber: subscriber, session: session });
-                    }
+                var session = this.findSession(status, subscriber.sessionId);
+                if (session) {
+                    result.push({ subscriber: subscriber, session: session });
                 }
             }
         }

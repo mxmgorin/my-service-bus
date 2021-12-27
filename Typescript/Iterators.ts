@@ -40,13 +40,17 @@ class Iterators {
 
         for (let subscriber of topic.subscribers) {
             if (subscriber.queueId == queueId) {
-                for (let session of status.sessions.items) {
-                    if (session.id == subscriber.sessionId) {
-                        result.push({ subscriber, session });
-                    }
+
+                let session = this.findSession(status, subscriber.sessionId);
+
+                if (session) {
+                    result.push({ subscriber, session });
                 }
+
             }
         }
+
+
 
         return result;
     }
