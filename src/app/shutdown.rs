@@ -33,6 +33,6 @@ async fn empty_persistence_queues(app: Arc<AppContext>) {
 
 async fn make_last_topcis_and_queues_persist(app: Arc<AppContext>) {
     println!("Making final topics and queues snapshot save");
-    crate::timers::persist::save_topics_and_queues(app).await;
+    crate::timers::persist::persist_topics_and_queues::save(app).await;
     println!("Final topics and queues snapshot save is done");
 }

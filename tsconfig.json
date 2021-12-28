@@ -11,5 +11,13 @@
     "compileOnSave": true,
     "exclude": [
         "node_modules"
+    ],
+    "strict-comparisons": [
+        true,
+        {
+            "allow-object-equal-comparison": false,
+            "allow-string-order-comparison": false,
+            "strict-comparisons": true
+        }
     ]
 }

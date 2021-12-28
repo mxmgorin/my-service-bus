@@ -4,6 +4,7 @@ use my_service_bus_shared::MessageId;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use super::topic_data::TopicData;
+use super::TopicSnapshot;
 
 pub struct Topic {
     pub topic_id: String,
@@ -34,5 +35,15 @@ impl Topic {
     pub async fn one_second_tick(&self) {
         let mut write_access = self.data.lock().await;
         write_access.one_second_tick();
+    }
+
+    pub async fn get_topic_snapshot(&self) -> TopicSnapshot {
+        let topic_data = self.data.lock().await;
+
+        TopicSnapshot {
+            message_id: topic_data.message_id,
+            topic_id: topic_data.topic_id.to_string(),
+            queues: topic_data.queues.get_snapshot_to_persist(),
+        }
     }
 }
