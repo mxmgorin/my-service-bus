@@ -117,8 +117,6 @@ async fn process_socket(
             ),
         );
     }
-    app.sessions.remove(&my_sb_session.id).await;
-
     let on_disconnect_result = super::connection::on_disconnect(app.clone(), my_sb_session).await;
 
     if let Err(err) = on_disconnect_result {
