@@ -74,7 +74,7 @@ impl TopicJsonContract {
                 .iter()
                 .map(|(page_id, page)| TopicPageJsonContract {
                     id: *page_id,
-                    percent: page.size / 1000,
+                    percent: page.messages.len() / 1000,
                     size: page.size,
                 })
                 .collect(),
