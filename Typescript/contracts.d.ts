@@ -48,7 +48,7 @@ interface ITopic {
 
 interface IPage {
     id: number,
-    percent: number,
+    amount: number,
     size: number
 }
 

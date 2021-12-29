@@ -74,7 +74,7 @@ impl TopicJsonContract {
                 .iter()
                 .map(|(page_id, page)| TopicPageJsonContract {
                     id: *page_id,
-                    percent: page.messages.len() / 1000,
+                    amount: page.messages.len(),
                     size: page.size,
                 })
                 .collect(),
@@ -86,6 +86,6 @@ impl TopicJsonContract {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TopicPageJsonContract {
     pub id: PageId,
-    pub percent: usize,
+    pub amount: usize,
     pub size: usize,
 }
