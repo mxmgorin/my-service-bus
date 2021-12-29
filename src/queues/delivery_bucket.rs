@@ -17,4 +17,9 @@ impl DeliveryBucket {
             self.ids.remove(id);
         }
     }
+
+    pub fn confirm_everything(&mut self) {
+        self.confirmed += self.ids.len() as usize;
+        self.ids.clean();
+    }
 }
