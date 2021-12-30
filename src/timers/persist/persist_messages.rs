@@ -7,7 +7,7 @@ use crate::topics::{Topic, TopicData};
 pub async fn get_messages_to_persist_by_page(
     topic: &Topic,
 ) -> Option<HashMap<PageId, Vec<MessageProtobufModel>>> {
-    let mut topic_data = topic.data.lock().await;
+    let mut topic_data = topic.get_access("get_messages_to_persist_by_page").await;
     return get_messages_to_persist(&mut topic_data);
 }
 
@@ -31,7 +31,7 @@ fn get_messages_to_persist(
 }
 
 pub async fn commit_persist_result(topic: &Topic, page_id: PageId, ok: bool) {
-    let mut topic_data = topic.data.lock().await;
+    let mut topic_data = topic.get_access("commit_persist_result").await;
 
     if ok {
         topic_data.pages.persisted(page_id);
@@ -48,21 +48,18 @@ mod tests {
     #[tokio::test]
     async fn test_no_messages_published() {
         const TOPIC_NAME: &str = "Test";
-        let topic = Topic::new(TOPIC_NAME.to_string(), 0);
-
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = TopicData::new(TOPIC_NAME.to_string(), 0);
 
         let result = get_messages_to_persist(&mut topic_data);
 
         assert_eq!(true, result.is_none());
     }
 
-    #[tokio::test]
-    async fn test_some_messages_are_published() {
+    #[test]
+    fn test_some_messages_are_published() {
         const TOPIC_NAME: &str = "Test";
-        let topic = Topic::new(TOPIC_NAME.to_string(), 0);
 
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = TopicData::new(TOPIC_NAME.to_string(), 0);
 
         topic_data.publish_messages(1, vec![vec![0u8, 1u8, 2u8]]);
 

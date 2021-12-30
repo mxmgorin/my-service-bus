@@ -1,5 +1,6 @@
 mod topic;
 mod topic_data;
+mod topic_data_access;
 mod topic_snapshot;
 mod topics_list;
 mod topics_metrics;

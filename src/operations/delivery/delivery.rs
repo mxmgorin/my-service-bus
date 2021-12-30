@@ -116,7 +116,7 @@ mod tests {
 
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
 
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = topic.get_access("test_two_publish_two_delivery").await;
 
         {
             let queue = topic_data.queues.add_queue_if_not_exists(
@@ -171,7 +171,7 @@ mod tests {
 
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
 
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = topic.get_access("test_two_publish_one_delivery").await;
 
         {
             let queue = topic_data.queues.add_queue_if_not_exists(
@@ -226,7 +226,7 @@ mod tests {
 
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
 
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = topic.get_access("test_with_first_not_loaded_message").await;
 
         {
             let queue = topic_data.queues.add_queue_if_not_exists(
@@ -300,7 +300,7 @@ mod tests {
 
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
 
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = topic.get_access("test_with_all_messages_missing").await;
 
         {
             let queue = topic_data.queues.add_queue_if_not_exists(

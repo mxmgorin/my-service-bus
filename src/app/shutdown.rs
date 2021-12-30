@@ -12,7 +12,7 @@ async fn empty_persistence_queues(app: Arc<AppContext>) {
     let duration = Duration::from_millis(500);
     for topic in app.topic_list.get_all().await {
         let msgs_to_persist = {
-            let topic_data = topic.data.lock().await;
+            let topic_data = topic.get_access("empty_persistence_queues").await;
             topic_data.pages.get_persist_queue_size()
         };
 

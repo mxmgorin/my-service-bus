@@ -39,7 +39,7 @@ async fn handle_after_disconnect(app: &AppContext, removed_session: &MyServiceBu
     let topics = app.topic_list.get_all().await;
 
     for topic in &topics {
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = topic.get_access("handle_after_disconnect").await;
 
         let removed_subscribers = topic_data.disconnect(removed_session.id);
 

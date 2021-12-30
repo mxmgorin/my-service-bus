@@ -113,7 +113,7 @@ impl DeliveryDependecies for Arc<AppContext> {
                 page_id,
             )
             .await;
-            let mut topic_data = topic.data.lock().await;
+            let mut topic_data = topic.get_access("app.load_page").await;
             crate::operations::delivery::try_to_deliver(&app, &topic, &mut topic_data);
         });
     }

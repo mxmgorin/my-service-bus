@@ -43,7 +43,7 @@ async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
     let mut kicked_connections = HashMap::new();
 
     for topic in topics {
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = topic.get_access("dead_subscriber_kicker").await;
 
         for queue in topic_data.queues.get_all_mut() {
             let dead_subscribers = queue

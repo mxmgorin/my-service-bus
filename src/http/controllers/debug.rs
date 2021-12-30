@@ -1,3 +1,5 @@
+use rust_extensions::StringBuilder;
+
 use crate::{
     app::AppContext,
     http::{http_ctx::HttpContext, HttpFailResult, HttpOkResult},
@@ -42,7 +44,7 @@ pub async fn get_on_delivery(
     let topic = topic.unwrap();
 
     let ids = {
-        let topic_data = topic.data.lock().await;
+        let topic_data = topic.get_access("debug.get_on_delivery").await;
 
         let queue = topic_data.queues.get(queue_id);
 
@@ -57,5 +59,28 @@ pub async fn get_on_delivery(
 
     return Ok(HttpOkResult::Text {
         text: format!("{:?}", ids),
+    });
+}
+
+pub async fn locks(app: &AppContext) -> Result<HttpOkResult, HttpFailResult> {
+    let topics = app.topic_list.get_all().await;
+
+    let mut result = StringBuilder::new();
+
+    result.append_line("Locks:");
+
+    for topic in topics {
+        if let Some(lines) = topic.get_locks().await {
+            result.append_line("");
+            result.append_line(format!("{}", topic.topic_id).as_str());
+
+            for line in lines {
+                result.append_str(line.as_str());
+            }
+        }
+    }
+
+    return Ok(HttpOkResult::Text {
+        text: format!("{}", result.to_string_utf8().unwrap()),
     });
 }

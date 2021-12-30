@@ -21,6 +21,10 @@ pub async fn route_requests(
             return super::controllers::logs::get(app.as_ref()).await;
         }
 
+        (&Method::GET, "/locks") => {
+            return super::controllers::debug::locks(app.as_ref()).await;
+        }
+
         (&Method::GET, "/status") => {
             return super::controllers::status::index::get(app.as_ref()).await;
         }

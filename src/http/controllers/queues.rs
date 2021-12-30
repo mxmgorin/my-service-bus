@@ -51,7 +51,7 @@ pub async fn get_queues(
     let mut result = Vec::new();
 
     {
-        let topic_data = topic.data.lock().await;
+        let topic_data = topic.get_access("http.get_queues").await;
         for queue in topic_data.queues.get_queues() {
             result.push(queue.queue_id.clone());
         }

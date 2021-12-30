@@ -20,7 +20,7 @@ pub async fn create_topic_if_not_exists(
     ));
 
     {
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = topic.get_access("create_topic_if_not_exists").await;
 
         if let Some(session) = session {
             topic_data.set_publisher_as_active(session.id);
@@ -55,7 +55,7 @@ pub async fn publish(
 
     let topic = topic.unwrap();
 
-    let mut topic_data = topic.data.lock().await;
+    let mut topic_data = topic.get_access("publish").await;
 
     let messages_count = messages.len();
 

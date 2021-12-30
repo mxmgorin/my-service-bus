@@ -33,7 +33,7 @@ pub async fn start(app: Arc<AppContext>) {
 
 pub async fn timer_tick(app: Arc<AppContext>) {
     for topic in app.topic_list.get_all().await {
-        let mut topic_data = topic.data.lock().await;
+        let mut topic_data = topic.get_access("gc.timer_tick").await;
         super::message_pages::execute(app.as_ref(), &mut topic_data);
         super::no_subscribers_queues::execute(app.as_ref(), &mut topic_data);
     }
