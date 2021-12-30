@@ -43,38 +43,34 @@ async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
     let mut kicked_connections = HashMap::new();
 
     for topic in topics {
-        let mut topic_data = topic.get_access("dead_subscriber_kicker").await;
+        if let Some(dead_subscribers) = topic
+            .find_subscribers_dead_on_delivery(delivery_timeout_duration)
+            .await
+        {
+            for dead_subscriber in dead_subscribers {
+                app.logs.add_error(
+                    Some(topic.topic_id.to_string()),
+                    crate::app::logs::SystemProcess::Timer,
+                    "Dead subscribers detector".to_string(),
+                    format!(
+                        "Kicking Connection {} with dead subscriber {}",
+                        dead_subscriber.session_id, dead_subscriber.subscriber_id
+                    ),
+                    Some(format!("{:?}", dead_subscriber.duration)),
+                );
 
-        for queue in topic_data.queues.get_all_mut() {
-            let dead_subscribers = queue
-                .subscribers
-                .find_subscribers_dead_on_delivery(delivery_timeout_duration);
+                if !kicked_connections.contains_key(&dead_subscriber.session_id) {
+                    kicked_connections
+                        .insert(dead_subscriber.session_id, dead_subscriber.subscriber_id);
 
-            if let Some(dead_subscribers) = dead_subscribers {
-                for dead_subscriber in dead_subscribers {
-                    app.logs.add_error(
-                        Some(topic.topic_id.to_string()),
-                        crate::app::logs::SystemProcess::Timer,
-                        "Dead subscribers detector".to_string(),
-                        format!(
-                            "Kicking Connection {} with dead subscriber {}",
-                            dead_subscriber.session_id, dead_subscriber.subscriber_id
-                        ),
-                        Some(format!("{:?}", dead_subscriber.duration)),
-                    );
-
-                    if !kicked_connections.contains_key(&dead_subscriber.session_id) {
-                        kicked_connections
-                            .insert(dead_subscriber.session_id, dead_subscriber.subscriber_id);
-                        crate::operations::sessions::disconnect(
-                            app.as_ref(),
-                            dead_subscriber.session_id,
-                        )
-                        .await;
-                    } else {
-                        let kicked = kicked_connections.get(&dead_subscriber.session_id);
-                        println!("We already kicked session {} the moment we were kicking the subscriber {:?}.", dead_subscriber.session_id, kicked);
-                    }
+                    crate::operations::sessions::disconnect(
+                        app.as_ref(),
+                        dead_subscriber.session_id,
+                    )
+                    .await;
+                } else {
+                    let kicked = kicked_connections.get(&dead_subscriber.session_id);
+                    println!("We already kicked session {} the moment we were kicking the subscriber {:?}.", dead_subscriber.session_id, kicked);
                 }
             }
         }

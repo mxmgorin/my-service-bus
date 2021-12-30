@@ -76,6 +76,7 @@ pub async fn locks(app: &AppContext) -> Result<HttpOkResult, HttpFailResult> {
 
             for line in lines {
                 result.append_str(line.as_str());
+                result.append_str(";");
             }
         }
     }

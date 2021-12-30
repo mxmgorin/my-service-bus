@@ -1,9 +1,12 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use my_service_bus_shared::page_id::{get_page_id, PageId};
 use my_service_bus_shared::MessageId;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio::sync::Mutex;
+
+use crate::queue_subscribers::DeadSubscriber;
 
 use super::topic_data::TopicData;
 use super::topic_data_access::TopicDataAccess;
@@ -72,5 +75,40 @@ impl Topic {
             topic_id: topic_data.topic_id.to_string(),
             queues: topic_data.queues.get_snapshot_to_persist(),
         }
+    }
+
+    pub async fn find_subscribers_dead_on_delivery(
+        &self,
+        delivery_timeout_duration: Duration,
+    ) -> Option<Vec<DeadSubscriber>> {
+        let mut result = None;
+        let mut topic_data = self.data.lock().await;
+
+        for queue in topic_data.queues.get_all_mut() {
+            if let Some(dead_subscribers) = queue
+                .subscribers
+                .find_subscribers_dead_on_delivery(delivery_timeout_duration)
+            {
+                if result.is_none() {
+                    result = Some(Vec::new());
+                }
+
+                let result_mut = result.as_mut().unwrap();
+
+                for dead_subscriber in dead_subscribers {
+                    if result_mut
+                        .iter()
+                        .position(|itm: &DeadSubscriber| {
+                            itm.subscriber_id == dead_subscriber.subscriber_id
+                        })
+                        .is_none()
+                    {
+                        result_mut.push(dead_subscriber);
+                    }
+                }
+            }
+        }
+
+        result
     }
 }
