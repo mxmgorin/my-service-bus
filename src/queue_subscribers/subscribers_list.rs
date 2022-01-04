@@ -3,7 +3,7 @@ use std::{collections::HashMap, time::Duration};
 use my_service_bus_shared::{queue::TopicQueueType, MessageId};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::tcp::tcp_server::ConnectionId;
+use crate::sessions::SessionId;
 
 use super::{QueueSubscriber, SubscriberId};
 
@@ -14,7 +14,7 @@ pub enum SubscribersData {
 
 pub struct DeadSubscriber {
     pub subscriber_id: SubscriberId,
-    pub session_id: i64,
+    pub session_id: SessionId,
     pub duration: Duration,
 }
 
@@ -133,19 +133,19 @@ impl SubscribersList {
 
     fn check_that_we_has_already_subscriber_for_that_session(
         &self,
-        connection_id: ConnectionId,
+        session_id: SessionId,
     ) -> Result<(), SubscribeErrorResult> {
         match &self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 for subscriber in hash_map.values() {
-                    if subscriber.session_id == connection_id {
+                    if subscriber.session_id == session_id {
                         return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
                     }
                 }
             }
             SubscribersData::SingleSubscriber(single_subscriber) => {
                 if let Some(subscriber) = single_subscriber {
-                    if subscriber.session_id == connection_id {
+                    if subscriber.session_id == session_id {
                         return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
                     }
                 }
@@ -161,7 +161,7 @@ impl SubscribersList {
         subscriber_id: SubscriberId,
         topic_id: String,
         queue_id: String,
-        session_id: i64,
+        session_id: SessionId,
         delivery_packet_version: i32,
     ) -> Result<Option<QueueSubscriber>, SubscribeErrorResult> {
         self.check_that_we_has_already_subscriber_for_that_session(session_id)?;
@@ -235,21 +235,18 @@ impl SubscribersList {
         }
     }
 
-    fn resolve_subscriber_id_by_connection_id(
-        &self,
-        connection_id: ConnectionId,
-    ) -> Option<SubscriberId> {
+    fn resolve_subscriber_id_by_session_id(&self, session_id: SessionId) -> Option<SubscriberId> {
         match &self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 for sub in hash_map.values() {
-                    if sub.session_id == connection_id {
+                    if sub.session_id == session_id {
                         return Some(sub.id);
                     }
                 }
             }
             SubscribersData::SingleSubscriber(single) => {
                 if let Some(sub) = single {
-                    if sub.session_id == connection_id {
+                    if sub.session_id == session_id {
                         return Some(sub.id);
                     }
                 }
@@ -284,11 +281,8 @@ impl SubscribersList {
         }
     }
 
-    pub fn remove_by_connection_id(
-        &mut self,
-        connection_id: ConnectionId,
-    ) -> Option<QueueSubscriber> {
-        let subscriber_id = self.resolve_subscriber_id_by_connection_id(connection_id)?;
+    pub fn remove_by_session_id(&mut self, session_id: SessionId) -> Option<QueueSubscriber> {
+        let subscriber_id = self.resolve_subscriber_id_by_session_id(session_id)?;
         self.remove(subscriber_id)
     }
 

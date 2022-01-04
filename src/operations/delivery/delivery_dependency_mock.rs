@@ -3,13 +3,13 @@ use std::sync::{Arc, Mutex};
 use my_service_bus_shared::page_id::PageId;
 use my_service_bus_tcp_shared::TcpContract;
 
-use crate::{tcp::tcp_server::ConnectionId, topics::Topic};
+use crate::{sessions::SessionId, topics::Topic};
 
 use super::DeliveryDependecies;
 
 #[cfg(test)]
 pub struct DeliveryDependeciesMock {
-    sent_packets: Mutex<Option<Vec<(ConnectionId, TcpContract)>>>,
+    sent_packets: Mutex<Option<Vec<(SessionId, TcpContract)>>>,
     load_page_event_data: Mutex<Option<(Arc<Topic>, PageId)>>,
     max_packet_size: usize,
 }
@@ -24,7 +24,7 @@ impl DeliveryDependeciesMock {
         }
     }
 
-    pub fn get_sent_packets(&self) -> Vec<(ConnectionId, TcpContract)> {
+    pub fn get_sent_packets(&self) -> Vec<(SessionId, TcpContract)> {
         let mut sent_packets = self.sent_packets.lock().unwrap();
 
         let mut result = None;
@@ -51,7 +51,7 @@ impl DeliveryDependecies for DeliveryDependeciesMock {
         self.max_packet_size
     }
 
-    fn send_package(&self, session_id: ConnectionId, tcp_packet: TcpContract) {
+    fn send_package(&self, session_id: SessionId, tcp_packet: TcpContract) {
         let mut sent_packets = self.sent_packets.lock().unwrap();
         sent_packets
             .as_mut()

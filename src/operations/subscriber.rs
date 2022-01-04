@@ -6,6 +6,7 @@ use crate::{
     app::AppContext,
     queue_subscribers::{QueueSubscriber, SubscribeErrorResult},
     queues::TopicQueue,
+    sessions::SessionId,
 };
 
 use super::OperationFailResult;
@@ -15,7 +16,7 @@ pub async fn subscribe_to_queue(
     topic_id: String,
     queue_id: String,
     queue_type: TopicQueueType,
-    session_id: i64,
+    session_id: SessionId,
     delivery_packet_version: i32,
 ) -> Result<(), OperationFailResult> {
     let mut topic = app.topic_list.get(topic_id.as_str()).await;

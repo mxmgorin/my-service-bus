@@ -4,7 +4,7 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{
     metric_data::{MetricOneSecond, MetricsHistory},
-    tcp::tcp_server::ConnectionId,
+    sessions::SessionId,
 };
 
 use super::SubscriberId;
@@ -23,7 +23,7 @@ pub struct SubscriberMetrics {
     pub active: u8,
     pub delivery_history: MetricsHistory,
 
-    pub connection_id: ConnectionId,
+    pub session_id: SessionId,
     pub subscriber_id: SubscriberId,
 
     pub delivery_mode: u8,
@@ -32,7 +32,7 @@ pub struct SubscriberMetrics {
 impl SubscriberMetrics {
     pub fn new(
         subscriber_id: SubscriberId,
-        connection_id: ConnectionId,
+        session_id: SessionId,
         topic_id: String,
         queue_id: String,
     ) -> Self {
@@ -43,7 +43,7 @@ impl SubscriberMetrics {
             delivery_microseconds: MetricOneSecond::new(),
             active: 0,
             delivery_history: MetricsHistory::new(),
-            connection_id,
+            session_id,
             topic_id,
             queue_id,
             delivery_mode: DELIVERY_STATE_READY_TO_DELIVER,

@@ -4,7 +4,7 @@ use my_service_bus_tcp_shared::DeliveryPackageBuilder;
 
 use crate::{
     queues::delivery_iterator::DeliveryIterator,
-    tcp::tcp_server::ConnectionId,
+    sessions::SessionId,
     topics::{Topic, TopicData},
 };
 
@@ -76,7 +76,7 @@ fn deliver_messages<TDeliveryDependecies: DeliveryDependecies>(
     delivery: &TDeliveryDependecies,
     delivery_iterator: &mut DeliveryIterator,
     delivery_package_builder: &mut DeliveryPackageBuilder,
-    session_id: ConnectionId,
+    session_id: SessionId,
 ) {
     delivery_iterator
         .subscriber
@@ -111,7 +111,7 @@ mod tests {
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
-        const SESSION_ID: ConnectionId = 13;
+        const SESSION_ID: SessionId = 13;
         const DELIVERY_SIZE: usize = 16;
 
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
@@ -166,7 +166,7 @@ mod tests {
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
-        const SESSION_ID: ConnectionId = 13;
+        const SESSION_ID: SessionId = 13;
         const DELIVERY_SIZE: usize = 4;
 
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
@@ -221,7 +221,7 @@ mod tests {
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
-        const SESSION_ID: ConnectionId = 13;
+        const SESSION_ID: SessionId = 13;
         const DELIVERY_SIZE: usize = 4;
 
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
@@ -295,7 +295,7 @@ mod tests {
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
-        const SESSION_ID: ConnectionId = 13;
+        const SESSION_ID: SessionId = 13;
         const DELIVERY_SIZE: usize = 4;
 
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));

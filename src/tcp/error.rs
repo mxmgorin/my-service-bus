@@ -1,4 +1,4 @@
-use my_service_bus_tcp_shared::ReadingTcpContractFail;
+use my_tcp_sockets::socket_reader::ReadingTcpContractFail;
 
 use crate::operations::OperationFailResult;
 

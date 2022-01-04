@@ -1,59 +1,43 @@
 use std::sync::Arc;
 
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
-use my_service_bus_tcp_shared::{ConnectionAttributes, TcpContract};
+use my_service_bus_tcp_shared::{MySbTcpSerializer, TcpContract};
+use my_tcp_sockets::tcp_connection::SocketConnection;
 
-use crate::{app::AppContext, operations, sessions::MyServiceBusSession};
+use crate::{app::AppContext, operations};
 
 use super::error::MySbSocketError;
 
-pub async fn on_disconnect(
-    app: Arc<AppContext>,
-    my_sb_session: Arc<MyServiceBusSession>,
-) -> Result<(), String> {
-    let result = tokio::task::spawn(on_disconnect_process(app.clone(), my_sb_session)).await;
-
-    if let Err(err) = result {
-        return Err(format!("{:?}", err));
-    }
-
-    Ok(())
-}
-
-async fn on_disconnect_process(app: Arc<AppContext>, my_sb_session: Arc<MyServiceBusSession>) {
-    crate::operations::sessions::disconnect(app.as_ref(), my_sb_session.id).await;
-}
-
-pub async fn handle_incoming_payload(
+pub async fn handle(
     app: Arc<AppContext>,
     tcp_contract: TcpContract,
-    session: Arc<MyServiceBusSession>,
-    attr: &mut ConnectionAttributes,
+    connection: Arc<SocketConnection<TcpContract, MySbTcpSerializer>>,
 ) -> Result<(), MySbSocketError> {
     match tcp_contract {
         TcpContract::Ping {} => {
-            crate::operations::sessions::send_package(app.as_ref(), session.id, TcpContract::Pong)
+            connection
+                .send_bytes(TcpContract::Pong.serialize().as_ref())
                 .await;
             Ok(())
         }
         TcpContract::Pong {} => Ok(()),
         TcpContract::Greeting {
             name,
-            protocol_version,
+            protocol_version: _,
         } => {
-            attr.protocol_version = protocol_version;
-
+            //TODO - It Should be scan from the last to ;
             let splited: Vec<&str> = name.split(";").collect();
 
-            if splited.len() == 2 {
-                session
-                    .set_socket_name(splited[0].to_string(), Some(splited[1].to_string()))
-                    .await;
-            } else {
-                session.set_socket_name(name, None).await;
+            if let Some(session) = app.sessions.get(connection.id).await {
+                if splited.len() == 2 {
+                    session
+                        .set_socket_name(splited[0].to_string(), Some(splited[1].to_string()))
+                        .await;
+                } else {
+                    session.set_socket_name(name, None).await;
+                }
             }
 
-            session.set_protocol_version(protocol_version).await;
             Ok(())
         }
         TcpContract::Publish {
@@ -67,26 +51,20 @@ pub async fn handle_incoming_payload(
                 topic_id,
                 data_to_publish,
                 persist_immediately,
-                session.id,
+                connection.id,
             )
             .await;
 
             if let Err(err) = result {
-                crate::operations::sessions::send_package(
-                    app.as_ref(),
-                    session.id,
-                    TcpContract::Reject {
+                connection
+                    .send(TcpContract::Reject {
                         message: format!("{:?}", err),
-                    },
-                )
-                .await;
+                    })
+                    .await;
             } else {
-                crate::operations::sessions::send_package(
-                    app.as_ref(),
-                    session.id,
-                    TcpContract::PublishResponse { request_id },
-                )
-                .await;
+                connection
+                    .send(TcpContract::PublishResponse { request_id })
+                    .await;
             }
 
             Ok(())
@@ -101,19 +79,32 @@ pub async fn handle_incoming_payload(
             queue_id,
             queue_type,
         } => {
-            let delivery_version_id = session
-                .get_packet_version(my_service_bus_tcp_shared::tcp_message_id::NEW_MESSAGES)
-                .await;
+            let delivery_version_id = {
+                let socket_data = connection.socket.lock().await;
 
-            operations::subscriber::subscribe_to_queue(
-                app,
-                topic_id,
-                queue_id,
-                queue_type,
-                session.id,
-                delivery_version_id,
-            )
-            .await?;
+                if let Some(socket_data) = &*socket_data {
+                    Some(
+                        socket_data
+                            .get_serializer()
+                            .get_new_messages_packet_version(),
+                    )
+                } else {
+                    None
+                }
+            };
+
+            if let Some(delivery_version_id) = delivery_version_id {
+                operations::subscriber::subscribe_to_queue(
+                    app,
+                    topic_id,
+                    queue_id,
+                    queue_type,
+                    connection.id,
+                    delivery_version_id,
+                )
+                .await?;
+            }
+
             Ok(())
         }
         TcpContract::SubscribeResponse {
@@ -142,12 +133,15 @@ pub async fn handle_incoming_payload(
             Ok(())
         }
         TcpContract::CreateTopicIfNotExists { topic_id } => {
-            operations::publisher::create_topic_if_not_exists(
-                app,
-                Some(session.as_ref()),
-                topic_id.as_str(),
-            )
-            .await;
+            if let Some(session) = app.sessions.get(connection.id).await {
+                operations::publisher::create_topic_if_not_exists(
+                    app,
+                    Some(session.as_ref()),
+                    topic_id.as_str(),
+                )
+                .await;
+            }
+
             Ok(())
         }
         TcpContract::IntermediaryConfirm {
@@ -168,9 +162,8 @@ pub async fn handle_incoming_payload(
 
             Ok(())
         }
-        TcpContract::PacketVersions { packet_versions } => {
-            attr.versions.update(&packet_versions);
-            session.update_packet_versions(&packet_versions).await;
+        TcpContract::PacketVersions { packet_versions: _ } => {
+            //This is a serializer layer packet
             Ok(())
         }
         TcpContract::Reject { message: _ } => {

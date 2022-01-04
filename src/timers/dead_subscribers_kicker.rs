@@ -63,11 +63,9 @@ async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
                     kicked_connections
                         .insert(dead_subscriber.session_id, dead_subscriber.subscriber_id);
 
-                    crate::operations::sessions::disconnect(
-                        app.as_ref(),
-                        dead_subscriber.session_id,
-                    )
-                    .await;
+                    if let Some(session) = app.sessions.get(dead_subscriber.session_id).await {
+                        session.disconnect();
+                    }
                 } else {
                     let kicked = kicked_connections.get(&dead_subscriber.session_id);
                     println!("We already kicked session {} the moment we were kicking the subscriber {:?}.", dead_subscriber.session_id, kicked);

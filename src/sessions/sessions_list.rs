@@ -1,13 +1,14 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 
-use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio::sync::RwLock;
 
 use super::MyServiceBusSession;
 
+pub type SessionId = i32;
+
 struct SessionsListData {
     snapshot_id: usize,
-    sessions: HashMap<i64, Arc<MyServiceBusSession>>,
+    sessions: HashMap<SessionId, Arc<MyServiceBusSession>>,
 }
 
 pub struct SessionsList {
@@ -32,24 +33,17 @@ impl SessionsList {
         write_access.snapshot_id += 1;
     }
 
-    pub async fn get(&self, session_id: i64) -> Option<Arc<MyServiceBusSession>> {
+    pub async fn get(&self, session_id: i32) -> Option<Arc<MyServiceBusSession>> {
         let read_access = self.data.read().await;
         return Some(read_access.sessions.get(&session_id)?.clone());
     }
 
-    pub async fn remove(&self, id: &i64) -> Option<Arc<MyServiceBusSession>> {
+    pub async fn remove(&self, id: &i32) -> Option<Arc<MyServiceBusSession>> {
         let mut write_access = self.data.write().await;
         let result = write_access.sessions.remove(id)?;
         write_access.snapshot_id += 1;
 
         return Some(result);
-    }
-
-    pub async fn one_second_tick(&self) {
-        let read_access = self.data.read().await;
-        for session in read_access.sessions.values() {
-            session.one_second_tick().await;
-        }
     }
 
     pub async fn get_snapshot(&self) -> (usize, Vec<Arc<MyServiceBusSession>>) {
@@ -62,30 +56,5 @@ impl SessionsList {
         }
 
         return (read_access.snapshot_id, sessions_result);
-    }
-
-    pub async fn get_dead_connections(
-        &self,
-        timeout: Duration,
-    ) -> Option<Vec<Arc<MyServiceBusSession>>> {
-        let now = DateTimeAsMicroseconds::now();
-
-        let mut result = None;
-
-        let read_access = self.data.read().await;
-
-        for session in read_access.sessions.values() {
-            let last_incoming_package = session.last_incoming_package.as_date_time();
-
-            if now.duration_since(last_incoming_package) > timeout {
-                if result.is_none() {
-                    result = Some(Vec::new());
-                }
-
-                result.as_mut().unwrap().push(session.clone());
-            }
-        }
-
-        result
     }
 }

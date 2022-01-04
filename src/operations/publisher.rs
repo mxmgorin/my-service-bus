@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use crate::{app::AppContext, sessions::MyServiceBusSession, topics::Topic};
+use crate::{
+    app::AppContext,
+    sessions::{MyServiceBusSession, SessionId},
+    topics::Topic,
+};
 
 use super::OperationFailResult;
 
@@ -35,7 +39,7 @@ pub async fn publish(
     topic_id: String,
     messages: Vec<Vec<u8>>,
     persist_immediately: bool,
-    session_id: i64,
+    session_id: SessionId,
 ) -> Result<(), OperationFailResult> {
     if app.states.is_shutting_down() {
         return Err(OperationFailResult::ShuttingDown);

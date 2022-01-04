@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionJsonResult {
-    pub id: i64,
+    pub id: i32,
     pub name: String,
     pub ip: String,
     pub version: Option<String>,
@@ -43,12 +43,12 @@ impl SessionJsonResult {
                 now.duration_since(session.connected),
             ),
             last_incoming: rust_extensions::duration_utils::duration_to_string(
-                now.duration_since(session.last_incoming_package.as_date_time()),
+                now.duration_since(session.get_last_incoming_package_moment()),
             ),
-            read_size: session_metrics_data.metrics.read_size,
-            written_size: session_metrics_data.metrics.written_size,
-            read_per_sec: session_metrics_data.metrics.read_per_sec,
-            written_per_sec: session_metrics_data.metrics.written_per_sec,
+            read_size: session_metrics_data.connection_metrics.read,
+            written_size: session_metrics_data.connection_metrics.written,
+            read_per_sec: session_metrics_data.connection_metrics.read_per_sec,
+            written_per_sec: session_metrics_data.connection_metrics.written_per_sec,
         }
     }
 }

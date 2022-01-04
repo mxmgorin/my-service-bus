@@ -10,6 +10,7 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 use crate::queue_subscribers::QueueSubscriber;
 use crate::queues::delivery_iterator::DeliveryIterator;
 use crate::queues::{TopicQueue, TopicQueuesList};
+use crate::sessions::SessionId;
 
 use super::TopicMetrics;
 const BADGE_HIGHLIGHT_TIMOUT: u8 = 2;
@@ -20,7 +21,7 @@ pub struct TopicData {
     pub queues: TopicQueuesList,
     pub metrics: TopicMetrics,
     pub pages: MessagesPagesCache,
-    pub publishers: HashMap<i64, u8>,
+    pub publishers: HashMap<SessionId, u8>,
 }
 
 impl TopicData {
@@ -36,11 +37,11 @@ impl TopicData {
     }
 
     #[inline]
-    pub fn set_publisher_as_active(&mut self, session_id: i64) {
+    pub fn set_publisher_as_active(&mut self, session_id: SessionId) {
         self.publishers.insert(session_id, BADGE_HIGHLIGHT_TIMOUT);
     }
 
-    pub fn publish_messages(&mut self, session_id: i64, messages: Vec<Vec<u8>>) {
+    pub fn publish_messages(&mut self, session_id: SessionId, messages: Vec<Vec<u8>>) {
         self.set_publisher_as_active(session_id);
 
         let mut ids = QueueWithIntervals::new();
@@ -110,11 +111,11 @@ impl TopicData {
 
     pub fn disconnect(
         &mut self,
-        session_id: i64,
+        session_id: SessionId,
     ) -> Option<Vec<(&mut TopicQueue, QueueSubscriber)>> {
         self.publishers.remove(&session_id);
 
-        self.queues.remove_subscribers_by_connection_id(session_id)
+        self.queues.remove_subscribers_by_session_id(session_id)
     }
 
     pub fn get_delivery_iterator<'s>(

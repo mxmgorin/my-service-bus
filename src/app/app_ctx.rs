@@ -1,12 +1,13 @@
 use std::{sync::Arc, time::Duration};
 
+use rust_extensions::ApplicationStates;
 use tokio::sync::RwLock;
 
 use crate::{
     operations::delivery::DeliveryDependecies,
     persistence::{MessagesPagesGrpcRepo, TopcsAndQueuesSnapshotRepo},
     queue_subscribers::SubscriberIdGenerator,
-    sessions::SessionsList,
+    sessions::{SessionId, SessionsList},
     settings::SettingsModel,
     topics::TopicsList,
 };
@@ -89,13 +90,19 @@ impl DeliveryDependecies for Arc<AppContext> {
 
     fn send_package(
         &self,
-        session_id: crate::tcp::tcp_server::ConnectionId,
+        session_id: SessionId,
         tcp_packet: my_service_bus_tcp_shared::TcpContract,
     ) {
         let app = self.clone();
 
         tokio::spawn(async move {
-            crate::operations::sessions::send_package(app.as_ref(), session_id, tcp_packet).await;
+            if let Some(session) = app.sessions.get(session_id).await {
+                match &session.connection {
+                    crate::sessions::SessionConnection::Tcp(connection) => {
+                        connection.send(tcp_packet).await;
+                    }
+                }
+            }
         });
     }
 
@@ -116,5 +123,15 @@ impl DeliveryDependecies for Arc<AppContext> {
             let mut topic_data = topic.get_access("app.load_page").await;
             crate::operations::delivery::try_to_deliver(&app, &topic, &mut topic_data);
         });
+    }
+}
+
+impl ApplicationStates for AppContext {
+    fn is_initialized(&self) -> bool {
+        self.states.is_initialized()
+    }
+
+    fn is_shutting_down(&self) -> bool {
+        self.states.is_shutting_down()
     }
 }

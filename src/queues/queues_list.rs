@@ -7,9 +7,7 @@ use my_service_bus_shared::{
     queue::TopicQueueType, queue_with_intervals::QueueWithIntervals, MessageId,
 };
 
-use crate::{
-    queue_subscribers::QueueSubscriber, tcp::tcp_server::ConnectionId, topics::TopicQueueSnapshot,
-};
+use crate::{queue_subscribers::QueueSubscriber, sessions::SessionId, topics::TopicQueueSnapshot};
 
 use super::queue::TopicQueue;
 
@@ -134,14 +132,14 @@ impl TopicQueuesList {
         }
     }
 
-    pub fn remove_subscribers_by_connection_id(
+    pub fn remove_subscribers_by_session_id(
         &mut self,
-        connection_id: ConnectionId,
+        session_id: SessionId,
     ) -> Option<Vec<(&mut TopicQueue, QueueSubscriber)>> {
         let mut result = None;
 
         for queue in self.queues.values_mut() {
-            let remove_result = queue.subscribers.remove_by_connection_id(connection_id);
+            let remove_result = queue.subscribers.remove_by_session_id(session_id);
             if let Some(sub) = remove_result {
                 if result.is_none() {
                     result = Some(Vec::new());

@@ -1,4 +1,6 @@
 use app::AppContext;
+use my_service_bus_tcp_shared::{ConnectionAttributes, MySbTcpSerializer};
+use my_tcp_sockets::TcpServer;
 
 use std::time::Duration;
 use std::{net::SocketAddr, sync::Arc};
@@ -35,8 +37,23 @@ async fn main() {
         app.clone(),
     )));
 
-    tasks.push(tokio::task::spawn(tcp::tcp_server::start(
+    let tcp_server = TcpServer::new(
+        "MySbTcpServer".to_string(),
         SocketAddr::from(([0, 0, 0, 0], 6421)),
+    );
+
+    let tcp_server_sockets_loop = tcp_server
+        .start(
+            app.clone(),
+            Arc::new(|| -> MySbTcpSerializer {
+                let attrs = ConnectionAttributes::new();
+                MySbTcpSerializer::new(attrs)
+            }),
+        )
+        .await;
+
+    tasks.push(tokio::task::spawn(crate::tcp::socket_loop::start(
+        tcp_server_sockets_loop,
         app.clone(),
     )));
 
