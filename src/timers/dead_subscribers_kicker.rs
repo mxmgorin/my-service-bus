@@ -64,7 +64,7 @@ async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
                         .insert(dead_subscriber.session_id, dead_subscriber.subscriber_id);
 
                     if let Some(session) = app.sessions.get(dead_subscriber.session_id).await {
-                        session.disconnect();
+                        session.disconnect().await;
                     }
                 } else {
                     let kicked = kicked_connections.get(&dead_subscriber.session_id);

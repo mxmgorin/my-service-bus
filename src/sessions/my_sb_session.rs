@@ -73,10 +73,14 @@ impl MyServiceBusSession {
     }
 
     pub fn get_last_incoming_package_moment(&self) -> DateTimeAsMicroseconds {
-        todo!("Implement")
+        match &self.connection {
+            SessionConnection::Tcp(tcp) => tcp.statistics.last_receive_moment.as_date_time(),
+        }
     }
 
-    pub fn disconnect(&self) {
-        todo!("Implement")
+    pub async fn disconnect(&self) -> bool {
+        match &self.connection {
+            SessionConnection::Tcp(tcp) => tcp.disconnect().await,
+        }
     }
 }

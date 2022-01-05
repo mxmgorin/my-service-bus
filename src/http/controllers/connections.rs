@@ -11,7 +11,7 @@ pub async fn delete(app: &AppContext, ctx: HttpContext) -> Result<HttpOkResult, 
 
     match app.sessions.get(id).await {
         Some(session) => {
-            session.disconnect();
+            session.disconnect().await;
 
             let result = HttpOkResult::Text {
                 text: "Session is removed".to_string(),
