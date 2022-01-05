@@ -43,6 +43,8 @@ pub async fn commit_persist_result(topic: &Topic, page_id: PageId, ok: bool) {
 #[cfg(test)]
 mod tests {
 
+    use my_service_bus_tcp_shared::MessageToPublishTcpContract;
+
     use super::*;
 
     #[tokio::test]
@@ -61,7 +63,12 @@ mod tests {
 
         let mut topic_data = TopicData::new(TOPIC_NAME.to_string(), 0);
 
-        topic_data.publish_messages(1, vec![vec![0u8, 1u8, 2u8]]);
+        let msg = MessageToPublishTcpContract {
+            content: vec![0u8, 1u8, 2u8],
+            headers: None,
+        };
+
+        topic_data.publish_messages(1, vec![msg]);
 
         let result = get_messages_to_persist(&mut topic_data);
 

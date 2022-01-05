@@ -1,18 +1,15 @@
 use std::sync::Arc;
 
-use my_service_bus_tcp_shared::ConnectionAttributes;
-
 use crate::app::AppContext;
 
 pub struct MyServiceBusSessionData {
     pub name: Option<String>,
     pub client_version: Option<String>,
 
-    pub attr: ConnectionAttributes,
-
     pub app: Arc<AppContext>,
 
     pub logged_send_error_on_disconnected: i32,
+    pub protocol_version: i32,
 }
 
 impl MyServiceBusSessionData {
@@ -20,9 +17,9 @@ impl MyServiceBusSessionData {
         Self {
             name: None,
             client_version: None,
-            attr: ConnectionAttributes::new(),
             app,
             logged_send_error_on_disconnected: 0,
+            protocol_version: 0,
         }
     }
 

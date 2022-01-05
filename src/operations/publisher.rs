@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use my_service_bus_tcp_shared::MessageToPublishTcpContract;
+
 use crate::{
     app::AppContext,
     sessions::{MyServiceBusSession, SessionId},
@@ -37,7 +39,7 @@ pub async fn create_topic_if_not_exists(
 pub async fn publish(
     app: Arc<AppContext>,
     topic_id: String,
-    messages: Vec<Vec<u8>>,
+    messages: Vec<MessageToPublishTcpContract>,
     persist_immediately: bool,
     session_id: SessionId,
 ) -> Result<(), OperationFailResult> {

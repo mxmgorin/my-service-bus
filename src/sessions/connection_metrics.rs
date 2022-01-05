@@ -1,6 +1,7 @@
 use std::sync::atomic::Ordering;
 
-use my_tcp_sockets::tcp_connection::ConnectionStatistics;
+use my_service_bus_tcp_shared::{MySbTcpSerializer, TcpContract};
+use my_tcp_sockets::tcp_connection::SocketConnection;
 
 pub struct ConnectionMetrics {
     pub read: usize,
@@ -10,12 +11,12 @@ pub struct ConnectionMetrics {
 }
 
 impl ConnectionMetrics {
-    pub fn from_tcp(statistics: &ConnectionStatistics) -> Self {
+    pub fn from_tcp(connection: &SocketConnection<TcpContract, MySbTcpSerializer>) -> Self {
         Self {
-            read: statistics.total_received.load(Ordering::SeqCst),
-            written: statistics.total_sent.load(Ordering::SeqCst),
-            read_per_sec: statistics.received_per_sec.get_value(),
-            written_per_sec: statistics.sent_per_sec.get_value(),
+            read: connection.statistics.total_received.load(Ordering::SeqCst),
+            written: connection.statistics.total_sent.load(Ordering::SeqCst),
+            read_per_sec: connection.statistics.received_per_sec.get_value(),
+            written_per_sec: connection.statistics.sent_per_sec.get_value(),
         }
     }
 }

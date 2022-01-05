@@ -161,7 +161,7 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
         for message in grpc_model.unwrap().messages {
             let time = parse_date_time_from_bcl(message.message_id, message.created);
 
-            let msg = MySbMessageContent::new(message.message_id, message.data, time);
+            let msg = MySbMessageContent::new(message.message_id, message.data, None, time);
             msgs.insert(msg.id, msg);
         }
 

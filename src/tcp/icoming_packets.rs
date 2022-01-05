@@ -15,15 +15,13 @@ pub async fn handle(
 ) -> Result<(), MySbSocketError> {
     match tcp_contract {
         TcpContract::Ping {} => {
-            connection
-                .send_bytes(TcpContract::Pong.serialize().as_ref())
-                .await;
+            connection.send(TcpContract::Pong).await;
             Ok(())
         }
         TcpContract::Pong {} => Ok(()),
         TcpContract::Greeting {
             name,
-            protocol_version: _,
+            protocol_version,
         } => {
             //TODO - It Should be scan from the last to ;
             let splited: Vec<&str> = name.split(";").collect();
@@ -31,10 +29,14 @@ pub async fn handle(
             if let Some(session) = app.sessions.get(connection.id).await {
                 if splited.len() == 2 {
                     session
-                        .set_socket_name(splited[0].to_string(), Some(splited[1].to_string()))
+                        .set_socket_name(
+                            splited[0].to_string(),
+                            Some(splited[1].to_string()),
+                            protocol_version,
+                        )
                         .await;
                 } else {
-                    session.set_socket_name(name, None).await;
+                    session.set_socket_name(name, None, protocol_version).await;
                 }
             }
 

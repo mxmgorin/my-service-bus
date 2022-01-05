@@ -107,13 +107,20 @@ impl<'s> Iterator for DeliveryIterator<'s> {
 
 #[cfg(test)]
 mod tests {
+    use my_service_bus_tcp_shared::MessageToPublishTcpContract;
+
     use crate::{queues::delivery_iterator::NextMessageResult, topics::TopicData};
 
     #[test]
     pub fn test_on_delivery_no_queues() {
         let mut topic_data = TopicData::new("test".to_string(), 0);
 
-        topic_data.publish_messages(1, vec![vec![0u8, 1u8, 2u8]]);
+        let msg = MessageToPublishTcpContract {
+            headers: None,
+            content: vec![0u8, 1u8, 2u8],
+        };
+
+        topic_data.publish_messages(1, vec![msg]);
 
         let result = topic_data.get_delivery_iterator(5 * 1024 * 1024);
 
@@ -140,7 +147,12 @@ mod tests {
                 .unwrap();
         }
 
-        topic_data.publish_messages(1, vec![vec![0u8, 1u8, 2u8]]);
+        let msg = MessageToPublishTcpContract {
+            headers: None,
+            content: vec![0u8, 1u8, 2u8],
+        };
+
+        topic_data.publish_messages(1, vec![msg]);
 
         let result = topic_data.get_delivery_iterator(5 * 1024 * 1024);
 

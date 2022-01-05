@@ -5,6 +5,7 @@ use my_service_bus_shared::page_id::get_page_id;
 use my_service_bus_shared::{
     queue_with_intervals::QueueWithIntervals, MessageId, MySbMessageContent,
 };
+use my_service_bus_tcp_shared::MessageToPublishTcpContract;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::queue_subscribers::QueueSubscriber;
@@ -41,16 +42,21 @@ impl TopicData {
         self.publishers.insert(session_id, BADGE_HIGHLIGHT_TIMOUT);
     }
 
-    pub fn publish_messages(&mut self, session_id: SessionId, messages: Vec<Vec<u8>>) {
+    pub fn publish_messages(
+        &mut self,
+        session_id: SessionId,
+        messages: Vec<MessageToPublishTcpContract>,
+    ) {
         self.set_publisher_as_active(session_id);
 
         let mut ids = QueueWithIntervals::new();
 
-        for content in messages {
+        for msg in messages {
             let message = MySbMessageContent {
                 id: self.message_id,
-                content,
+                content: msg.content,
                 time: DateTimeAsMicroseconds::now(),
+                headers: msg.headers,
             };
 
             ids.enqueue(message.id);

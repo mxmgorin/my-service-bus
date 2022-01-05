@@ -99,6 +99,7 @@ mod tests {
         queue::TopicQueueType,
         MySbMessageContent,
     };
+    use my_service_bus_tcp_shared::MessageToPublishTcpContract;
     use rust_extensions::date_time::DateTimeAsMicroseconds;
 
     use super::super::delivery_dependency_mock::DeliveryDependeciesMock;
@@ -137,7 +138,17 @@ mod tests {
                 .unwrap();
         }
 
-        let messages = vec![vec![0u8, 1u8, 2u8], vec![3u8, 4u8, 5u8]];
+        let msg1 = MessageToPublishTcpContract {
+            headers: None,
+            content: vec![0u8, 1u8, 2u8],
+        };
+
+        let msg2 = MessageToPublishTcpContract {
+            headers: None,
+            content: vec![3u8, 4u8, 5u8],
+        };
+
+        let messages = vec![msg1, msg2];
         topic_data.publish_messages(SESSION_ID, messages);
 
         let delivery_dependecies = DeliveryDependeciesMock::new(DELIVERY_SIZE);
@@ -192,8 +203,17 @@ mod tests {
                 .unwrap();
         }
 
-        let messages = vec![vec![0u8, 1u8, 2u8], vec![3u8, 4u8, 5u8]];
-        topic_data.publish_messages(SESSION_ID, messages);
+        let msg1 = MessageToPublishTcpContract {
+            headers: None,
+            content: vec![0u8, 1u8, 2u8],
+        };
+
+        let msg2 = MessageToPublishTcpContract {
+            headers: None,
+            content: vec![3u8, 4u8, 5u8],
+        };
+
+        topic_data.publish_messages(SESSION_ID, vec![msg1, msg2]);
 
         let delivery_dependecies = DeliveryDependeciesMock::new(DELIVERY_SIZE);
 
@@ -253,7 +273,12 @@ mod tests {
 
             messages.insert(
                 1,
-                MySbMessageContent::new(1, vec![0u8, 1u8, 2u8], DateTimeAsMicroseconds::now()),
+                MySbMessageContent::new(
+                    1,
+                    vec![0u8, 1u8, 2u8],
+                    None,
+                    DateTimeAsMicroseconds::now(),
+                ),
             );
 
             let restore_snapshot =

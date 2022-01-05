@@ -37,10 +37,16 @@ impl MyServiceBusSession {
         }
     }
 
-    pub async fn set_socket_name(&self, set_socket_name: String, client_version: Option<String>) {
+    pub async fn set_socket_name(
+        &self,
+        set_socket_name: String,
+        client_version: Option<String>,
+        protocol_version: i32,
+    ) {
         let mut data = self.data.write().await;
         data.name = Some(set_socket_name);
         data.client_version = client_version;
+        data.protocol_version = protocol_version;
     }
 
     pub async fn get_name(&self) -> String {
@@ -55,9 +61,7 @@ impl MyServiceBusSession {
 
     pub async fn get_metrics(&self) -> SessionMetrics {
         let connection_metrics = match &self.connection {
-            SessionConnection::Tcp(connection) => {
-                ConnectionMetrics::from_tcp(&connection.statistics)
-            }
+            SessionConnection::Tcp(connection) => ConnectionMetrics::from_tcp(&connection),
         };
 
         let read_access = self.data.read().await;
@@ -67,7 +71,7 @@ impl MyServiceBusSession {
             name: read_access.get_name(),
             version: read_access.get_version(),
             ip: self.connection.get_ip().to_string(),
-            protocol_version: read_access.attr.protocol_version,
+            protocol_version: read_access.protocol_version,
             connection_metrics,
         }
     }
