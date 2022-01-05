@@ -34,11 +34,13 @@ async fn tcp_server_socket_loop(
     loop {
         match socket_reader.get_next_event().await {
             ConnectionEvent::Connected(connection) => {
+                println!("New tcp connection: {}", connection.id);
                 let session =
                     MyServiceBusSession::new(SessionConnection::Tcp(connection), app.clone());
                 app.sessions.add(Arc::new(session)).await;
             }
             ConnectionEvent::Disconnected(connection) => {
+                println!("Connection {} is disconnected", connection.id);
                 if let Some(session) = app.sessions.remove(&connection.id).await {
                     crate::operations::sessions::disconnect(app.as_ref(), session.as_ref()).await;
                 }
