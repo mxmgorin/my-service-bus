@@ -14,7 +14,12 @@ impl SessionConnection {
         }
     }
 
-    pub fn get_ip(&self) -> &str {
-        todo!("Implement")
+    pub fn get_ip(&self) -> String {
+        match self {
+            SessionConnection::Tcp(connection) => match &connection.addr {
+                Some(addr) => addr.to_string(),
+                None => "N/A".to_string(),
+            },
+        }
     }
 }

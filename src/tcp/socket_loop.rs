@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use my_service_bus_tcp_shared::{MySbTcpSerializer, TcpContract};
 use my_tcp_sockets::tcp_connection::{ConnectionCallback, ConnectionEvent};
+use tokio::sync::Mutex;
 
 use crate::{
     app::{logs::SystemProcess, AppContext},
@@ -9,9 +10,27 @@ use crate::{
 };
 
 pub async fn start(
-    mut socket_reader: ConnectionCallback<TcpContract, MySbTcpSerializer>,
+    socket_reader: ConnectionCallback<TcpContract, MySbTcpSerializer>,
     app: Arc<AppContext>,
 ) {
+    let socket_reader = Arc::new(Mutex::new(socket_reader));
+
+    loop {
+        let handler =
+            tokio::spawn(tcp_server_socket_loop(socket_reader.clone(), app.clone())).await;
+
+        if let Err(err) = handler {
+            println!("TCP Socket Loop err {:?}", err)
+        }
+    }
+}
+
+async fn tcp_server_socket_loop(
+    socket_reader: Arc<Mutex<ConnectionCallback<TcpContract, MySbTcpSerializer>>>,
+    app: Arc<AppContext>,
+) {
+    let mut socket_reader = socket_reader.lock().await;
+
     loop {
         match socket_reader.get_next_event().await {
             ConnectionEvent::Connected(connection) => {
