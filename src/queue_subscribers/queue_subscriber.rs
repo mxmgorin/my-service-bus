@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use my_service_bus_shared::{queue_with_intervals::QueueWithIntervals, MessageId};
+use my_service_bus_tcp_shared::PacketProtVer;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{queues::DeliveryBucket, sessions::SessionId};
@@ -45,7 +46,7 @@ pub struct QueueSubscriber {
     pub id: SubscriberId,
     pub session_id: SessionId,
 
-    pub delivery_packet_version: i32,
+    pub version: PacketProtVer,
 }
 
 impl QueueSubscriber {
@@ -54,7 +55,7 @@ impl QueueSubscriber {
         topic_id: String,
         queue_id: String,
         session_id: SessionId,
-        delivery_packet_version: i32,
+        version: PacketProtVer,
     ) -> Self {
         Self {
             topic_id: topic_id.to_string(),
@@ -64,7 +65,7 @@ impl QueueSubscriber {
             delivery_state: QueueSubscriberDeliveryState::ReadyToDeliver,
             session_id,
             id,
-            delivery_packet_version,
+            version,
         }
     }
 

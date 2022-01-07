@@ -21,7 +21,7 @@ pub fn try_to_deliver<TDeliveryDependecies: DeliveryDependecies>(
             delivery_iterator.topic_id,
             delivery_iterator.queue_id,
             delivery_iterator.subscriber.id,
-            delivery_iterator.subscriber.delivery_packet_version,
+            delivery_iterator.subscriber.version.clone(),
         );
 
         let session_id = delivery_iterator.subscriber.session_id;
@@ -99,7 +99,7 @@ mod tests {
         queue::TopicQueueType,
         MySbMessageContent,
     };
-    use my_service_bus_tcp_shared::MessageToPublishTcpContract;
+    use my_service_bus_tcp_shared::{MessageToPublishTcpContract, PacketProtVer};
     use rust_extensions::date_time::DateTimeAsMicroseconds;
 
     use super::super::delivery_dependency_mock::DeliveryDependeciesMock;
@@ -109,6 +109,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_two_publish_two_delivery() {
+        let version = PacketProtVer {
+            packet_version: 1,
+            protocol_version: 2,
+        };
+
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
@@ -133,7 +138,7 @@ mod tests {
                     TOPIC_NAME.to_string(),
                     QUEUE_NAME.to_string(),
                     SESSION_ID,
-                    1,
+                    version,
                 )
                 .unwrap();
         }
@@ -174,6 +179,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_two_publish_one_delivery() {
+        let version = PacketProtVer {
+            packet_version: 1,
+            protocol_version: 2,
+        };
+
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
@@ -198,7 +208,7 @@ mod tests {
                     TOPIC_NAME.to_string(),
                     QUEUE_NAME.to_string(),
                     SESSION_ID,
-                    1,
+                    version,
                 )
                 .unwrap();
         }
@@ -238,6 +248,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_first_not_loaded_message() {
+        let version = PacketProtVer {
+            packet_version: 1,
+            protocol_version: 2,
+        };
+
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
@@ -262,7 +277,7 @@ mod tests {
                     TOPIC_NAME.to_string(),
                     QUEUE_NAME.to_string(),
                     SESSION_ID,
-                    1,
+                    version,
                 )
                 .unwrap();
         }
@@ -317,6 +332,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_all_messages_missing() {
+        let version = PacketProtVer {
+            packet_version: 1,
+            protocol_version: 2,
+        };
+
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
@@ -341,7 +361,7 @@ mod tests {
                     TOPIC_NAME.to_string(),
                     QUEUE_NAME.to_string(),
                     SESSION_ID,
-                    1,
+                    version,
                 )
                 .unwrap();
         }

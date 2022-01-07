@@ -88,21 +88,21 @@ pub async fn handle(
                     Some(
                         socket_data
                             .get_serializer()
-                            .get_new_messages_packet_version(),
+                            .get_messages_to_deliver_packet_version(),
                     )
                 } else {
                     None
                 }
             };
 
-            if let Some(delivery_version_id) = delivery_version_id {
+            if let Some(packet_version) = delivery_version_id {
                 operations::subscriber::subscribe_to_queue(
                     app,
                     topic_id,
                     queue_id,
                     queue_type,
                     connection.id,
-                    delivery_version_id,
+                    packet_version,
                 )
                 .await?;
             }

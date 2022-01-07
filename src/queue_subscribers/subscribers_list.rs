@@ -1,6 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
 use my_service_bus_shared::{queue::TopicQueueType, MessageId};
+use my_service_bus_tcp_shared::PacketProtVer;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::sessions::SessionId;
@@ -162,7 +163,7 @@ impl SubscribersList {
         topic_id: String,
         queue_id: String,
         session_id: SessionId,
-        delivery_packet_version: i32,
+        version: PacketProtVer,
     ) -> Result<Option<QueueSubscriber>, SubscribeErrorResult> {
         self.check_that_we_has_already_subscriber_for_that_session(session_id)?;
         self.snapshot_id += 1;
@@ -173,13 +174,8 @@ impl SubscribersList {
                     return Err(SubscribeErrorResult::SubscriberWithIdExists);
                 }
 
-                let subscriber = QueueSubscriber::new(
-                    subscriber_id,
-                    topic_id,
-                    queue_id,
-                    session_id,
-                    delivery_packet_version,
-                );
+                let subscriber =
+                    QueueSubscriber::new(subscriber_id, topic_id, queue_id, session_id, version);
 
                 hash_map.insert(subscriber_id, subscriber);
 
@@ -197,7 +193,7 @@ impl SubscribersList {
                     topic_id,
                     queue_id,
                     session_id,
-                    delivery_packet_version,
+                    version,
                 ));
 
                 std::mem::swap(&mut old_subscriber, single);

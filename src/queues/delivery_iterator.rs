@@ -107,7 +107,7 @@ impl<'s> Iterator for DeliveryIterator<'s> {
 
 #[cfg(test)]
 mod tests {
-    use my_service_bus_tcp_shared::MessageToPublishTcpContract;
+    use my_service_bus_tcp_shared::{MessageToPublishTcpContract, PacketProtVer};
 
     use crate::{queues::delivery_iterator::NextMessageResult, topics::TopicData};
 
@@ -129,6 +129,11 @@ mod tests {
 
     #[test]
     pub fn test_on_delivery_we_have_queue() {
+        let version = PacketProtVer {
+            packet_version: 1,
+            protocol_version: 2,
+        };
+
         let topic_id = "test";
         let queue_id = "test_queue";
         let session_id = 55;
@@ -143,7 +148,13 @@ mod tests {
 
             queue
                 .subscribers
-                .subscribe(1, topic_id.to_string(), queue_id.to_string(), session_id, 1)
+                .subscribe(
+                    1,
+                    topic_id.to_string(),
+                    queue_id.to_string(),
+                    session_id,
+                    version,
+                )
                 .unwrap();
         }
 

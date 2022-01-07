@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use my_service_bus_shared::queue::TopicQueueType;
+use my_service_bus_tcp_shared::PacketProtVer;
 
 use crate::{
     app::AppContext,
@@ -17,7 +18,7 @@ pub async fn subscribe_to_queue(
     queue_id: String,
     queue_type: TopicQueueType,
     session_id: SessionId,
-    delivery_packet_version: i32,
+    version: PacketProtVer,
 ) -> Result<(), OperationFailResult> {
     let mut topic = app.topic_list.get(topic_id.as_str()).await;
 
@@ -48,7 +49,7 @@ pub async fn subscribe_to_queue(
         topic.topic_id.to_string(),
         topic_queue.queue_id.to_string(),
         session_id,
-        delivery_packet_version,
+        version,
     );
 
     app.logs.add_info(
