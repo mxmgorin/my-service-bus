@@ -4,10 +4,11 @@ use rust_extensions::ApplicationStates;
 use tokio::sync::RwLock;
 
 use crate::{
+    http::middlewares::prometheus::PrometheusDataSource,
     operations::delivery::DeliveryDependecies,
     persistence::{MessagesPagesGrpcRepo, TopcsAndQueuesSnapshotRepo},
     queue_subscribers::SubscriberIdGenerator,
-    sessions::{SessionId, SessionsList},
+    sessions::{MyServiceBusSession, SessionsList},
     settings::SettingsModel,
     topics::TopicsList,
 };
@@ -90,18 +91,19 @@ impl DeliveryDependecies for Arc<AppContext> {
 
     fn send_package(
         &self,
-        session_id: SessionId,
+        session: Arc<MyServiceBusSession>,
         tcp_packet: my_service_bus_tcp_shared::TcpContract,
     ) {
-        let app = self.clone();
-
         tokio::spawn(async move {
-            if let Some(session) = app.sessions.get(session_id).await {
-                match &session.connection {
-                    crate::sessions::SessionConnection::Tcp(connection) => {
-                        connection.send(tcp_packet).await;
-                    }
+            match &session.connection {
+                crate::sessions::SessionConnection::Tcp(data) => {
+                    data.connection.send(tcp_packet).await;
                 }
+                #[cfg(test)]
+                crate::sessions::SessionConnection::Test(_) => {
+                    panic!("Test connection is not supported")
+                }
+                crate::sessions::SessionConnection::Http(_) => todo!("Not suppored yet"),
             }
         });
     }
@@ -133,5 +135,11 @@ impl ApplicationStates for AppContext {
 
     fn is_shutting_down(&self) -> bool {
         self.states.is_shutting_down()
+    }
+}
+
+impl PrometheusDataSource for AppContext {
+    fn get(&self) -> &prometheus::Registry {
+        &self.prometheus.get_registry()
     }
 }

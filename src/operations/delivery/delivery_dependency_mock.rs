@@ -3,7 +3,10 @@ use std::sync::{Arc, Mutex};
 use my_service_bus_shared::page_id::PageId;
 use my_service_bus_tcp_shared::TcpContract;
 
-use crate::{sessions::SessionId, topics::Topic};
+use crate::{
+    sessions::{MyServiceBusSession, SessionId},
+    topics::Topic,
+};
 
 use super::DeliveryDependecies;
 
@@ -51,12 +54,12 @@ impl DeliveryDependecies for DeliveryDependeciesMock {
         self.max_packet_size
     }
 
-    fn send_package(&self, session_id: SessionId, tcp_packet: TcpContract) {
+    fn send_package(&self, session: Arc<MyServiceBusSession>, tcp_packet: TcpContract) {
         let mut sent_packets = self.sent_packets.lock().unwrap();
         sent_packets
             .as_mut()
             .unwrap()
-            .push((session_id, tcp_packet));
+            .push((session.id, tcp_packet));
     }
 
     fn load_page(&self, topic: Arc<Topic>, page_id: PageId) {

@@ -107,9 +107,15 @@ impl<'s> Iterator for DeliveryIterator<'s> {
 
 #[cfg(test)]
 mod tests {
-    use my_service_bus_tcp_shared::{MessageToPublishTcpContract, PacketProtVer};
+    use std::sync::Arc;
 
-    use crate::{queues::delivery_iterator::NextMessageResult, topics::TopicData};
+    use my_service_bus_tcp_shared::MessageToPublishTcpContract;
+
+    use crate::{
+        queues::delivery_iterator::NextMessageResult,
+        sessions::{MyServiceBusSession, SessionConnection, SessionId, TestConnection},
+        topics::TopicData,
+    };
 
     #[test]
     pub fn test_on_delivery_no_queues() {
@@ -129,15 +135,16 @@ mod tests {
 
     #[test]
     pub fn test_on_delivery_we_have_queue() {
-        let version = PacketProtVer {
-            packet_version: 1,
-            protocol_version: 2,
-        };
+        const SESSION_ID: SessionId = 13;
 
         let topic_id = "test";
         let queue_id = "test_queue";
-        let session_id = 55;
         let mut topic_data = TopicData::new(topic_id.to_string(), 0);
+
+        let session = Arc::new(MyServiceBusSession::new(
+            SESSION_ID,
+            SessionConnection::Test(TestConnection::new(15, "TestIp".to_string())),
+        ));
 
         {
             let queue = topic_data.queues.add_queue_if_not_exists(
@@ -148,13 +155,7 @@ mod tests {
 
             queue
                 .subscribers
-                .subscribe(
-                    1,
-                    topic_id.to_string(),
-                    queue_id.to_string(),
-                    session_id,
-                    version,
-                )
+                .subscribe(1, topic_id.to_string(), queue_id.to_string(), session)
                 .unwrap();
         }
 

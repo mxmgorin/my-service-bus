@@ -35,6 +35,7 @@ pub async fn start(app: Arc<AppContext>) {
 
 async fn tick_topics(app: Arc<AppContext>) {
     app.topic_list.one_second_tick().await;
+    app.sessions.one_second_tick().await;
 
     for topic in app.topic_list.get_all().await {
         let topic_data = topic.get_access("tick_topics").await;

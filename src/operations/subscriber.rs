@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use my_service_bus_shared::queue::TopicQueueType;
-use my_service_bus_tcp_shared::PacketProtVer;
 
 use crate::{
     app::AppContext,
     queue_subscribers::{QueueSubscriber, SubscribeErrorResult},
     queues::TopicQueue,
-    sessions::SessionId,
+    sessions::MyServiceBusSession,
 };
 
 use super::OperationFailResult;
@@ -17,8 +16,7 @@ pub async fn subscribe_to_queue(
     topic_id: String,
     queue_id: String,
     queue_type: TopicQueueType,
-    session_id: SessionId,
-    version: PacketProtVer,
+    session: Arc<MyServiceBusSession>,
 ) -> Result<(), OperationFailResult> {
     let mut topic = app.topic_list.get(topic_id.as_str()).await;
 
@@ -48,8 +46,7 @@ pub async fn subscribe_to_queue(
         subscriber_id,
         topic.topic_id.to_string(),
         topic_queue.queue_id.to_string(),
-        session_id,
-        version,
+        session.clone(),
     );
 
     app.logs.add_info(
@@ -57,11 +54,11 @@ pub async fn subscribe_to_queue(
         crate::app::logs::SystemProcess::QueueOperation,
         format!(
             "Subscribed. SessionId: {}. SubscriberId: {}",
-            session_id, subscriber_id
+            session.id, subscriber_id
         ),
         format!(
             "Session {} is subscribing to the {}/{} ",
-            session_id, topic.topic_id, topic_queue.queue_id
+            session.id, topic.topic_id, topic_queue.queue_id
         ),
     );
 

@@ -1,15 +1,14 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
+use my_tcp_sockets::ConnectionId;
 use tokio::sync::RwLock;
 
-use super::MyServiceBusSession;
+use super::{
+    sessions_list_data::SessionsListData, HttpConnectionData, MyServiceBusSession,
+    SessionConnection, TcpConnectionData,
+};
 
-pub type SessionId = i32;
-
-struct SessionsListData {
-    snapshot_id: usize,
-    sessions: HashMap<SessionId, Arc<MyServiceBusSession>>,
-}
+pub type SessionId = i64;
 
 pub struct SessionsList {
     data: RwLock<SessionsListData>,
@@ -17,44 +16,63 @@ pub struct SessionsList {
 
 impl SessionsList {
     pub fn new() -> Self {
-        let data = SessionsListData {
-            snapshot_id: 0,
-            sessions: HashMap::new(),
-        };
-
         Self {
-            data: RwLock::new(data),
+            data: RwLock::new(SessionsListData::new()),
         }
     }
 
-    pub async fn add(&self, session: Arc<MyServiceBusSession>) {
+    pub async fn add_tcp(&self, data: TcpConnectionData) {
         let mut write_access = self.data.write().await;
-        write_access.sessions.insert(session.id, session);
-        write_access.snapshot_id += 1;
+
+        let session = MyServiceBusSession::new(
+            write_access.get_next_session_id(),
+            SessionConnection::Tcp(data),
+        );
+
+        write_access.add(Arc::new(session));
     }
 
-    pub async fn get(&self, session_id: i32) -> Option<Arc<MyServiceBusSession>> {
+    pub async fn add_http(&self, data: HttpConnectionData) {
+        let mut write_access = self.data.write().await;
+
+        let session = MyServiceBusSession::new(
+            write_access.get_next_session_id(),
+            SessionConnection::Http(data),
+        );
+
+        write_access.add(Arc::new(session));
+    }
+
+    pub async fn get_http(&self, session_id: &str) -> Option<Arc<MyServiceBusSession>> {
         let read_access = self.data.read().await;
-        return Some(read_access.sessions.get(&session_id)?.clone());
+        read_access.get_by_http_session(session_id)
     }
 
-    pub async fn remove(&self, id: &i32) -> Option<Arc<MyServiceBusSession>> {
-        let mut write_access = self.data.write().await;
-        let result = write_access.sessions.remove(id)?;
-        write_access.snapshot_id += 1;
+    pub async fn get(&self, id: SessionId) -> Option<Arc<MyServiceBusSession>> {
+        let read_access = self.data.read().await;
+        read_access.get(id)
+    }
 
-        return Some(result);
+    pub async fn get_by_tcp_connection_id(
+        &self,
+        connection_id: ConnectionId,
+    ) -> Option<Arc<MyServiceBusSession>> {
+        let read_access = self.data.read().await;
+        read_access.get_by_tcp_connection_id(connection_id)
+    }
+
+    pub async fn remove_tcp(&self, id: ConnectionId) -> Option<Arc<MyServiceBusSession>> {
+        let mut write_access = self.data.write().await;
+        write_access.remove_tcp(id)
     }
 
     pub async fn get_snapshot(&self) -> (usize, Vec<Arc<MyServiceBusSession>>) {
         let read_access = self.data.read().await;
+        read_access.get_snapshot()
+    }
 
-        let mut sessions_result = Vec::new();
-
-        for session in read_access.sessions.values() {
-            sessions_result.push(session.clone());
-        }
-
-        return (read_access.snapshot_id, sessions_result);
+    pub async fn one_second_tick(&self) {
+        let read_access = self.data.read().await;
+        read_access.one_second_tick();
     }
 }

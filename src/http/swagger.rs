@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{http_ctx::HttpContext, http_fail::HttpFailResult, http_ok::HttpOkResult};
+use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult};
 
 pub async fn handle_request(ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
     let path = ctx.get_path();

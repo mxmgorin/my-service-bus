@@ -26,18 +26,16 @@ pub async fn handle(
             //TODO - It Should be scan from the last to ;
             let splited: Vec<&str> = name.split(";").collect();
 
-            if let Some(session) = app.sessions.get(connection.id).await {
+            if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {
                 if splited.len() == 2 {
                     session
-                        .set_socket_name(
-                            splited[0].to_string(),
-                            Some(splited[1].to_string()),
-                            protocol_version,
-                        )
+                        .set_socket_name(splited[0].to_string(), Some(splited[1].to_string()))
                         .await;
                 } else {
-                    session.set_socket_name(name, None, protocol_version).await;
+                    session.set_socket_name(name, None).await;
                 }
+
+                session.update_tcp_protocol_version(protocol_version);
             }
 
             Ok(())
@@ -48,25 +46,27 @@ pub async fn handle(
             persist_immediately,
             data_to_publish,
         } => {
-            let result = operations::publisher::publish(
-                app.clone(),
-                topic_id,
-                data_to_publish,
-                persist_immediately,
-                connection.id,
-            )
-            .await;
+            if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {
+                let result = operations::publisher::publish(
+                    app.clone(),
+                    topic_id,
+                    data_to_publish,
+                    persist_immediately,
+                    session,
+                )
+                .await;
 
-            if let Err(err) = result {
-                connection
-                    .send(TcpContract::Reject {
-                        message: format!("{:?}", err),
-                    })
-                    .await;
-            } else {
-                connection
-                    .send(TcpContract::PublishResponse { request_id })
-                    .await;
+                if let Err(err) = result {
+                    connection
+                        .send(TcpContract::Reject {
+                            message: format!("{:?}", err),
+                        })
+                        .await;
+                } else {
+                    connection
+                        .send(TcpContract::PublishResponse { request_id })
+                        .await;
+                }
             }
 
             Ok(())
@@ -81,28 +81,9 @@ pub async fn handle(
             queue_id,
             queue_type,
         } => {
-            let delivery_version_id = {
-                let socket_data = connection.socket.lock().await;
-
-                if let Some(socket_data) = &*socket_data {
-                    Some(
-                        socket_data
-                            .get_serializer()
-                            .get_messages_to_deliver_packet_version(),
-                    )
-                } else {
-                    None
-                }
-            };
-
-            if let Some(packet_version) = delivery_version_id {
+            if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {
                 operations::subscriber::subscribe_to_queue(
-                    app,
-                    topic_id,
-                    queue_id,
-                    queue_type,
-                    connection.id,
-                    packet_version,
+                    app, topic_id, queue_id, queue_type, session,
                 )
                 .await?;
             }
@@ -135,7 +116,7 @@ pub async fn handle(
             Ok(())
         }
         TcpContract::CreateTopicIfNotExists { topic_id } => {
-            if let Some(session) = app.sessions.get(connection.id).await {
+            if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {
                 operations::publisher::create_topic_if_not_exists(
                     app,
                     Some(session.as_ref()),
@@ -164,8 +145,15 @@ pub async fn handle(
 
             Ok(())
         }
-        TcpContract::PacketVersions { packet_versions: _ } => {
-            //This is a serializer layer packet
+        TcpContract::PacketVersions { packet_versions } => {
+            if let Some(version) =
+                packet_versions.get(&my_service_bus_tcp_shared::tcp_message_id::NEW_MESSAGES)
+            {
+                if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {
+                    session.update_tcp_delivery_packet_version(*version)
+                }
+            }
+
             Ok(())
         }
         TcpContract::Reject { message: _ } => {

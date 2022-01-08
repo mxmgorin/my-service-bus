@@ -1,30 +1,7 @@
 use std::collections::HashMap;
 
+use my_http_utils::{HttpFailResult, HttpOkResult, WebContentType};
 use tokio::{fs::File, io::AsyncReadExt};
-
-use crate::http::{web_content_type::WebContentType, HttpFailResult, HttpOkResult};
-
-pub async fn get_content_from_file(
-    filename: &str,
-    content_type: Option<WebContentType>,
-) -> Result<HttpOkResult, HttpFailResult> {
-    // Serve a file by asynchronously reading it by chunks using tokio-util crate.
-
-    match get_file(filename).await {
-        Ok(file_content) => {
-            let result = HttpOkResult::Content {
-                content_type,
-                content: file_content,
-            };
-
-            Ok(result)
-        }
-        Err(err) => {
-            let msg = format!("Error handing file: {:?}. Filename: {}.", err, filename);
-            Err(HttpFailResult::as_not_found(msg))
-        }
-    }
-}
 
 pub async fn serve_file_with_placeholders(
     filename: &str,
@@ -33,7 +10,7 @@ pub async fn serve_file_with_placeholders(
 ) -> Result<HttpOkResult, HttpFailResult> {
     // Serve a file by asynchronously reading it by chunks using tokio-util crate.
 
-    match get_file(filename).await {
+    match get(filename).await {
         Ok(content) => {
             let content = replace_placeholders(content.as_slice(), placeholders);
             let result = HttpOkResult::Content {
@@ -45,7 +22,7 @@ pub async fn serve_file_with_placeholders(
         }
         Err(err) => {
             let err = format!("Error handing file: {:?}. Filename: {}", err, filename);
-            Err(HttpFailResult::as_not_found(err))
+            Err(HttpFailResult::as_not_found(err, false))
         }
     }
 }
@@ -86,10 +63,8 @@ pub fn find_end_of_placeholder(src: &[u8], placeholder_start: usize) -> Option<u
     None
 }
 
-async fn get_file(filename: &str) -> std::io::Result<Vec<u8>> {
-    let filename = format!("./wwwroot{}", filename);
-
-    let mut file = File::open(&filename).await?;
+pub async fn get(filename: &str) -> std::io::Result<Vec<u8>> {
+    let mut file = File::open(filename).await?;
 
     let mut result: Vec<u8> = Vec::new();
 

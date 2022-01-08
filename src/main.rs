@@ -1,4 +1,6 @@
 use app::AppContext;
+use http::middlewares::{StaticFilesMiddleware, SwaggerMiddleware};
+use my_http_utils::MyHttpServer;
 use my_service_bus_tcp_shared::{ConnectionAttributes, MySbTcpSerializer};
 use my_tcp_sockets::TcpServer;
 use tcp::socket_loop::TcpServerEvents;
@@ -54,10 +56,21 @@ async fn main() {
         )
         .await;
 
-    tasks.push(tokio::task::spawn(http::http_server::start(
-        SocketAddr::from(([0, 0, 0, 0], 6123)),
+    let mut http_server: MyHttpServer = MyHttpServer::new(SocketAddr::from(([0, 0, 0, 0], 6123)));
+
+    http_server.add_middleware(Arc::new(SwaggerMiddleware {}));
+
+    http_server.add_middleware(Arc::new(crate::http::controllers::builder::build(
         app.clone(),
     )));
+
+    http_server.add_middleware(Arc::new(
+        crate::http::middlewares::prometheus::PrometheusMiddleware::new(app.clone()),
+    ));
+
+    http_server.add_middleware(Arc::new(StaticFilesMiddleware::new(None)));
+
+    http_server.start(app.clone());
 
     tasks.push(tokio::task::spawn(crate::timers::start(app.clone())));
 

@@ -1,4 +1,4 @@
-use prometheus::{Encoder, IntGaugeVec, Opts, Registry, TextEncoder};
+use prometheus::{IntGaugeVec, Opts, Registry};
 
 pub struct PrometheusMetrics {
     registry: Registry,
@@ -51,12 +51,7 @@ impl PrometheusMetrics {
             .set(value);
     }
 
-    pub fn build_prometheus_content(&self) -> String {
-        let mut buffer = vec![];
-        let encoder = TextEncoder::new();
-        let metric_families = self.registry.gather();
-        encoder.encode(&metric_families, &mut buffer).unwrap();
-
-        return String::from_utf8(buffer).unwrap();
+    pub fn get_registry(&self) -> &Registry {
+        &self.registry
     }
 }

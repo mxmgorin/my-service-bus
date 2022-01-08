@@ -13,7 +13,7 @@ pub async fn disconnect(app: &AppContext, disconnected_session: &MyServiceBusSes
                 println!(
                     "Subscriber {} with connection_id {} is removed during the session [{}]/{} disconnect process",
                     removed_subscriber.id,
-                    removed_subscriber.session_id,
+                    removed_subscriber.session.id,
                     disconnected_session.id,
                     disconnected_session.get_name().await
                 );

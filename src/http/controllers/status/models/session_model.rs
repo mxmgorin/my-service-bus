@@ -1,11 +1,14 @@
-use crate::{app::AppContext, sessions::MyServiceBusSession};
+use crate::{
+    app::AppContext,
+    sessions::{MyServiceBusSession, SessionId},
+};
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SessionJsonResult {
-    pub id: i32,
+    pub id: SessionId,
     pub name: String,
     pub ip: String,
     pub version: Option<String>,
@@ -43,7 +46,7 @@ impl SessionJsonResult {
                 now.duration_since(session.connected),
             ),
             last_incoming: rust_extensions::duration_utils::duration_to_string(
-                now.duration_since(session.get_last_incoming_package_moment()),
+                now.duration_since(session_metrics_data.connection_metrics.last_incoming_moment),
             ),
             read_size: session_metrics_data.connection_metrics.read,
             written_size: session_metrics_data.connection_metrics.written,

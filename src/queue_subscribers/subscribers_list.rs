@@ -1,10 +1,9 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use my_service_bus_shared::{queue::TopicQueueType, MessageId};
-use my_service_bus_tcp_shared::PacketProtVer;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::sessions::SessionId;
+use crate::sessions::{MyServiceBusSession, SessionId};
 
 use super::{QueueSubscriber, SubscriberId};
 
@@ -15,14 +14,14 @@ pub enum SubscribersData {
 
 pub struct DeadSubscriber {
     pub subscriber_id: SubscriberId,
-    pub session_id: SessionId,
+    pub session: Arc<MyServiceBusSession>,
     pub duration: Duration,
 }
 
 impl DeadSubscriber {
     pub fn new(subscriber: &QueueSubscriber, duration: Duration) -> Self {
         Self {
-            session_id: subscriber.session_id,
+            session: subscriber.session.clone(),
             subscriber_id: subscriber.id,
             duration,
         }
@@ -139,14 +138,14 @@ impl SubscribersList {
         match &self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 for subscriber in hash_map.values() {
-                    if subscriber.session_id == session_id {
+                    if subscriber.session.id == session_id {
                         return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
                     }
                 }
             }
             SubscribersData::SingleSubscriber(single_subscriber) => {
                 if let Some(subscriber) = single_subscriber {
-                    if subscriber.session_id == session_id {
+                    if subscriber.session.id == session_id {
                         return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
                     }
                 }
@@ -162,10 +161,9 @@ impl SubscribersList {
         subscriber_id: SubscriberId,
         topic_id: String,
         queue_id: String,
-        session_id: SessionId,
-        version: PacketProtVer,
+        session: Arc<MyServiceBusSession>,
     ) -> Result<Option<QueueSubscriber>, SubscribeErrorResult> {
-        self.check_that_we_has_already_subscriber_for_that_session(session_id)?;
+        self.check_that_we_has_already_subscriber_for_that_session(session.id)?;
         self.snapshot_id += 1;
 
         match &mut self.data {
@@ -174,8 +172,7 @@ impl SubscribersList {
                     return Err(SubscribeErrorResult::SubscriberWithIdExists);
                 }
 
-                let subscriber =
-                    QueueSubscriber::new(subscriber_id, topic_id, queue_id, session_id, version);
+                let subscriber = QueueSubscriber::new(subscriber_id, topic_id, queue_id, session);
 
                 hash_map.insert(subscriber_id, subscriber);
 
@@ -192,8 +189,7 @@ impl SubscribersList {
                     subscriber_id,
                     topic_id,
                     queue_id,
-                    session_id,
-                    version,
+                    session,
                 ));
 
                 std::mem::swap(&mut old_subscriber, single);
@@ -235,14 +231,14 @@ impl SubscribersList {
         match &self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 for sub in hash_map.values() {
-                    if sub.session_id == session_id {
+                    if sub.session.id == session_id {
                         return Some(sub.id);
                     }
                 }
             }
             SubscribersData::SingleSubscriber(single) => {
                 if let Some(sub) = single {
-                    if sub.session_id == session_id {
+                    if sub.session.id == session_id {
                         return Some(sub.id);
                     }
                 }

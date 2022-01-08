@@ -6,7 +6,7 @@ use my_service_bus_tcp_shared::{MySbTcpSerializer, TcpContract};
 
 use crate::{
     app::{logs::SystemProcess, AppContext},
-    sessions::{MyServiceBusSession, SessionConnection},
+    sessions::TcpConnectionData,
 };
 
 pub struct TcpServerEvents {
@@ -25,13 +25,15 @@ impl SocketEventCallback<TcpContract, MySbTcpSerializer> for TcpServerEvents {
         match connection_event {
             ConnectionEvent::Connected(connection) => {
                 println!("New tcp connection: {}", connection.id);
-                let session =
-                    MyServiceBusSession::new(SessionConnection::Tcp(connection), self.app.clone());
-                self.app.sessions.add(Arc::new(session)).await;
+
+                self.app
+                    .sessions
+                    .add_tcp(TcpConnectionData::new(connection))
+                    .await;
             }
             ConnectionEvent::Disconnected(connection) => {
                 println!("Connection {} is disconnected", connection.id);
-                if let Some(session) = self.app.sessions.remove(&connection.id).await {
+                if let Some(session) = self.app.sessions.remove_tcp(connection.id).await {
                     crate::operations::sessions::disconnect(self.app.as_ref(), session.as_ref())
                         .await;
                 }

@@ -4,27 +4,23 @@ use my_service_bus_tcp_shared::DeliveryPackageBuilder;
 
 use crate::{
     queues::delivery_iterator::DeliveryIterator,
-    sessions::SessionId,
     topics::{Topic, TopicData},
 };
 
 use super::DeliveryDependecies;
 
 pub fn try_to_deliver<TDeliveryDependecies: DeliveryDependecies>(
-    delivery: &TDeliveryDependecies,
+    delivery_dependencies: &TDeliveryDependecies,
     topic: &Arc<Topic>,
     topic_data: &mut TopicData,
 ) {
-    let max_delivery_size = delivery.get_max_delivery_size();
+    let max_delivery_size = delivery_dependencies.get_max_delivery_size();
     while let Some(mut delivery_iterator) = topic_data.get_delivery_iterator(max_delivery_size) {
         let mut delivery_package_builder = DeliveryPackageBuilder::new(
             delivery_iterator.topic_id,
             delivery_iterator.queue_id,
             delivery_iterator.subscriber.id,
-            delivery_iterator.subscriber.version.clone(),
         );
-
-        let session_id = delivery_iterator.subscriber.session_id;
 
         while let Some(next_message) = delivery_iterator.next() {
             match next_message {
@@ -44,16 +40,15 @@ pub fn try_to_deliver<TDeliveryDependecies: DeliveryDependecies>(
                 crate::queues::delivery_iterator::NextMessageResult::LoadDataRequired(page_id) => {
                     if delivery_package_builder.len() > 0 {
                         deliver_messages(
-                            delivery,
+                            delivery_dependencies,
                             &mut delivery_iterator,
                             &mut delivery_package_builder,
-                            session_id,
                         );
                     } else {
                         delivery_iterator.subscriber.cancel_the_rent();
                     }
 
-                    delivery.load_page(topic.clone(), page_id);
+                    delivery_dependencies.load_page(topic.clone(), page_id);
                     return;
                 }
             }
@@ -61,10 +56,9 @@ pub fn try_to_deliver<TDeliveryDependecies: DeliveryDependecies>(
 
         if delivery_package_builder.len() > 0 {
             deliver_messages(
-                delivery,
+                delivery_dependencies,
                 &mut delivery_iterator,
                 &mut delivery_package_builder,
-                session_id,
             );
         } else {
             delivery_iterator.subscriber.cancel_the_rent();
@@ -76,7 +70,6 @@ fn deliver_messages<TDeliveryDependecies: DeliveryDependecies>(
     delivery: &TDeliveryDependecies,
     delivery_iterator: &mut DeliveryIterator,
     delivery_package_builder: &mut DeliveryPackageBuilder,
-    session_id: SessionId,
 ) {
     delivery_iterator
         .subscriber
@@ -84,9 +77,20 @@ fn deliver_messages<TDeliveryDependecies: DeliveryDependecies>(
 
     delivery_iterator.subscriber.metrics.set_started_delivery();
 
-    let tcp_packet = delivery_package_builder.build();
-
-    delivery.send_package(session_id, tcp_packet);
+    match &delivery_iterator.subscriber.session.connection {
+        crate::sessions::SessionConnection::Tcp(data) => {
+            let version = data.get_messages_to_deliver_protocol_version();
+            let tcp_packet = delivery_package_builder.build_tcp_contract(version);
+            delivery.send_package(delivery_iterator.subscriber.session.clone(), tcp_packet);
+        }
+        #[cfg(test)]
+        crate::sessions::SessionConnection::Test(_) => {
+            todo!("Implement")
+        }
+        crate::sessions::SessionConnection::Http(_) => {
+            todo!("Implement")
+        }
+    }
 }
 
 #[cfg(test)]
@@ -99,21 +103,19 @@ mod tests {
         queue::TopicQueueType,
         MySbMessageContent,
     };
-    use my_service_bus_tcp_shared::{MessageToPublishTcpContract, PacketProtVer};
+    use my_service_bus_tcp_shared::MessageToPublishTcpContract;
     use rust_extensions::date_time::DateTimeAsMicroseconds;
 
     use super::super::delivery_dependency_mock::DeliveryDependeciesMock;
-    use crate::queue_subscribers::QueueSubscriberDeliveryState;
+    use crate::{
+        queue_subscribers::QueueSubscriberDeliveryState,
+        sessions::{MyServiceBusSession, SessionConnection, SessionId, TestConnection},
+    };
 
     use super::*;
 
     #[tokio::test]
     async fn test_two_publish_two_delivery() {
-        let version = PacketProtVer {
-            packet_version: 1,
-            protocol_version: 2,
-        };
-
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
@@ -123,6 +125,11 @@ mod tests {
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
 
         let mut topic_data = topic.get_access("test_two_publish_two_delivery").await;
+
+        let session = Arc::new(MyServiceBusSession::new(
+            SESSION_ID,
+            SessionConnection::Test(TestConnection::new(15, "TestIp".to_string())),
+        ));
 
         {
             let queue = topic_data.queues.add_queue_if_not_exists(
@@ -137,8 +144,7 @@ mod tests {
                     SUBSCRIBER_ID,
                     TOPIC_NAME.to_string(),
                     QUEUE_NAME.to_string(),
-                    SESSION_ID,
-                    version,
+                    session,
                 )
                 .unwrap();
         }
@@ -179,11 +185,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_two_publish_one_delivery() {
-        let version = PacketProtVer {
-            packet_version: 1,
-            protocol_version: 2,
-        };
-
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
@@ -193,6 +194,11 @@ mod tests {
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
 
         let mut topic_data = topic.get_access("test_two_publish_one_delivery").await;
+
+        let session = Arc::new(MyServiceBusSession::new(
+            SESSION_ID,
+            SessionConnection::Test(TestConnection::new(15, "TestIp".to_string())),
+        ));
 
         {
             let queue = topic_data.queues.add_queue_if_not_exists(
@@ -207,8 +213,7 @@ mod tests {
                     SUBSCRIBER_ID,
                     TOPIC_NAME.to_string(),
                     QUEUE_NAME.to_string(),
-                    SESSION_ID,
-                    version,
+                    session,
                 )
                 .unwrap();
         }
@@ -248,11 +253,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_first_not_loaded_message() {
-        let version = PacketProtVer {
-            packet_version: 1,
-            protocol_version: 2,
-        };
-
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
@@ -262,6 +262,11 @@ mod tests {
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
 
         let mut topic_data = topic.get_access("test_with_first_not_loaded_message").await;
+
+        let session = Arc::new(MyServiceBusSession::new(
+            SESSION_ID,
+            SessionConnection::Test(TestConnection::new(15, "TestIp".to_string())),
+        ));
 
         {
             let queue = topic_data.queues.add_queue_if_not_exists(
@@ -276,8 +281,7 @@ mod tests {
                     SUBSCRIBER_ID,
                     TOPIC_NAME.to_string(),
                     QUEUE_NAME.to_string(),
-                    SESSION_ID,
-                    version,
+                    session,
                 )
                 .unwrap();
         }
@@ -332,11 +336,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_with_all_messages_missing() {
-        let version = PacketProtVer {
-            packet_version: 1,
-            protocol_version: 2,
-        };
-
         const TOPIC_NAME: &str = "TestTopic";
         const QUEUE_NAME: &str = "TestQueue";
         const SUBSCRIBER_ID: i64 = 15;
@@ -346,6 +345,11 @@ mod tests {
         let topic = Arc::new(Topic::new(TOPIC_NAME.to_string(), 0));
 
         let mut topic_data = topic.get_access("test_with_all_messages_missing").await;
+
+        let session = Arc::new(MyServiceBusSession::new(
+            SESSION_ID,
+            SessionConnection::Test(TestConnection::new(15, "TestIp".to_string())),
+        ));
 
         {
             let queue = topic_data.queues.add_queue_if_not_exists(
@@ -360,8 +364,7 @@ mod tests {
                     SUBSCRIBER_ID,
                     TOPIC_NAME.to_string(),
                     QUEUE_NAME.to_string(),
-                    SESSION_ID,
-                    version,
+                    session,
                 )
                 .unwrap();
         }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use crate::app::AppContext;
 
@@ -40,36 +40,23 @@ pub async fn kick_them(app: Arc<AppContext>, delivery_timeout_duration: Duration
 async fn execute(app: Arc<AppContext>, delivery_timeout_duration: Duration) {
     let topics = app.topic_list.get_all().await;
 
-    let mut kicked_connections = HashMap::new();
-
     for topic in topics {
         if let Some(dead_subscribers) = topic
             .find_subscribers_dead_on_delivery(delivery_timeout_duration)
             .await
         {
             for dead_subscriber in dead_subscribers {
-                app.logs.add_error(
+                app.logs.add_info(
                     Some(topic.topic_id.to_string()),
                     crate::app::logs::SystemProcess::Timer,
                     "Dead subscribers detector".to_string(),
                     format!(
                         "Kicking Connection {} with dead subscriber {}",
-                        dead_subscriber.session_id, dead_subscriber.subscriber_id
+                        dead_subscriber.session.id, dead_subscriber.subscriber_id
                     ),
-                    Some(format!("{:?}", dead_subscriber.duration)),
                 );
 
-                if !kicked_connections.contains_key(&dead_subscriber.session_id) {
-                    kicked_connections
-                        .insert(dead_subscriber.session_id, dead_subscriber.subscriber_id);
-
-                    if let Some(session) = app.sessions.get(dead_subscriber.session_id).await {
-                        session.disconnect().await;
-                    }
-                } else {
-                    let kicked = kicked_connections.get(&dead_subscriber.session_id);
-                    println!("We already kicked session {} the moment we were kicking the subscriber {:?}.", dead_subscriber.session_id, kicked);
-                }
+                dead_subscriber.session.disconnect().await;
             }
         }
     }

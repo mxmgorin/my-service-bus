@@ -1,23 +1,17 @@
-use std::sync::Arc;
-
-use crate::app::AppContext;
-
 pub struct MyServiceBusSessionData {
     pub name: Option<String>,
     pub client_version: Option<String>,
-
-    pub app: Arc<AppContext>,
 
     pub logged_send_error_on_disconnected: i32,
     pub protocol_version: i32,
 }
 
 impl MyServiceBusSessionData {
-    pub fn new(app: Arc<AppContext>) -> Self {
+    pub fn new() -> Self {
         Self {
             name: None,
             client_version: None,
-            app,
+
             logged_send_error_on_disconnected: 0,
             protocol_version: 0,
         }

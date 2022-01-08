@@ -2,11 +2,7 @@ use std::sync::Arc;
 
 use my_service_bus_tcp_shared::MessageToPublishTcpContract;
 
-use crate::{
-    app::AppContext,
-    sessions::{MyServiceBusSession, SessionId},
-    topics::Topic,
-};
+use crate::{app::AppContext, sessions::MyServiceBusSession, topics::Topic};
 
 use super::OperationFailResult;
 
@@ -41,7 +37,7 @@ pub async fn publish(
     topic_id: String,
     messages: Vec<MessageToPublishTcpContract>,
     persist_immediately: bool,
-    session_id: SessionId,
+    session: Arc<MyServiceBusSession>,
 ) -> Result<(), OperationFailResult> {
     if app.states.is_shutting_down() {
         return Err(OperationFailResult::ShuttingDown);
@@ -65,7 +61,7 @@ pub async fn publish(
 
     let messages_count = messages.len();
 
-    topic_data.publish_messages(session_id, messages);
+    topic_data.publish_messages(session.id, messages);
 
     topic_data.metrics.update_topic_metrics(messages_count);
 

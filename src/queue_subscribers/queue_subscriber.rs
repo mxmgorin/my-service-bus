@@ -1,10 +1,9 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use my_service_bus_shared::{queue_with_intervals::QueueWithIntervals, MessageId};
-use my_service_bus_tcp_shared::PacketProtVer;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::{queues::DeliveryBucket, sessions::SessionId};
+use crate::{queues::DeliveryBucket, sessions::MyServiceBusSession};
 
 use super::{SubscriberId, SubscriberMetrics};
 
@@ -44,9 +43,7 @@ pub struct QueueSubscriber {
     pub delivery_state: QueueSubscriberDeliveryState,
 
     pub id: SubscriberId,
-    pub session_id: SessionId,
-
-    pub version: PacketProtVer,
+    pub session: Arc<MyServiceBusSession>,
 }
 
 impl QueueSubscriber {
@@ -54,18 +51,16 @@ impl QueueSubscriber {
         id: SubscriberId,
         topic_id: String,
         queue_id: String,
-        session_id: SessionId,
-        version: PacketProtVer,
+        session: Arc<MyServiceBusSession>,
     ) -> Self {
         Self {
             topic_id: topic_id.to_string(),
             queue_id: queue_id.to_string(),
             subscribed: DateTimeAsMicroseconds::now(),
-            metrics: SubscriberMetrics::new(id, session_id, topic_id, queue_id),
+            metrics: SubscriberMetrics::new(id, session.id, topic_id, queue_id),
             delivery_state: QueueSubscriberDeliveryState::ReadyToDeliver,
-            session_id,
+            session,
             id,
-            version,
         }
     }
 
