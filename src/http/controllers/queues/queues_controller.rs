@@ -2,20 +2,18 @@ use async_trait::async_trait;
 use my_service_bus_shared::MessageId;
 use std::sync::Arc;
 
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
-
-use crate::{
-    app::AppContext,
-    http::middlewares::{
+use my_http_server::{
+    middlewares::{
         controllers::{
             actions::{DeleteAction, GetAction, PostAction},
             documentation::HttpActionDescription,
         },
-        swagger::types::{
-            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
-        },
+        swagger::types::{HttpInputParameter, HttpParameterInputSource, HttpParameterType},
     },
+    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };
+
+use crate::app::AppContext;
 pub struct QueuesController {
     app: Arc<AppContext>,
 }
@@ -28,20 +26,21 @@ impl QueuesController {
 
 #[async_trait]
 impl GetAction for QueuesController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Queues",
             description: "Set list of queues",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
-        Some(vec![SwaggerInputParameter {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
+        Some(vec![HttpInputParameter {
             name: "topicId".to_string(),
-            param_type: SwaggerParameterType::String,
+            param_type: HttpParameterType::String,
             description: "Id of topic".to_string(),
-            source: SwaggerParameterInputSource::Query,
+            source: HttpParameterInputSource::Query,
             required: true,
         }])
     }
@@ -76,28 +75,29 @@ impl GetAction for QueuesController {
 
 #[async_trait]
 impl DeleteAction for QueuesController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Queues",
             description: "Delete queue",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         Some(vec![
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "topicId".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Id of topic".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "queueId".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Id of queue".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
         ])
@@ -117,35 +117,36 @@ impl DeleteAction for QueuesController {
 
 #[async_trait]
 impl PostAction for QueuesController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Queues",
             description: "Set message id of the queue",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         Some(vec![
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "topicId".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Id of topic".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "queueId".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Id of queue".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "messageId".to_string(),
-                param_type: SwaggerParameterType::Long,
+                param_type: HttpParameterType::Long,
                 description: "Id of message".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
         ])

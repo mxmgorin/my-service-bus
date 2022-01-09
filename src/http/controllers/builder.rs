@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use crate::{app::AppContext, http::middlewares::controllers::ControllersMiddleware};
+use my_http_server::middlewares::controllers::ControllersMiddleware;
+
+use crate::app::AppContext;
 
 pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     let mut controllers = ControllersMiddleware::new();
@@ -10,7 +12,8 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     controllers.register_get_action("/Topics", topics_controller.clone());
     controllers.register_post_action("/Topics/Create", topics_controller);
 
-    let connections_controller = super::connections::ConnectionsController::new(app.clone());
+    let connections_controller =
+        super::connections_controller::ConnectionsController::new(app.clone());
 
     controllers.register_delete_action(
         "/Connections/KickTcpConnection",
@@ -50,6 +53,9 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     let logs_by_process_controller =
         Arc::new(super::logs::LogsByProcessController::new(app.clone()));
     controllers.register_get_action("/Logs/Process/{processId}", logs_by_process_controller);
+
+    let home_controller = super::home_controller::HomeController::new(app);
+    controllers.register_get_action("/", Arc::new(home_controller));
 
     controllers
 }

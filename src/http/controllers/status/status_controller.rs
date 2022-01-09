@@ -1,15 +1,15 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
-
-use crate::{
-    app::AppContext,
-    http::middlewares::{
+use my_http_server::{
+    middlewares::{
         controllers::{actions::GetAction, documentation::HttpActionDescription},
-        swagger::types::SwaggerInputParameter,
+        swagger::types::HttpInputParameter,
     },
+    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };
+
+use crate::app::AppContext;
 
 pub struct StatusController {
     app: Arc<AppContext>,
@@ -23,15 +23,16 @@ impl StatusController {
 
 #[async_trait]
 impl GetAction for StatusController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Status",
             description: "Get status of application",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         None
     }
 

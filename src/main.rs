@@ -1,7 +1,7 @@
 use app::AppContext;
-use http::middlewares::swagger::SwaggerMiddleware;
-use http::middlewares::StaticFilesMiddleware;
-use my_http_utils::MyHttpServer;
+use my_http_server::middlewares::swagger::SwaggerMiddleware;
+use my_http_server::middlewares::StaticFilesMiddleware;
+use my_http_server::MyHttpServer;
 use my_service_bus_tcp_shared::{ConnectionAttributes, MySbTcpSerializer};
 use my_tcp_sockets::TcpServer;
 use tcp::socket_loop::TcpServerEvents;

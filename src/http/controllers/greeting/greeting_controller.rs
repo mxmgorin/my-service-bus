@@ -1,17 +1,16 @@
 use async_trait::async_trait;
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
+use my_http_server::{
+    middlewares::{
+        controllers::{actions::PostAction, documentation::HttpActionDescription},
+        swagger::types::{HttpParameterInputSource, HttpParameterType},
+    },
+    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+};
 use std::sync::Arc;
 
-use crate::{
-    app::AppContext,
-    http::middlewares::{
-        controllers::{actions::PostAction, documentation::HttpActionDescription},
-        swagger::types::{
-            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
-        },
-    },
-    sessions::HttpConnectionData,
-};
+use crate::{app::AppContext, sessions::HttpConnectionData};
+
+use my_http_server::middlewares::swagger::types::HttpInputParameter;
 
 use super::models::GreetingJsonResult;
 
@@ -27,28 +26,29 @@ impl GreetingController {
 
 #[async_trait]
 impl PostAction for GreetingController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Greeting",
             description: "Issue new Http Session",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         Some(vec![
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "name".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Name of client application".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "version".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Version of client application".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
         ])

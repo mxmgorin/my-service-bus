@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use my_http_utils::{HttpFailResult, HttpOkResult};
+use my_http_server::{HttpFailResult, HttpOkResult};
 use rust_extensions::{StopWatch, StringBuilder};
 
 use crate::app::logs::LogItem;

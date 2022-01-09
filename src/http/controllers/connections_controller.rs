@@ -1,18 +1,15 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
-
-use crate::{
-    app::AppContext,
-    http::middlewares::{
+use my_http_server::{
+    middlewares::{
         controllers::{actions::DeleteAction, documentation::HttpActionDescription},
-        swagger::types::{
-            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
-        },
+        swagger::types::{HttpInputParameter, HttpParameterInputSource, HttpParameterType},
     },
-    sessions::SessionId,
+    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };
+
+use crate::{app::AppContext, sessions::SessionId};
 
 pub struct ConnectionsController {
     app: Arc<AppContext>,
@@ -26,20 +23,21 @@ impl ConnectionsController {
 
 #[async_trait]
 impl DeleteAction for ConnectionsController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Connections",
             description: "Disconnect connection",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
-        Some(vec![SwaggerInputParameter {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
+        Some(vec![HttpInputParameter {
             name: "id".to_string(),
-            param_type: SwaggerParameterType::String,
+            param_type: HttpParameterType::String,
             description: "Id of connection".to_string(),
-            source: SwaggerParameterInputSource::Query,
+            source: HttpParameterInputSource::Query,
             required: true,
         }])
     }

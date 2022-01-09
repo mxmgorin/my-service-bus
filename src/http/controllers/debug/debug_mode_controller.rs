@@ -1,19 +1,14 @@
+use crate::app::AppContext;
 use async_trait::async_trait;
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
-use std::sync::Arc;
-
-use crate::{
-    app::AppContext,
-    http::middlewares::{
-        controllers::{
-            actions::{DeleteAction, PostAction},
-            documentation::HttpActionDescription,
-        },
-        swagger::types::{
-            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
-        },
+use my_http_server::middlewares::{
+    controllers::{
+        actions::{DeleteAction, PostAction},
+        documentation::HttpActionDescription,
     },
+    swagger::types::{HttpInputParameter, HttpParameterInputSource, HttpParameterType},
 };
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
+use std::sync::Arc;
 
 pub struct DebugModeController {
     app: Arc<AppContext>,
@@ -27,28 +22,29 @@ impl DebugModeController {
 
 #[async_trait]
 impl PostAction for DebugModeController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",
             description: "Enable debug mode for specific queue",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         Some(vec![
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "topicId".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Id of topic".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "queueId".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Id of queue".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
         ])
@@ -70,15 +66,16 @@ impl PostAction for DebugModeController {
 
 #[async_trait]
 impl DeleteAction for DebugModeController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",
             description: "Disable debug mode",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         None
     }
 

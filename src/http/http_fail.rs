@@ -1,4 +1,4 @@
-use my_http_utils::HttpFailResult;
+use my_http_server::HttpFailResult;
 
 use crate::operations::OperationFailResult;
 

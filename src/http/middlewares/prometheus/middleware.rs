@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use my_http_utils::{HttpContext, HttpFailResult, HttpServerMiddleware, MiddleWareResult};
+use my_http_server::{HttpContext, HttpFailResult, HttpServerMiddleware, MiddleWareResult};
 use prometheus::{Encoder, TextEncoder};
 
 use super::PrometheusDataSource;

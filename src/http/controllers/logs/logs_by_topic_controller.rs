@@ -1,17 +1,15 @@
 use async_trait::async_trait;
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
+use my_http_server::{
+    middlewares::{
+        controllers::{actions::GetAction, documentation::HttpActionDescription},
+        swagger::types::{HttpInputParameter, HttpParameterInputSource, HttpParameterType},
+    },
+    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+};
 use rust_extensions::{StopWatch, StringBuilder};
 use std::sync::Arc;
 
-use crate::{
-    app::AppContext,
-    http::middlewares::{
-        controllers::{actions::GetAction, documentation::HttpActionDescription},
-        swagger::types::{
-            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
-        },
-    },
-};
+use crate::app::AppContext;
 
 pub struct LogsByTopicController {
     app: Arc<AppContext>,
@@ -25,20 +23,21 @@ impl LogsByTopicController {
 
 #[async_trait]
 impl GetAction for LogsByTopicController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Logs",
             description: "Show Logs of speciefic topic",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
-        Some(vec![SwaggerInputParameter {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
+        Some(vec![HttpInputParameter {
             name: "topicId".to_string(),
-            param_type: SwaggerParameterType::String,
+            param_type: HttpParameterType::String,
             description: "Id of topic".to_string(),
-            source: SwaggerParameterInputSource::Path,
+            source: HttpParameterInputSource::Path,
             required: false,
         }])
     }

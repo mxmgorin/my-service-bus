@@ -1,14 +1,13 @@
 use async_trait::async_trait;
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
 use rust_extensions::StringBuilder;
 use std::sync::Arc;
 
-use crate::{
-    app::AppContext,
-    http::middlewares::{
-        controllers::{actions::GetAction, documentation::HttpActionDescription},
-        swagger::types::SwaggerInputParameter,
-    },
+use crate::app::AppContext;
+
+use my_http_server::middlewares::{
+    controllers::{actions::GetAction, documentation::HttpActionDescription},
+    swagger::types::HttpInputParameter,
 };
 
 pub struct LocksController {
@@ -23,14 +22,15 @@ impl LocksController {
 
 #[async_trait]
 impl GetAction for LocksController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",
             description: "Show current locks",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         None
     }
     async fn handle_request(&self, _ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {

@@ -1,15 +1,16 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use crate::http::middlewares::{
-    controllers::{
-        actions::{GetAction, PostAction},
-        documentation::HttpActionDescription,
+use my_http_server::{
+    middlewares::{
+        controllers::{
+            actions::{GetAction, PostAction},
+            documentation::HttpActionDescription,
+        },
+        swagger::types::{HttpInputParameter, HttpParameterInputSource, HttpParameterType},
     },
-    swagger::types::{SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType},
+    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };
-
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
 
 use crate::app::AppContext;
 
@@ -27,15 +28,16 @@ impl TopicsController {
 
 #[async_trait]
 impl GetAction for TopicsController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Topics",
             description: "Get list of topics",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         None
     }
     async fn handle_request(&self, _: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
@@ -57,20 +59,21 @@ impl GetAction for TopicsController {
 
 #[async_trait]
 impl PostAction for TopicsController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Topics",
             description: "Create topic",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
-        Some(vec![SwaggerInputParameter {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
+        Some(vec![HttpInputParameter {
             name: "topicId".to_string(),
-            param_type: SwaggerParameterType::String,
+            param_type: HttpParameterType::String,
             description: "Id of topic".to_string(),
-            source: SwaggerParameterInputSource::Query,
+            source: HttpParameterInputSource::Query,
             required: true,
         }])
     }

@@ -1,15 +1,15 @@
 use async_trait::async_trait;
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
+use my_http_server::{
+    middlewares::swagger::types::{HttpParameterInputSource, HttpParameterType},
+    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+};
 use std::sync::Arc;
 
-use crate::{
-    app::AppContext,
-    http::middlewares::{
-        controllers::{actions::GetAction, documentation::HttpActionDescription},
-        swagger::types::{
-            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
-        },
-    },
+use crate::app::AppContext;
+
+use my_http_server::middlewares::{
+    controllers::{actions::GetAction, documentation::HttpActionDescription},
+    swagger::types::HttpInputParameter,
 };
 
 pub struct OnDeliveryController {
@@ -24,34 +24,35 @@ impl OnDeliveryController {
 
 #[async_trait]
 impl GetAction for OnDeliveryController {
-    fn get_controller_description(&self) -> HttpActionDescription {
+    fn get_controller_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",
             description: "Show messages on delivery",
             out_content_type: WebContentType::Json,
         }
+        .into()
     }
-    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         Some(vec![
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "topicId".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Id of topic".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "queueId".to_string(),
-                param_type: SwaggerParameterType::String,
+                param_type: HttpParameterType::String,
                 description: "Id of queue".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
-            SwaggerInputParameter {
+            HttpInputParameter {
                 name: "subscriberId".to_string(),
-                param_type: SwaggerParameterType::Long,
+                param_type: HttpParameterType::Long,
                 description: "Id of subscriber".to_string(),
-                source: SwaggerParameterInputSource::Query,
+                source: HttpParameterInputSource::Query,
                 required: true,
             },
         ])
