@@ -26,7 +26,7 @@ impl LogsByProcessController {
 
 #[async_trait]
 impl GetAction for LogsByProcessController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Logs",
             description: "Show Logs of speciefic process",

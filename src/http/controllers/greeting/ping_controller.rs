@@ -24,7 +24,7 @@ impl PingController {
 
 #[async_trait]
 impl PostAction for PingController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Greeting",
             description: "Ping Http Session",

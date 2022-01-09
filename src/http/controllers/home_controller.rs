@@ -19,7 +19,7 @@ impl HomeController {
 
 #[async_trait]
 impl GetAction for HomeController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         None
     }
 

@@ -21,7 +21,7 @@ impl DebugModeController {
 
 #[async_trait]
 impl PostAction for DebugModeController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",
             description: "Enable debug mode for specific queue",
@@ -62,7 +62,7 @@ impl PostAction for DebugModeController {
 
 #[async_trait]
 impl DeleteAction for DebugModeController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",
             description: "Disable debug mode",

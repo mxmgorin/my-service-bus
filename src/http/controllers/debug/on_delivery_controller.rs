@@ -23,7 +23,7 @@ impl OnDeliveryController {
 
 #[async_trait]
 impl GetAction for OnDeliveryController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",
             description: "Show messages on delivery",

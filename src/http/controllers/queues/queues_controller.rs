@@ -25,7 +25,7 @@ impl QueuesController {
 
 #[async_trait]
 impl GetAction for QueuesController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Queues",
             description: "Set list of queues",
@@ -71,7 +71,7 @@ impl GetAction for QueuesController {
 
 #[async_trait]
 impl DeleteAction for QueuesController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Queues",
             description: "Delete queue",
@@ -110,7 +110,7 @@ impl DeleteAction for QueuesController {
 
 #[async_trait]
 impl PostAction for QueuesController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Queues",
             description: "Set message id of the queue",

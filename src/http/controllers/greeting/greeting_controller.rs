@@ -26,7 +26,7 @@ impl GreetingController {
 
 #[async_trait]
 impl PostAction for GreetingController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Greeting",
             description: "Issue new Http Session",

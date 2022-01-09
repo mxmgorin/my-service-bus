@@ -21,7 +21,7 @@ impl LocksController {
 
 #[async_trait]
 impl GetAction for LocksController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",
             description: "Show current locks",

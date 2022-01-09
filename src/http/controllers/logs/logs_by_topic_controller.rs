@@ -25,7 +25,7 @@ impl LogsByTopicController {
 
 #[async_trait]
 impl GetAction for LogsByTopicController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Logs",
             description: "Show Logs of speciefic topic",

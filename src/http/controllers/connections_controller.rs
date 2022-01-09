@@ -25,7 +25,7 @@ impl ConnectionsController {
 
 #[async_trait]
 impl DeleteAction for ConnectionsController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Connections",
             description: "Disconnect connection",

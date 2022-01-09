@@ -27,7 +27,7 @@ impl TopicsController {
 
 #[async_trait]
 impl GetAction for TopicsController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Topics",
             description: "Get list of topics",
@@ -56,7 +56,7 @@ impl GetAction for TopicsController {
 
 #[async_trait]
 impl PostAction for TopicsController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Topics",
             description: "Create topic",

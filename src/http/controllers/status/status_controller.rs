@@ -20,7 +20,7 @@ impl StatusController {
 
 #[async_trait]
 impl GetAction for StatusController {
-    fn get_controller_description(&self) -> Option<HttpActionDescription> {
+    fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Status",
             description: "Get status of application",
