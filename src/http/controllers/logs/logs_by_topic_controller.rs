@@ -3,7 +3,15 @@ use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
 use rust_extensions::{StopWatch, StringBuilder};
 use std::sync::Arc;
 
-use crate::{app::AppContext, http::middlewares::controllers::actions::GetAction};
+use crate::{
+    app::AppContext,
+    http::middlewares::{
+        controllers::{actions::GetAction, documentation::HttpActionDescription},
+        swagger::types::{
+            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
+        },
+    },
+};
 
 pub struct LogsByTopicController {
     app: Arc<AppContext>,
@@ -17,8 +25,26 @@ impl LogsByTopicController {
 
 #[async_trait]
 impl GetAction for LogsByTopicController {
+    fn get_controller_description(&self) -> HttpActionDescription {
+        HttpActionDescription {
+            name: "Logs",
+            description: "Show Logs of speciefic topic",
+            out_content_type: WebContentType::Json,
+        }
+    }
+
+    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+        Some(vec![SwaggerInputParameter {
+            name: "topicId".to_string(),
+            param_type: SwaggerParameterType::String,
+            description: "Id of topic".to_string(),
+            source: SwaggerParameterInputSource::Path,
+            required: false,
+        }])
+    }
+
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let topic_name = ctx.get_value_from_path_optional("TopicId")?;
+        let topic_name = ctx.get_value_from_path_optional("topicId")?;
 
         if topic_name.is_none() {
             return render_select_topic(self.app.as_ref()).await;

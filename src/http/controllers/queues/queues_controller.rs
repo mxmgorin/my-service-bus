@@ -2,11 +2,19 @@ use async_trait::async_trait;
 use my_service_bus_shared::MessageId;
 use std::sync::Arc;
 
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult};
+use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
 
 use crate::{
     app::AppContext,
-    http::middlewares::controllers::actions::{DeleteAction, GetAction, PostAction},
+    http::middlewares::{
+        controllers::{
+            actions::{DeleteAction, GetAction, PostAction},
+            documentation::HttpActionDescription,
+        },
+        swagger::types::{
+            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
+        },
+    },
 };
 pub struct QueuesController {
     app: Arc<AppContext>,
@@ -20,6 +28,24 @@ impl QueuesController {
 
 #[async_trait]
 impl GetAction for QueuesController {
+    fn get_controller_description(&self) -> HttpActionDescription {
+        HttpActionDescription {
+            name: "Queues",
+            description: "Set list of queues",
+            out_content_type: WebContentType::Json,
+        }
+    }
+
+    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+        Some(vec![SwaggerInputParameter {
+            name: "topicId".to_string(),
+            param_type: SwaggerParameterType::String,
+            description: "Id of topic".to_string(),
+            source: SwaggerParameterInputSource::Query,
+            required: true,
+        }])
+    }
+
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let query = ctx.get_query_string()?;
         let topic_id = query.get_required_string_parameter("topicId")?;
@@ -44,12 +70,39 @@ impl GetAction for QueuesController {
             }
         }
 
-        return HttpOkResult::create_json_response(result);
+        return HttpOkResult::create_json_response(result).into();
     }
 }
 
 #[async_trait]
 impl DeleteAction for QueuesController {
+    fn get_controller_description(&self) -> HttpActionDescription {
+        HttpActionDescription {
+            name: "Queues",
+            description: "Delete queue",
+            out_content_type: WebContentType::Json,
+        }
+    }
+
+    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+        Some(vec![
+            SwaggerInputParameter {
+                name: "topicId".to_string(),
+                param_type: SwaggerParameterType::String,
+                description: "Id of topic".to_string(),
+                source: SwaggerParameterInputSource::Query,
+                required: true,
+            },
+            SwaggerInputParameter {
+                name: "queueId".to_string(),
+                param_type: SwaggerParameterType::String,
+                description: "Id of queue".to_string(),
+                source: SwaggerParameterInputSource::Query,
+                required: true,
+            },
+        ])
+    }
+
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let query = ctx.get_query_string()?;
 
@@ -64,6 +117,40 @@ impl DeleteAction for QueuesController {
 
 #[async_trait]
 impl PostAction for QueuesController {
+    fn get_controller_description(&self) -> HttpActionDescription {
+        HttpActionDescription {
+            name: "Queues",
+            description: "Set message id of the queue",
+            out_content_type: WebContentType::Json,
+        }
+    }
+
+    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+        Some(vec![
+            SwaggerInputParameter {
+                name: "topicId".to_string(),
+                param_type: SwaggerParameterType::String,
+                description: "Id of topic".to_string(),
+                source: SwaggerParameterInputSource::Query,
+                required: true,
+            },
+            SwaggerInputParameter {
+                name: "queueId".to_string(),
+                param_type: SwaggerParameterType::String,
+                description: "Id of queue".to_string(),
+                source: SwaggerParameterInputSource::Query,
+                required: true,
+            },
+            SwaggerInputParameter {
+                name: "messageId".to_string(),
+                param_type: SwaggerParameterType::Long,
+                description: "Id of message".to_string(),
+                source: SwaggerParameterInputSource::Query,
+                required: true,
+            },
+        ])
+    }
+
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let query = ctx.get_query_string()?;
         let topic_id = query.get_required_string_parameter("topicId")?;

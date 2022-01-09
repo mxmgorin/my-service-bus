@@ -45,11 +45,11 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     controllers.register_get_action("/Logs", logs_controller);
 
     let logs_by_topic_controller = Arc::new(super::logs::LogsByTopicController::new(app.clone()));
-    controllers.register_get_action("/Logs/Topic/{TopicId}", logs_by_topic_controller);
+    controllers.register_get_action("/Logs/Topic/{topicId}", logs_by_topic_controller);
 
     let logs_by_process_controller =
         Arc::new(super::logs::LogsByProcessController::new(app.clone()));
-    controllers.register_get_action("/Logs/Process/{ProcessId}", logs_by_process_controller);
+    controllers.register_get_action("/Logs/Process/{processId}", logs_by_process_controller);
 
     controllers
 }

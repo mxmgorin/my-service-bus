@@ -1,9 +1,15 @@
 use async_trait::async_trait;
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult};
+use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
 use std::sync::Arc;
 
 use crate::{
-    app::AppContext, http::middlewares::controllers::actions::PostAction,
+    app::AppContext,
+    http::middlewares::{
+        controllers::{actions::PostAction, documentation::HttpActionDescription},
+        swagger::types::{
+            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
+        },
+    },
     sessions::HttpConnectionData,
 };
 
@@ -21,6 +27,33 @@ impl GreetingController {
 
 #[async_trait]
 impl PostAction for GreetingController {
+    fn get_controller_description(&self) -> HttpActionDescription {
+        HttpActionDescription {
+            name: "Greeting",
+            description: "Issue new Http Session",
+            out_content_type: WebContentType::Json,
+        }
+    }
+
+    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+        Some(vec![
+            SwaggerInputParameter {
+                name: "name".to_string(),
+                param_type: SwaggerParameterType::String,
+                description: "Name of client application".to_string(),
+                source: SwaggerParameterInputSource::Query,
+                required: true,
+            },
+            SwaggerInputParameter {
+                name: "version".to_string(),
+                param_type: SwaggerParameterType::String,
+                description: "Version of client application".to_string(),
+                source: SwaggerParameterInputSource::Query,
+                required: true,
+            },
+        ])
+    }
+
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let query = ctx.get_query_string()?;
 
@@ -40,6 +73,6 @@ impl PostAction for GreetingController {
 
         let result = GreetingJsonResult { session: id };
 
-        HttpOkResult::create_json_response(result)
+        HttpOkResult::create_json_response(result).into()
     }
 }

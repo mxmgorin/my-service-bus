@@ -1,5 +1,6 @@
 use app::AppContext;
-use http::middlewares::{StaticFilesMiddleware, SwaggerMiddleware};
+use http::middlewares::swagger::SwaggerMiddleware;
+use http::middlewares::StaticFilesMiddleware;
 use my_http_utils::MyHttpServer;
 use my_service_bus_tcp_shared::{ConnectionAttributes, MySbTcpSerializer};
 use my_tcp_sockets::TcpServer;
@@ -60,7 +61,11 @@ async fn main() {
 
     let controllers = Arc::new(crate::http::controllers::builder::build(app.clone()));
 
-    http_server.add_middleware(Arc::new(SwaggerMiddleware::new(controllers.clone())));
+    http_server.add_middleware(Arc::new(SwaggerMiddleware::new(
+        controllers.clone(),
+        "MyServiceBus".to_string(),
+        crate::app::APP_VERSION.to_string(),
+    )));
 
     http_server.add_middleware(controllers);
 

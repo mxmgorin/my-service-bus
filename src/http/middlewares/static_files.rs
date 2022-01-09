@@ -3,8 +3,6 @@ use my_http_utils::{
     HttpContext, HttpFailResult, HttpOkResult, HttpServerMiddleware, MiddleWareResult,
 };
 
-const DEFAULT_FOLDER: &str = "./wwwroot";
-
 pub struct StaticFilesMiddleware {
     pub file_folder: String,
 }
@@ -14,7 +12,7 @@ impl StaticFilesMiddleware {
         let file_folder = if let Some(file_folder) = file_folder {
             file_folder.to_lowercase()
         } else {
-            DEFAULT_FOLDER.to_string()
+            super::files::DEFAULT_FOLDER.to_string()
         };
 
         Self { file_folder }

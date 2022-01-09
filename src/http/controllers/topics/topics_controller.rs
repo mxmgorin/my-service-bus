@@ -1,9 +1,15 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use crate::http::middlewares::controllers::actions::{GetAction, PostAction};
+use crate::http::middlewares::{
+    controllers::{
+        actions::{GetAction, PostAction},
+        documentation::HttpActionDescription,
+    },
+    swagger::types::{SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType},
+};
 
-use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult};
+use my_http_utils::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
 
 use crate::app::AppContext;
 
@@ -21,6 +27,17 @@ impl TopicsController {
 
 #[async_trait]
 impl GetAction for TopicsController {
+    fn get_controller_description(&self) -> HttpActionDescription {
+        HttpActionDescription {
+            name: "Topics",
+            description: "Get list of topics",
+            out_content_type: WebContentType::Json,
+        }
+    }
+
+    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+        None
+    }
     async fn handle_request(&self, _: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let topics = self.app.topic_list.get_all().await;
 
@@ -34,12 +51,30 @@ impl GetAction for TopicsController {
 
         let root = JsonTopicsResult { items: response };
 
-        HttpOkResult::create_json_response(root)
+        HttpOkResult::create_json_response(root).into()
     }
 }
 
 #[async_trait]
 impl PostAction for TopicsController {
+    fn get_controller_description(&self) -> HttpActionDescription {
+        HttpActionDescription {
+            name: "Topics",
+            description: "Create topic",
+            out_content_type: WebContentType::Json,
+        }
+    }
+
+    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+        Some(vec![SwaggerInputParameter {
+            name: "topicId".to_string(),
+            param_type: SwaggerParameterType::String,
+            description: "Id of topic".to_string(),
+            source: SwaggerParameterInputSource::Query,
+            required: true,
+        }])
+    }
+
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let form_data = ctx.get_form_data().await?;
         let topics_id = form_data.get_required_string_parameter("topicId")?;

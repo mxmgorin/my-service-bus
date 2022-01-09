@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use my_http_utils::{HttpFailResult, HttpOkResult, WebContentType};
 use tokio::{fs::File, io::AsyncReadExt};
 
+pub const DEFAULT_FOLDER: &str = "./wwwroot";
+
 pub async fn serve_file_with_placeholders(
     filename: &str,
     content_type: Option<WebContentType>,

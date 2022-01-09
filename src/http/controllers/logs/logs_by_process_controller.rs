@@ -6,7 +6,12 @@ use rust_extensions::{StopWatch, StringBuilder};
 
 use crate::{
     app::{logs::SystemProcess, AppContext},
-    http::middlewares::controllers::actions::GetAction,
+    http::middlewares::{
+        controllers::{actions::GetAction, documentation::HttpActionDescription},
+        swagger::types::{
+            SwaggerInputParameter, SwaggerParameterInputSource, SwaggerParameterType,
+        },
+    },
 };
 
 pub struct LogsByProcessController {
@@ -21,8 +26,26 @@ impl LogsByProcessController {
 
 #[async_trait]
 impl GetAction for LogsByProcessController {
+    fn get_controller_description(&self) -> HttpActionDescription {
+        HttpActionDescription {
+            name: "Logs",
+            description: "Show Logs of speciefic process",
+            out_content_type: WebContentType::Json,
+        }
+    }
+
+    fn get_in_parameters_description(&self) -> Option<Vec<SwaggerInputParameter>> {
+        Some(vec![SwaggerInputParameter {
+            name: "processId".to_string(),
+            param_type: SwaggerParameterType::String,
+            description: "Id of process".to_string(),
+            source: SwaggerParameterInputSource::Path,
+            required: false,
+        }])
+    }
+
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let process_name = ctx.get_value_from_path_optional("ProcessId")?;
+        let process_name = ctx.get_value_from_path_optional("processId")?;
 
         if process_name.is_none() {
             return render_select_process().await;
