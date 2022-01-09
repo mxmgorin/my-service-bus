@@ -6,7 +6,10 @@ use my_http_utils::{HttpContext, HttpFailResult, HttpServerMiddleware, MiddleWar
 
 use super::{
     actions::{DeleteAction, GetAction, PostAction, PutAction},
-    route::{DeleteRoute, GetRoute, PostRoute, PutRoute},
+    http_vebs::delete::*,
+    http_vebs::get::*,
+    http_vebs::post::*,
+    http_vebs::put::*,
 };
 
 pub struct ControllersMiddleware {

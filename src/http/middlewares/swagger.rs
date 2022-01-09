@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use my_http_utils::{
@@ -6,7 +6,17 @@ use my_http_utils::{
     WebContentType,
 };
 
-pub struct SwaggerMiddleware {}
+use super::controllers::ControllersMiddleware;
+
+pub struct SwaggerMiddleware {
+    controllers: Arc<ControllersMiddleware>,
+}
+
+impl SwaggerMiddleware {
+    pub fn new(controllers: Arc<ControllersMiddleware>) -> Self {
+        Self { controllers }
+    }
+}
 
 #[async_trait]
 impl HttpServerMiddleware for SwaggerMiddleware {

@@ -58,11 +58,11 @@ async fn main() {
 
     let mut http_server: MyHttpServer = MyHttpServer::new(SocketAddr::from(([0, 0, 0, 0], 6123)));
 
-    http_server.add_middleware(Arc::new(SwaggerMiddleware {}));
+    let controllers = Arc::new(crate::http::controllers::builder::build(app.clone()));
 
-    http_server.add_middleware(Arc::new(crate::http::controllers::builder::build(
-        app.clone(),
-    )));
+    http_server.add_middleware(Arc::new(SwaggerMiddleware::new(controllers.clone())));
+
+    http_server.add_middleware(controllers);
 
     http_server.add_middleware(Arc::new(
         crate::http::middlewares::prometheus::PrometheusMiddleware::new(app.clone()),
