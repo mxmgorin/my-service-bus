@@ -1,15 +1,14 @@
 use async_trait::async_trait;
-use my_http_server::{
-    middlewares::swagger::types::{HttpParameterInputSource, HttpParameterType},
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
-};
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
 use std::sync::Arc;
 
 use crate::app::AppContext;
 
-use my_http_server::middlewares::{
-    controllers::{actions::GetAction, documentation::HttpActionDescription},
-    swagger::types::HttpInputParameter,
+use my_http_server::middlewares::controllers::{
+    actions::GetAction,
+    documentation::{
+        HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
+    },
 };
 
 pub struct OnDeliveryController {

@@ -1,16 +1,16 @@
 use async_trait::async_trait;
 use my_http_server::{
-    middlewares::{
-        controllers::{actions::PostAction, documentation::HttpActionDescription},
-        swagger::types::{HttpParameterInputSource, HttpParameterType},
+    middlewares::controllers::{
+        actions::PostAction,
+        documentation::{
+            HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
+        },
     },
     HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };
 use std::sync::Arc;
 
 use crate::{app::AppContext, sessions::HttpConnectionData};
-
-use my_http_server::middlewares::swagger::types::HttpInputParameter;
 
 use super::models::GreetingJsonResult;
 

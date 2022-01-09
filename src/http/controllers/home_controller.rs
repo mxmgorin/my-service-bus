@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use my_http_server::{
-    middlewares::{
-        controllers::{actions::GetAction, documentation::HttpActionDescription},
-        swagger::types::HttpInputParameter,
+    middlewares::controllers::{
+        actions::GetAction,
+        documentation::{HttpActionDescription, HttpInputParameter},
     },
     HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };

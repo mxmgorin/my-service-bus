@@ -1,11 +1,10 @@
 use crate::app::AppContext;
 use async_trait::async_trait;
-use my_http_server::middlewares::{
-    controllers::{
-        actions::{DeleteAction, PostAction},
-        documentation::HttpActionDescription,
+use my_http_server::middlewares::controllers::{
+    actions::{DeleteAction, PostAction},
+    documentation::{
+        HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
     },
-    swagger::types::{HttpInputParameter, HttpParameterInputSource, HttpParameterType},
 };
 use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
 use std::sync::Arc;

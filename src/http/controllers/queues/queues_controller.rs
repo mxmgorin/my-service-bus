@@ -3,12 +3,11 @@ use my_service_bus_shared::MessageId;
 use std::sync::Arc;
 
 use my_http_server::{
-    middlewares::{
-        controllers::{
-            actions::{DeleteAction, GetAction, PostAction},
-            documentation::HttpActionDescription,
+    middlewares::controllers::{
+        actions::{DeleteAction, GetAction, PostAction},
+        documentation::{
+            HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
         },
-        swagger::types::{HttpInputParameter, HttpParameterInputSource, HttpParameterType},
     },
     HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };

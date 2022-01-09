@@ -5,9 +5,9 @@ use std::sync::Arc;
 
 use crate::app::AppContext;
 
-use my_http_server::middlewares::{
-    controllers::{actions::GetAction, documentation::HttpActionDescription},
-    swagger::types::HttpInputParameter,
+use my_http_server::middlewares::controllers::{
+    actions::GetAction,
+    documentation::{HttpActionDescription, HttpInputParameter},
 };
 
 pub struct LocksController {
