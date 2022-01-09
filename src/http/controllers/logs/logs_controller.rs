@@ -2,10 +2,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use my_http_server::{
-    middlewares::controllers::{
-        actions::GetAction,
-        documentation::{HttpActionDescription, HttpInputParameter},
-    },
+    middlewares::controllers::{actions::GetAction, documentation::HttpActionDescription},
     HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };
 use rust_extensions::StopWatch;
@@ -29,12 +26,11 @@ impl GetAction for LogsController {
             name: "Logs",
             description: "Show Logs",
             out_content_type: WebContentType::Json,
+            input_params: None,
         }
         .into()
     }
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        None
-    }
+
     async fn handle_request(&self, _ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let mut sw = StopWatch::new();
         sw.start();

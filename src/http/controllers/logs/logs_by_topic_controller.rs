@@ -30,18 +30,15 @@ impl GetAction for LogsByTopicController {
             name: "Logs",
             description: "Show Logs of speciefic topic",
             out_content_type: WebContentType::Json,
+            input_params: Some(vec![HttpInputParameter {
+                name: "topicId".to_string(),
+                param_type: HttpParameterType::String,
+                description: "Id of topic".to_string(),
+                source: HttpParameterInputSource::Path,
+                required: false,
+            }]),
         }
         .into()
-    }
-
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        Some(vec![HttpInputParameter {
-            name: "topicId".to_string(),
-            param_type: HttpParameterType::String,
-            description: "Id of topic".to_string(),
-            source: HttpParameterInputSource::Path,
-            required: false,
-        }])
     }
 
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {

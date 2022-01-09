@@ -32,13 +32,11 @@ impl GetAction for TopicsController {
             name: "Topics",
             description: "Get list of topics",
             out_content_type: WebContentType::Json,
+            input_params: None,
         }
         .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        None
-    }
     async fn handle_request(&self, _: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let topics = self.app.topic_list.get_all().await;
 
@@ -63,18 +61,15 @@ impl PostAction for TopicsController {
             name: "Topics",
             description: "Create topic",
             out_content_type: WebContentType::Json,
+            input_params: Some(vec![HttpInputParameter {
+                name: "topicId".to_string(),
+                param_type: HttpParameterType::String,
+                description: "Id of topic".to_string(),
+                source: HttpParameterInputSource::Query,
+                required: true,
+            }]),
         }
         .into()
-    }
-
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        Some(vec![HttpInputParameter {
-            name: "topicId".to_string(),
-            param_type: HttpParameterType::String,
-            description: "Id of topic".to_string(),
-            source: HttpParameterInputSource::Query,
-            required: true,
-        }])
     }
 
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {

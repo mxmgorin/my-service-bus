@@ -28,33 +28,31 @@ impl GetAction for OnDeliveryController {
             name: "Debug",
             description: "Show messages on delivery",
             out_content_type: WebContentType::Json,
+            input_params: Some(vec![
+                HttpInputParameter {
+                    name: "topicId".to_string(),
+                    param_type: HttpParameterType::String,
+                    description: "Id of topic".to_string(),
+                    source: HttpParameterInputSource::Query,
+                    required: true,
+                },
+                HttpInputParameter {
+                    name: "queueId".to_string(),
+                    param_type: HttpParameterType::String,
+                    description: "Id of queue".to_string(),
+                    source: HttpParameterInputSource::Query,
+                    required: true,
+                },
+                HttpInputParameter {
+                    name: "subscriberId".to_string(),
+                    param_type: HttpParameterType::Long,
+                    description: "Id of subscriber".to_string(),
+                    source: HttpParameterInputSource::Query,
+                    required: true,
+                },
+            ]),
         }
         .into()
-    }
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        Some(vec![
-            HttpInputParameter {
-                name: "topicId".to_string(),
-                param_type: HttpParameterType::String,
-                description: "Id of topic".to_string(),
-                source: HttpParameterInputSource::Query,
-                required: true,
-            },
-            HttpInputParameter {
-                name: "queueId".to_string(),
-                param_type: HttpParameterType::String,
-                description: "Id of queue".to_string(),
-                source: HttpParameterInputSource::Query,
-                required: true,
-            },
-            HttpInputParameter {
-                name: "subscriberId".to_string(),
-                param_type: HttpParameterType::Long,
-                description: "Id of subscriber".to_string(),
-                source: HttpParameterInputSource::Query,
-                required: true,
-            },
-        ])
     }
 
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {

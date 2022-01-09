@@ -26,27 +26,24 @@ impl PostAction for DebugModeController {
             name: "Debug",
             description: "Enable debug mode for specific queue",
             out_content_type: WebContentType::Json,
+            input_params: Some(vec![
+                HttpInputParameter {
+                    name: "topicId".to_string(),
+                    param_type: HttpParameterType::String,
+                    description: "Id of topic".to_string(),
+                    source: HttpParameterInputSource::Query,
+                    required: true,
+                },
+                HttpInputParameter {
+                    name: "queueId".to_string(),
+                    param_type: HttpParameterType::String,
+                    description: "Id of queue".to_string(),
+                    source: HttpParameterInputSource::Query,
+                    required: true,
+                },
+            ]),
         }
         .into()
-    }
-
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        Some(vec![
-            HttpInputParameter {
-                name: "topicId".to_string(),
-                param_type: HttpParameterType::String,
-                description: "Id of topic".to_string(),
-                source: HttpParameterInputSource::Query,
-                required: true,
-            },
-            HttpInputParameter {
-                name: "queueId".to_string(),
-                param_type: HttpParameterType::String,
-                description: "Id of queue".to_string(),
-                source: HttpParameterInputSource::Query,
-                required: true,
-            },
-        ])
     }
 
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
@@ -70,12 +67,9 @@ impl DeleteAction for DebugModeController {
             name: "Debug",
             description: "Disable debug mode",
             out_content_type: WebContentType::Json,
+            input_params: None,
         }
         .into()
-    }
-
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        None
     }
 
     async fn handle_request(&self, _ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {

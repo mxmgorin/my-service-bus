@@ -6,8 +6,7 @@ use std::sync::Arc;
 use crate::app::AppContext;
 
 use my_http_server::middlewares::controllers::{
-    actions::GetAction,
-    documentation::{HttpActionDescription, HttpInputParameter},
+    actions::GetAction, documentation::HttpActionDescription,
 };
 
 pub struct LocksController {
@@ -27,12 +26,11 @@ impl GetAction for LocksController {
             name: "Debug",
             description: "Show current locks",
             out_content_type: WebContentType::Json,
+            input_params: None,
         }
         .into()
     }
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        None
-    }
+
     async fn handle_request(&self, _ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let topics = self.app.topic_list.get_all().await;
 

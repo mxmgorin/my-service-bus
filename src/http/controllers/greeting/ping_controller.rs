@@ -29,22 +29,19 @@ impl PostAction for PingController {
             name: "Greeting",
             description: "Ping Http Session",
             out_content_type: WebContentType::Json,
+            input_params: Some(vec![HttpInputParameter {
+                name: "Authorization".to_string(),
+                param_type: HttpParameterType::String,
+                description: "Session, issued by greeting method".to_string(),
+                source: HttpParameterInputSource::Header,
+                required: true,
+            }]),
         }
         .into()
     }
 
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        Some(vec![HttpInputParameter {
-            name: "SESSION".to_string(),
-            param_type: HttpParameterType::String,
-            description: "Session, issued by greeting method".to_string(),
-            source: HttpParameterInputSource::Headers,
-            required: true,
-        }])
-    }
-
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let session_id = ctx.get_required_header("SESSION")?;
+        let session_id = ctx.get_required_header("authorization")?;
 
         match self.app.sessions.get_http(session_id).await {
             Some(session) => {

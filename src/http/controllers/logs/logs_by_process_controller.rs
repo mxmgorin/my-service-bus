@@ -31,18 +31,15 @@ impl GetAction for LogsByProcessController {
             name: "Logs",
             description: "Show Logs of speciefic process",
             out_content_type: WebContentType::Json,
+            input_params: Some(vec![HttpInputParameter {
+                name: "processId".to_string(),
+                param_type: HttpParameterType::String,
+                description: "Id of process".to_string(),
+                source: HttpParameterInputSource::Path,
+                required: false,
+            }]),
         }
         .into()
-    }
-
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        Some(vec![HttpInputParameter {
-            name: "processId".to_string(),
-            param_type: HttpParameterType::String,
-            description: "Id of process".to_string(),
-            source: HttpParameterInputSource::Path,
-            required: false,
-        }])
     }
 
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {

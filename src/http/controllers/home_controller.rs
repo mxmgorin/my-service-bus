@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use my_http_server::{
-    middlewares::controllers::{
-        actions::GetAction,
-        documentation::{HttpActionDescription, HttpInputParameter},
-    },
+    middlewares::controllers::{actions::GetAction, documentation::HttpActionDescription},
     HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };
 
@@ -23,10 +20,6 @@ impl HomeController {
 #[async_trait]
 impl GetAction for HomeController {
     fn get_controller_description(&self) -> Option<HttpActionDescription> {
-        None
-    }
-
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
         None
     }
 

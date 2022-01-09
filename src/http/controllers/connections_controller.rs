@@ -30,18 +30,16 @@ impl DeleteAction for ConnectionsController {
             name: "Connections",
             description: "Disconnect connection",
             out_content_type: WebContentType::Json,
+            input_params: vec![HttpInputParameter {
+                name: "id".to_string(),
+                param_type: HttpParameterType::String,
+                description: "Id of connection".to_string(),
+                source: HttpParameterInputSource::Query,
+                required: true,
+            }]
+            .into(),
         }
         .into()
-    }
-
-    fn get_in_parameters_description(&self) -> Option<Vec<HttpInputParameter>> {
-        Some(vec![HttpInputParameter {
-            name: "id".to_string(),
-            param_type: HttpParameterType::String,
-            description: "Id of connection".to_string(),
-            source: HttpParameterInputSource::Query,
-            required: true,
-        }])
     }
 
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
