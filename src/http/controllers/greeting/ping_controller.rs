@@ -1,17 +1,13 @@
+use crate::http::controllers::{consts::*, extensions::HttpContextExtensions};
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use my_http_server::{
-    middlewares::controllers::{
-        actions::PostAction,
-        documentation::{
-            HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
-        },
-    },
+    middlewares::controllers::{actions::PostAction, documentation::HttpActionDescription},
     HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };
 
-use crate::{app::AppContext, sessions::SessionConnection};
+use crate::app::AppContext;
 pub struct PingController {
     app: Arc<AppContext>,
 }
@@ -29,32 +25,18 @@ impl PostAction for PingController {
             name: "Greeting",
             description: "Ping Http Session",
             out_content_type: WebContentType::Json,
-            input_params: Some(vec![HttpInputParameter {
-                name: "Authorization".to_string(),
-                param_type: HttpParameterType::String,
-                description: "Session, issued by greeting method".to_string(),
-                source: HttpParameterInputSource::Header,
-                required: true,
-            }]),
+            input_params: Some(vec![get_auth_header_description()]),
         }
         .into()
     }
 
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let session_id = ctx.get_required_header("authorization")?;
+        let session_id = ctx.get_required_header(AUTH_HEADER_NAME)?;
 
-        match self.app.sessions.get_http(session_id).await {
-            Some(session) => {
-                if let SessionConnection::Http(http_data) = &session.connection {
-                    http_data.ping();
-                    Ok(HttpOkResult::Ok)
-                } else {
-                    Err(HttpFailResult::as_unauthorized(Some(
-                        "Session should has HTTP Type".to_string(),
-                    )))
-                }
-            }
-            None => Err(HttpFailResult::as_unauthorized(None)),
-        }
+        let http_session = self.app.get_http_session(session_id).await?;
+
+        http_session.as_ref().connection.unwrap_as_http().ping();
+
+        Ok(HttpOkResult::Ok)
     }
 }

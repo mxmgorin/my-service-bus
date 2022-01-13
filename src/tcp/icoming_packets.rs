@@ -46,13 +46,17 @@ pub async fn handle(
             persist_immediately,
             data_to_publish,
         } => {
-            if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {
+            if let Some(session_id) = app
+                .sessions
+                .resolve_session_id_by_tcp_connection_id(connection.id)
+                .await
+            {
                 let result = operations::publisher::publish(
                     app.clone(),
-                    topic_id,
+                    topic_id.as_str(),
                     data_to_publish,
                     persist_immediately,
-                    session,
+                    session_id,
                 )
                 .await;
 

@@ -1,4 +1,4 @@
 pub mod controllers;
+mod errors;
 mod html;
-mod http_fail;
 pub mod middlewares;

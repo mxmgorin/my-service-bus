@@ -27,7 +27,12 @@ impl HttpConnectionData {
     }
 
     pub fn ping(&self) {
+        self.connection_metrics.add_written(1);
         self.connection_metrics.add_read(1);
+    }
+
+    pub fn update_written_amount(&self, amount: usize) {
+        self.connection_metrics.add_written(amount);
     }
 
     pub fn get_connection_metrics(&self) -> ConnectionMetricsSnapshot {

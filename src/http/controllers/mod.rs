@@ -1,9 +1,12 @@
 pub mod builder;
 pub mod connections_controller;
+pub mod consts;
 pub mod debug;
+pub mod extensions;
 pub mod greeting;
 mod home_controller;
 pub mod logs;
+pub mod publisher;
 pub mod queues;
 pub mod status;
 pub mod topics;

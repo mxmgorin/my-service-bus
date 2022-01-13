@@ -32,6 +32,24 @@ pub enum SessionConnection {
 }
 
 impl SessionConnection {
+    pub fn unwrap_as_http(&self) -> &HttpConnectionData {
+        if let SessionConnection::Http(data) = self {
+            return data;
+        }
+
+        panic!(
+            "You are trying to get session as Http type, but session has [{}] type",
+            self.get_connection_type()
+        );
+    }
+
+    pub fn is_http(&self) -> bool {
+        match self {
+            SessionConnection::Http(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn get_ip(&self) -> String {
         match self {
             SessionConnection::Tcp(data) => match &data.connection.addr {

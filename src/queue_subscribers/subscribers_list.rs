@@ -34,12 +34,6 @@ pub struct SubscribersList {
     pub last_unsubscribe: DateTimeAsMicroseconds,
 }
 
-#[derive(Debug)]
-pub enum SubscribeErrorResult {
-    SubscriberWithIdExists,
-    SubscriberOfSameConnectionExists,
-}
-
 impl SubscribersList {
     pub fn new(queue_type: TopicQueueType) -> Self {
         let last_unsubscribe = DateTimeAsMicroseconds::now();
@@ -131,28 +125,25 @@ impl SubscribersList {
         }
     }
 
-    fn check_that_we_has_already_subscriber_for_that_session(
-        &self,
-        session_id: SessionId,
-    ) -> Result<(), SubscribeErrorResult> {
+    fn check_that_we_has_already_subscriber_for_that_session(&self, session_id: SessionId) -> bool {
         match &self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 for subscriber in hash_map.values() {
                     if subscriber.session.id == session_id {
-                        return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
+                        return false;
                     }
                 }
             }
             SubscribersData::SingleSubscriber(single_subscriber) => {
                 if let Some(subscriber) = single_subscriber {
                     if subscriber.session.id == session_id {
-                        return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
+                        return false;
                     }
                 }
             }
         }
 
-        Ok(())
+        true
     }
 
     ///Returns the subscriber which is kicked
@@ -162,26 +153,37 @@ impl SubscribersList {
         topic_id: String,
         queue_id: String,
         session: Arc<MyServiceBusSession>,
-    ) -> Result<Option<QueueSubscriber>, SubscribeErrorResult> {
-        self.check_that_we_has_already_subscriber_for_that_session(session.id)?;
+    ) -> Option<QueueSubscriber> {
+        if !self.check_that_we_has_already_subscriber_for_that_session(session.id) {
+            panic!(
+                "Somehow we subscribe second time to the same queue {}/{} the same session_id {} for the new subscriber. Most probably there is a bug on the client",
+                topic_id, queue_id, subscriber_id
+            );
+        }
         self.snapshot_id += 1;
 
         match &mut self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 if hash_map.contains_key(&subscriber_id) {
-                    return Err(SubscribeErrorResult::SubscriberWithIdExists);
+                    panic!(
+                        "Somehow we generated the same ID {} for the new subscriber {}/{}",
+                        subscriber_id, topic_id, queue_id
+                    );
                 }
 
                 let subscriber = QueueSubscriber::new(subscriber_id, topic_id, queue_id, session);
 
                 hash_map.insert(subscriber_id, subscriber);
 
-                return Ok(None);
+                return None;
             }
             SubscribersData::SingleSubscriber(single) => {
                 if let Some(subscriber) = single {
                     if subscriber.id == subscriber_id {
-                        return Err(SubscribeErrorResult::SubscriberWithIdExists);
+                        panic!(
+                            "Somehow we generated the same ID {} for the new subscriber {}/{}",
+                            subscriber_id, topic_id, queue_id
+                        );
                     }
                 }
 
@@ -194,7 +196,7 @@ impl SubscribersList {
 
                 std::mem::swap(&mut old_subscriber, single);
 
-                return Ok(old_subscriber);
+                return old_subscriber;
             }
         }
     }

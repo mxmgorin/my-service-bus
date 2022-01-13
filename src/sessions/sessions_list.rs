@@ -48,6 +48,14 @@ impl SessionsList {
         read_access.get_by_http_session(session_id)
     }
 
+    pub async fn resolve_session_id_by_tcp_connection_id(
+        &self,
+        connection_id: ConnectionId,
+    ) -> Option<SessionId> {
+        let read_access = self.data.read().await;
+        read_access.get_session_id_by_tcp_connection(connection_id)
+    }
+
     pub async fn get(&self, id: SessionId) -> Option<Arc<MyServiceBusSession>> {
         let read_access = self.data.read().await;
         read_access.get(id)

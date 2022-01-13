@@ -68,6 +68,14 @@ impl SessionsListData {
         Some(result.clone())
     }
 
+    pub fn get_session_id_by_tcp_connection(
+        &self,
+        connection_id: ConnectionId,
+    ) -> Option<SessionId> {
+        let result = self.tcp_sessions.get(&connection_id)?;
+        Some(result.id)
+    }
+
     fn remove(&mut self, session_id: SessionId) -> Option<Arc<MyServiceBusSession>> {
         let removed_session = self.sessions.remove(&session_id);
 

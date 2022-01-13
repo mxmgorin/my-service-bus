@@ -53,8 +53,11 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     let logs_by_process_controller =
         Arc::new(super::logs::LogsByProcessController::new(app.clone()));
     controllers.register_get_action("/Logs/Process/{processId}", logs_by_process_controller);
+    let publisher_controller = super::publisher::PublisherController::new(app.clone());
 
-    let home_controller = super::home_controller::HomeController::new(app);
+    controllers.register_post_action("/Publish", Arc::new(publisher_controller));
+
+    let home_controller = super::home_controller::HomeController::new(app.clone());
     controllers.register_get_action("/", Arc::new(home_controller));
 
     controllers

@@ -2,7 +2,11 @@ use std::sync::Arc;
 
 use my_service_bus_tcp_shared::MessageToPublishTcpContract;
 
-use crate::{app::AppContext, sessions::MyServiceBusSession, topics::Topic};
+use crate::{
+    app::AppContext,
+    sessions::{MyServiceBusSession, SessionId},
+    topics::Topic,
+};
 
 use super::OperationFailResult;
 
@@ -34,20 +38,20 @@ pub async fn create_topic_if_not_exists(
 
 pub async fn publish(
     app: Arc<AppContext>,
-    topic_id: String,
+    topic_id: &str,
     messages: Vec<MessageToPublishTcpContract>,
     persist_immediately: bool,
-    session: Arc<MyServiceBusSession>,
+    session_id: SessionId,
 ) -> Result<(), OperationFailResult> {
     if app.states.is_shutting_down() {
         return Err(OperationFailResult::ShuttingDown);
     }
 
-    let topic = app.topic_list.get(topic_id.as_str()).await;
+    let topic = app.topic_list.get(topic_id).await;
 
     if topic.is_none() {
         if app.auto_create_topic_on_publish {
-            app.topic_list.add_if_not_exists(topic_id).await;
+            app.topic_list.add_if_not_exists(topic_id.to_string()).await;
         } else {
             return Err(OperationFailResult::TopicNotFound {
                 topic_id: topic_id.to_string(),
@@ -61,7 +65,7 @@ pub async fn publish(
 
     let messages_count = messages.len();
 
-    topic_data.publish_messages(session.id, messages);
+    topic_data.publish_messages(session_id, messages);
 
     topic_data.metrics.update_topic_metrics(messages_count);
 

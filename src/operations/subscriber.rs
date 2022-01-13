@@ -3,9 +3,7 @@ use std::sync::Arc;
 use my_service_bus_shared::queue::TopicQueueType;
 
 use crate::{
-    app::AppContext,
-    queue_subscribers::{QueueSubscriber, SubscribeErrorResult},
-    queues::TopicQueue,
+    app::AppContext, queue_subscribers::QueueSubscriber, queues::TopicQueue,
     sessions::MyServiceBusSession,
 };
 
@@ -62,31 +60,12 @@ pub async fn subscribe_to_queue(
         ),
     );
 
-    match kicked_subscriber_result {
-        Ok(kicke_subscriber) => {
-            if let Some(kicked_subscriber) = kicke_subscriber {
-                remove_subscriber(topic_queue, kicked_subscriber);
-            }
-
-            super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
-
-            Ok(())
-        }
-        Err(err) => match err {
-            SubscribeErrorResult::SubscriberWithIdExists => {
-                panic!(
-                    "Somehow we generated the same ID {} for the new subscriber {}/{}",
-                    subscriber_id, topic.topic_id, topic_queue.queue_id
-                );
-            }
-            SubscribeErrorResult::SubscriberOfSameConnectionExists => {
-                panic!(
-                        "Somehow we subscribe second time to the same queue {}/{} the same session_id {} for the new subscriber. Most probably there is a bug on the client",
-                        topic.topic_id, topic_queue.queue_id, subscriber_id
-                    );
-            }
-        },
+    if let Some(kicked_subscriber) = kicked_subscriber_result {
+        remove_subscriber(topic_queue, kicked_subscriber);
     }
+    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
+
+    Ok(())
 }
 
 pub fn remove_subscriber(queue: &mut TopicQueue, mut subscriber: QueueSubscriber) {
