@@ -105,7 +105,9 @@ impl MyServiceBusSession {
             SessionConnection::Tcp(data) => {
                 return data.connection.disconnect().await;
             }
-            SessionConnection::Http(_) => todo!("Implement"),
+            SessionConnection::Http(data) => {
+                return data.disconnect();
+            }
             #[cfg(test)]
             SessionConnection::Test(connection) => {
                 let result = connection

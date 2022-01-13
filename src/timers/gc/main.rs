@@ -37,4 +37,6 @@ pub async fn timer_tick(app: Arc<AppContext>) {
         super::message_pages::execute(app.as_ref(), &mut topic_data);
         super::no_subscribers_queues::execute(app.as_ref(), &mut topic_data);
     }
+
+    super::gc_http_connections::execute(app.as_ref()).await;
 }

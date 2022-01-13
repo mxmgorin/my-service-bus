@@ -1,5 +1,6 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use rust_extensions::date_time::DateTimeAsMicroseconds;
-use tokio::sync::Mutex;
 
 use crate::sessions::{ConnectionMetrics, ConnectionMetricsSnapshot};
 
@@ -8,9 +9,9 @@ pub struct HttpConnectionData {
     pub name: String,
     pub version: String,
     pub ip: String,
-    pub connected: DateTimeAsMicroseconds,
+    pub connected_moment: DateTimeAsMicroseconds,
     connection_metrics: ConnectionMetrics,
-    pub disconnected: Mutex<DateTimeAsMicroseconds>,
+    connected: AtomicBool,
 }
 
 impl HttpConnectionData {
@@ -20,9 +21,9 @@ impl HttpConnectionData {
             name,
             version,
             ip,
-            disconnected: Mutex::new(DateTimeAsMicroseconds::now()),
+            connected: AtomicBool::new(true),
             connection_metrics: ConnectionMetrics::new(),
-            connected: DateTimeAsMicroseconds::now(),
+            connected_moment: DateTimeAsMicroseconds::now(),
         }
     }
 
@@ -41,5 +42,13 @@ impl HttpConnectionData {
 
     pub fn one_second_tick(&self) {
         self.connection_metrics.one_second_tick();
+    }
+
+    pub fn get_last_incoming_moment(&self) -> DateTimeAsMicroseconds {
+        self.connection_metrics.last_incoming_moment.as_date_time()
+    }
+
+    pub fn disconnect(&self) -> bool {
+        self.connected.swap(false, Ordering::SeqCst)
     }
 }

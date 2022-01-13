@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use my_tcp_sockets::ConnectionId;
 use tokio::sync::RwLock;
@@ -82,5 +82,21 @@ impl SessionsList {
     pub async fn one_second_tick(&self) {
         let read_access = self.data.read().await;
         read_access.one_second_tick();
+    }
+
+    pub async fn remove_and_disconnect_expired_http_sessions(
+        &self,
+        inactive_timeout: Duration,
+    ) -> Option<Vec<Arc<MyServiceBusSession>>> {
+        let mut write_access = self.data.write().await;
+        let result = write_access.remove_and_disconnect_expired_http_sessions(inactive_timeout);
+
+        if let Some(sessions) = &result {
+            for session in sessions {
+                session.disconnect().await;
+            }
+        }
+
+        result
     }
 }

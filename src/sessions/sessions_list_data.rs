@@ -1,8 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use my_tcp_sockets::ConnectionId;
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use super::{MyServiceBusSession, SessionId};
+use super::{MyServiceBusSession, SessionConnection, SessionId};
 
 pub struct SessionsListData {
     snapshot_id: usize,
@@ -104,6 +105,11 @@ impl SessionsListData {
         return self.remove(session_id);
     }
 
+    pub fn remove_http(&mut self, session_id: &str) -> Option<Arc<MyServiceBusSession>> {
+        let session_id = self.http_sessions.get(session_id)?.id;
+        return self.remove(session_id);
+    }
+
     pub fn get_snapshot(&self) -> (usize, Vec<Arc<MyServiceBusSession>>) {
         let mut sessions_result = Vec::new();
 
@@ -120,5 +126,38 @@ impl SessionsListData {
                 data.one_second_tick();
             }
         }
+    }
+
+    pub fn remove_and_disconnect_expired_http_sessions(
+        &mut self,
+        inactive_timeout: Duration,
+    ) -> Option<Vec<Arc<MyServiceBusSession>>> {
+        let mut sessions_result = None;
+
+        let now = DateTimeAsMicroseconds::now();
+
+        for session in self.sessions.values() {
+            if let SessionConnection::Http(connection) = &session.connection {
+                let last_incoming = connection.get_last_incoming_moment();
+
+                if now.duration_since(last_incoming) > inactive_timeout {
+                    if sessions_result.is_none() {
+                        sessions_result = Some(Vec::new());
+                    }
+
+                    sessions_result.as_mut().unwrap().push(session.clone());
+                }
+            }
+        }
+
+        if let Some(sessions_to_remove) = &sessions_result {
+            for session_to_remove in sessions_to_remove {
+                if let SessionConnection::Http(connection) = &session_to_remove.connection {
+                    self.remove_http(&connection.id);
+                }
+            }
+        }
+
+        return sessions_result;
     }
 }
