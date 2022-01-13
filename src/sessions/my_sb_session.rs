@@ -1,7 +1,6 @@
 use rust_extensions::date_time::DateTimeAsMicroseconds;
-use tokio::sync::RwLock;
 
-use super::{ConnectionMetricsSnapshot, MyServiceBusSessionData, SessionConnection, SessionId};
+use super::{ConnectionMetricsSnapshot, SessionConnection, SessionId};
 pub struct SessionMetrics {
     pub name: Option<String>,
     pub version: Option<String>,
@@ -13,26 +12,29 @@ pub struct SessionMetrics {
 
 pub struct MyServiceBusSession {
     pub id: SessionId,
-    data: RwLock<MyServiceBusSessionData>,
     pub connection: SessionConnection,
     pub connected: DateTimeAsMicroseconds,
 }
 
 impl MyServiceBusSession {
     pub fn new(id: SessionId, connection: SessionConnection) -> Self {
-        let data = MyServiceBusSessionData::new();
         Self {
             connection,
-            data: RwLock::new(data),
             id,
             connected: DateTimeAsMicroseconds::now(),
         }
     }
 
-    pub async fn set_socket_name(&self, set_socket_name: String, client_version: Option<String>) {
-        let mut data = self.data.write().await;
-        data.name = Some(set_socket_name);
-        data.client_version = client_version;
+    pub async fn set_tcp_socket_name(
+        &self,
+        set_socket_name: String,
+        client_version: Option<String>,
+    ) {
+        if let SessionConnection::Tcp(data) = &self.connection {
+            data.set_socket_name(set_socket_name, client_version).await;
+        } else {
+            panic!("Something went wrong. You re trying to set socket name for tcp session. But session has type: {}", self.connection.get_connection_type())
+        }
     }
 
     pub fn update_tcp_protocol_version(&self, value: i32) {
@@ -57,14 +59,20 @@ impl MyServiceBusSession {
         }
     }
 
-    pub async fn get_name(&self) -> String {
-        let data = self.data.read().await;
-
-        let result = match &data.name {
-            Some(name) => format!("{} {}", name, self.connection.get_ip()),
-            None => self.connection.get_ip().to_string(),
-        };
-        result
+    pub async fn get_name_and_client_version(&self) -> (Option<String>, Option<String>) {
+        match &self.connection {
+            SessionConnection::Tcp(data) => {
+                let attr = data.get_attrs().await;
+                (attr.name, attr.version)
+            }
+            SessionConnection::Http(data) => {
+                (Some(data.name.to_string()), Some(data.version.to_string()))
+            }
+            #[cfg(test)]
+            SessionConnection::Test(_) => {
+                todo!("Not Implemented");
+            }
+        }
     }
 
     fn get_protocol_version(&self) -> String {
@@ -88,12 +96,12 @@ impl MyServiceBusSession {
 
         let protocol_version = self.get_protocol_version();
 
-        let read_access = self.data.read().await;
+        let (name, version) = self.get_name_and_client_version().await;
 
         SessionMetrics {
             id: self.id,
-            name: read_access.get_name(),
-            version: read_access.get_version(),
+            name,
+            version,
             ip: self.connection.get_ip().to_string(),
             protocol_version,
             connection_metrics,

@@ -11,11 +11,11 @@ pub async fn disconnect(app: &AppContext, disconnected_session: &MyServiceBusSes
         if let Some(removed_subscribers) = removed_subscribers {
             for (topic_queue, removed_subscriber) in removed_subscribers {
                 println!(
-                    "Subscriber {} with connection_id {} is removed during the session [{}]/{} disconnect process",
+                    "Subscriber {} with connection_id {} is removed during the session [{}]/{:?} disconnect process",
                     removed_subscriber.id,
                     removed_subscriber.session.id,
                     disconnected_session.id,
-                    disconnected_session.get_name().await
+                    disconnected_session.get_name_and_client_version().await
                 );
                 crate::operations::subscriber::remove_subscriber(topic_queue, removed_subscriber);
             }
