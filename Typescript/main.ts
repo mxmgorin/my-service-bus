@@ -81,11 +81,19 @@ class main {
 
                 filterPhrase == filterPhrase.trim();
 
-                let filterPhraseChanged = filterPhrase != ServiceLocator.prevFilterPhrase || !ServiceLocator.prevFilterPhrase;
+                let filterPhraseIsChanged = ServiceLocator.checkIfFilterPhraseIsChanged(filterPhrase);
 
-                ServiceLocator.prevFilterPhrase = filterPhrase;
+                if (filterPhraseIsChanged) {
+                    console.log("filterPhraseIsChanged");
+                }
 
-                if (ServiceLocator.checkIfTopicsAreChanged(result.topics) || filterPhraseChanged) {
+                let topics_are_changed = ServiceLocator.checkIfTopicsAreChanged(result.topics);
+
+                if (topics_are_changed) {
+                    console.log("topics_are_changed");
+                }
+
+                if (topics_are_changed || filterPhraseIsChanged) {
                     this.topicsElement.innerHTML = HtmlTopics.renderTopics(result.topics);
                     ServiceLocator.topics = result.topics;
                 }

@@ -130,7 +130,7 @@ impl Into<SettingsModel> for SettingsModelJson {
 
             auto_create_topic
         } else {
-            println!("Auto create topic on publish is disabled. To enable please add parameter AutoCreateTopicPublish: true");
+            println!("Auto create topic on publish is disabled. To enable please add parameter AutoCreateTopicOnPublish: true");
             false
         };
 

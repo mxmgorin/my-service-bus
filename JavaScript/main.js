@@ -46,9 +46,15 @@ var main = /** @class */ (function () {
             _this.requested = false;
             var filterPhrase = document.getElementById('filter').value;
             filterPhrase == filterPhrase.trim();
-            var filterPhraseChanged = filterPhrase != ServiceLocator.prevFilterPhrase || !ServiceLocator.prevFilterPhrase;
-            ServiceLocator.prevFilterPhrase = filterPhrase;
-            if (ServiceLocator.checkIfTopicsAreChanged(result.topics) || filterPhraseChanged) {
+            var filterPhraseIsChanged = ServiceLocator.checkIfFilterPhraseIsChanged(filterPhrase);
+            if (filterPhraseIsChanged) {
+                console.log("filterPhraseIsChanged");
+            }
+            var topics_are_changed = ServiceLocator.checkIfTopicsAreChanged(result.topics);
+            if (topics_are_changed) {
+                console.log("topics_are_changed");
+            }
+            if (topics_are_changed || filterPhraseIsChanged) {
                 _this.topicsElement.innerHTML = HtmlTopics.renderTopics(result.topics);
                 ServiceLocator.topics = result.topics;
             }
