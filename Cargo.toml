@@ -11,7 +11,7 @@ my-service-bus-shared = { branch = "0.1.1", git = "https://github.com/MyJetTools
 my-service-bus-tcp-shared = { branch = "0.1.1-rc", git = "https://github.com/MyJetTools/my-service-bus-tcp-shared.git" }
 my-tcp-sockets = { branch = "0.1.0", git = "https://github.com/MyJetTools/my-tcp-sockets.git" }
 rust-extensions = { branch = "main", git = "https://github.com/MyJetTools/rust-extensions.git" }
-my-http-server = { branch = "0.1.0", git = "https://github.com/MyJetTools/my-http-server.git" }
+my-http-server = { branch = "0.1.1", git = "https://github.com/MyJetTools/my-http-server.git" }
 
 tonic = { version = "0.6.1", features = ["tls", "tls-roots", "prost"] }
 

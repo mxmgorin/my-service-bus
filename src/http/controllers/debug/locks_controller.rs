@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult};
 use rust_extensions::StringBuilder;
 use std::sync::Arc;
 
@@ -25,8 +25,8 @@ impl GetAction for LocksController {
         HttpActionDescription {
             name: "Debug",
             description: "Show current locks",
-            out_content_type: WebContentType::Json,
             input_params: None,
+            results: super::super::consts::get_text_result(),
         }
         .into()
     }

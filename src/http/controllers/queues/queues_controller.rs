@@ -6,13 +6,15 @@ use my_http_server::{
     middlewares::controllers::{
         actions::{DeleteAction, GetAction, PostAction},
         documentation::{
-            HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
+            data_types::{HttpDataProperty, HttpDataType},
+            in_parameters::{HttpInputParameter, HttpParameterInputSource},
+            HttpActionDescription,
         },
     },
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+    HttpContext, HttpFailResult, HttpOkResult,
 };
 
-use crate::app::AppContext;
+use crate::{app::AppContext, http::controllers::consts::*};
 pub struct QueuesController {
     app: Arc<AppContext>,
 }
@@ -29,14 +31,14 @@ impl GetAction for QueuesController {
         HttpActionDescription {
             name: "Queues",
             description: "Set list of queues",
-            out_content_type: WebContentType::Json,
+
             input_params: Some(vec![HttpInputParameter {
-                name: "topicId".to_string(),
-                param_type: HttpParameterType::String,
+                data_property: HttpDataProperty::new("topicId", HttpDataType::as_string(), true),
                 description: "Id of topic".to_string(),
                 source: HttpParameterInputSource::Query,
                 required: true,
             }]),
+            results: vec![],
         }
         .into()
     }
@@ -75,23 +77,8 @@ impl DeleteAction for QueuesController {
         HttpActionDescription {
             name: "Queues",
             description: "Delete queue",
-            out_content_type: WebContentType::Json,
-            input_params: Some(vec![
-                HttpInputParameter {
-                    name: "topicId".to_string(),
-                    param_type: HttpParameterType::String,
-                    description: "Id of topic".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
-                HttpInputParameter {
-                    name: "queueId".to_string(),
-                    param_type: HttpParameterType::String,
-                    description: "Id of queue".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
-            ]),
+            input_params: Some(vec![get_topic_id_parameter(), get_queue_id_parameter()]),
+            results: vec![],
         }
         .into()
     }
@@ -114,30 +101,13 @@ impl PostAction for QueuesController {
         HttpActionDescription {
             name: "Queues",
             description: "Set message id of the queue",
-            out_content_type: WebContentType::Json,
+
             input_params: Some(vec![
-                HttpInputParameter {
-                    name: "topicId".to_string(),
-                    param_type: HttpParameterType::String,
-                    description: "Id of topic".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
-                HttpInputParameter {
-                    name: "queueId".to_string(),
-                    param_type: HttpParameterType::String,
-                    description: "Id of queue".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
-                HttpInputParameter {
-                    name: "messageId".to_string(),
-                    param_type: HttpParameterType::Long,
-                    description: "Id of message".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
+                get_topic_id_parameter(),
+                get_queue_id_parameter(),
+                get_message_id_parameter(),
             ]),
+            results: vec![],
         }
         .into()
     }

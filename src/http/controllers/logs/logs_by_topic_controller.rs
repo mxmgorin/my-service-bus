@@ -3,7 +3,9 @@ use my_http_server::{
     middlewares::controllers::{
         actions::GetAction,
         documentation::{
-            HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
+            data_types::{HttpDataProperty, HttpDataType},
+            in_parameters::{HttpInputParameter, HttpParameterInputSource},
+            HttpActionDescription,
         },
     },
     HttpContext, HttpFailResult, HttpOkResult, WebContentType,
@@ -29,14 +31,14 @@ impl GetAction for LogsByTopicController {
         HttpActionDescription {
             name: "Logs",
             description: "Show Logs of speciefic topic",
-            out_content_type: WebContentType::Json,
+
             input_params: Some(vec![HttpInputParameter {
-                name: "topicId".to_string(),
-                param_type: HttpParameterType::String,
+                data_property: HttpDataProperty::new("topicId", HttpDataType::as_string(), true),
                 description: "Id of topic".to_string(),
                 source: HttpParameterInputSource::Path,
                 required: false,
             }]),
+            results: vec![],
         }
         .into()
     }

@@ -1,14 +1,17 @@
 use async_trait::async_trait;
-use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, WebContentType};
+use my_http_server::{
+    middlewares::controllers::documentation::{
+        data_types::{HttpDataProperty, HttpDataType},
+        in_parameters::{HttpInputParameter, HttpParameterInputSource},
+    },
+    HttpContext, HttpFailResult, HttpOkResult,
+};
 use std::sync::Arc;
 
 use crate::app::AppContext;
 
 use my_http_server::middlewares::controllers::{
-    actions::GetAction,
-    documentation::{
-        HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
-    },
+    actions::GetAction, documentation::HttpActionDescription,
 };
 
 pub struct OnDeliveryController {
@@ -27,30 +30,41 @@ impl GetAction for OnDeliveryController {
         HttpActionDescription {
             name: "Debug",
             description: "Show messages on delivery",
-            out_content_type: WebContentType::Json,
+
             input_params: Some(vec![
                 HttpInputParameter {
-                    name: "topicId".to_string(),
-                    param_type: HttpParameterType::String,
+                    data_property: HttpDataProperty::new(
+                        "topicId",
+                        HttpDataType::as_string(),
+                        true,
+                    ),
                     description: "Id of topic".to_string(),
                     source: HttpParameterInputSource::Query,
                     required: true,
                 },
                 HttpInputParameter {
-                    name: "queueId".to_string(),
-                    param_type: HttpParameterType::String,
+                    data_property: HttpDataProperty::new(
+                        "queueId",
+                        HttpDataType::as_string(),
+                        true,
+                    ),
+
                     description: "Id of queue".to_string(),
                     source: HttpParameterInputSource::Query,
                     required: true,
                 },
                 HttpInputParameter {
-                    name: "subscriberId".to_string(),
-                    param_type: HttpParameterType::Long,
+                    data_property: HttpDataProperty::new(
+                        "subscriberId",
+                        HttpDataType::as_string(),
+                        true,
+                    ),
                     description: "Id of subscriber".to_string(),
                     source: HttpParameterInputSource::Query,
                     required: true,
                 },
             ]),
+            results: super::super::consts::get_text_result(),
         }
         .into()
     }

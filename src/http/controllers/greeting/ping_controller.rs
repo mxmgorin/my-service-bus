@@ -4,7 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use my_http_server::{
     middlewares::controllers::{actions::PostAction, documentation::HttpActionDescription},
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+    HttpContext, HttpFailResult, HttpOkResult,
 };
 
 use crate::app::AppContext;
@@ -24,8 +24,8 @@ impl PostAction for PingController {
         HttpActionDescription {
             name: "Greeting",
             description: "Ping Http Session",
-            out_content_type: WebContentType::Json,
             input_params: Some(vec![get_auth_header_description()]),
+            results: super::super::consts::get_empty_result(),
         }
         .into()
     }
@@ -37,6 +37,6 @@ impl PostAction for PingController {
 
         http_session.as_ref().connection.unwrap_as_http().ping();
 
-        Ok(HttpOkResult::Ok)
+        Ok(HttpOkResult::Empty)
     }
 }

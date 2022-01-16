@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use my_http_server::{
     middlewares::controllers::{actions::GetAction, documentation::HttpActionDescription},
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+    HttpContext, HttpFailResult, HttpOkResult,
 };
 use rust_extensions::StopWatch;
 
@@ -25,8 +25,8 @@ impl GetAction for LogsController {
         HttpActionDescription {
             name: "Logs",
             description: "Show Logs",
-            out_content_type: WebContentType::Json,
             input_params: None,
+            results: vec![],
         }
         .into()
     }

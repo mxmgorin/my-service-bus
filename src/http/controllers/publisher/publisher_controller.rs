@@ -5,12 +5,14 @@ use std::sync::Arc;
 
 use my_http_server::{
     middlewares::controllers::{
-        actions::PostAction,
+        actions::{HttpStructsProvider, PostAction},
         documentation::{
-            HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
+            data_types::{ArrayElement, HttpDataProperty, HttpDataType, HttpObjectType},
+            in_parameters::{HttpInputParameter, HttpParameterInputSource},
+            HttpActionDescription,
         },
     },
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+    HttpContext, HttpFailResult, HttpOkResult,
 };
 
 use crate::app::AppContext;
@@ -27,23 +29,59 @@ impl PublisherController {
     }
 }
 
+const MESSAGE_HEADER_CONTRACT_ID: &str = "MessageHeaderContract";
+
+const MESSAGE_TO_PUBLISH_CONTRACT_ID: &str = "MessageToPublishContract";
+
+impl HttpStructsProvider for PublisherController {
+    fn get(&self) -> Vec<HttpObjectType> {
+        vec![
+            HttpObjectType {
+                struct_id: MESSAGE_HEADER_CONTRACT_ID.to_string(),
+                properties: vec![
+                    HttpDataProperty::new("key", HttpDataType::as_string(), true),
+                    HttpDataProperty::new("value", HttpDataType::as_string(), true),
+                ],
+            },
+            HttpObjectType {
+                struct_id: MESSAGE_TO_PUBLISH_CONTRACT_ID.to_string(),
+                properties: vec![
+                    HttpDataProperty::new(
+                        "headers",
+                        HttpDataType::ArrayOf(ArrayElement::Object {
+                            struct_id: MESSAGE_HEADER_CONTRACT_ID.to_string(),
+                        }),
+                        true,
+                    ),
+                    HttpDataProperty::new("base64Message", HttpDataType::as_string(), true),
+                ],
+            },
+        ]
+    }
+}
+
 #[async_trait]
 impl PostAction for PublisherController {
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Publish",
             description: "Publish messages to topic",
-            out_content_type: WebContentType::Text,
             input_params: Some(vec![
+                get_auth_header_description(),
+                get_topic_id_parameter(),
                 HttpInputParameter {
-                    name: "topicId".to_string(),
-                    param_type: HttpParameterType::String,
-                    description: "Id of topic".to_string(),
-                    source: HttpParameterInputSource::Query,
+                    data_property: HttpDataProperty::new(
+                        "messages",
+                        HttpDataType::as_array_of_object(MESSAGE_TO_PUBLISH_CONTRACT_ID),
+                        true,
+                    ),
+
+                    description: "Messages to publish".to_string(),
+                    source: HttpParameterInputSource::Body,
                     required: true,
                 },
-                get_auth_header_description(),
             ]),
+            results: vec![],
         }
         .into()
     }

@@ -12,6 +12,7 @@ pub struct MessageKeyValueJsonModel {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MessageToPublishJsonModel {
     pub headers: Option<Vec<MessageKeyValueJsonModel>>,
+    #[serde(rename = "base64Message")]
     pub base64_message: String,
 }
 

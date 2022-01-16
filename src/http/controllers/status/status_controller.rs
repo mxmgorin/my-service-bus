@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use my_http_server::{
     middlewares::controllers::{actions::GetAction, documentation::HttpActionDescription},
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+    HttpContext, HttpFailResult, HttpOkResult,
 };
 
 use crate::app::AppContext;
@@ -24,8 +24,8 @@ impl GetAction for StatusController {
         HttpActionDescription {
             name: "Status",
             description: "Get status of application",
-            out_content_type: WebContentType::Json,
             input_params: None,
+            results: vec![],
         }
         .into()
     }

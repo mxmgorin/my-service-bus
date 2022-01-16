@@ -4,14 +4,12 @@ use std::sync::Arc;
 use my_http_server::{
     middlewares::controllers::{
         actions::{GetAction, PostAction},
-        documentation::{
-            HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
-        },
+        documentation::HttpActionDescription,
     },
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+    HttpContext, HttpFailResult, HttpOkResult,
 };
 
-use crate::app::AppContext;
+use crate::{app::AppContext, http::controllers::consts::get_topic_id_parameter};
 
 use super::models::{JsonTopicResult, JsonTopicsResult};
 
@@ -31,8 +29,8 @@ impl GetAction for TopicsController {
         HttpActionDescription {
             name: "Topics",
             description: "Get list of topics",
-            out_content_type: WebContentType::Json,
             input_params: None,
+            results: vec![],
         }
         .into()
     }
@@ -60,14 +58,10 @@ impl PostAction for TopicsController {
         HttpActionDescription {
             name: "Topics",
             description: "Create topic",
-            out_content_type: WebContentType::Json,
-            input_params: Some(vec![HttpInputParameter {
-                name: "topicId".to_string(),
-                param_type: HttpParameterType::String,
-                description: "Id of topic".to_string(),
-                source: HttpParameterInputSource::Query,
-                required: true,
-            }]),
+
+            input_params: Some(vec![get_topic_id_parameter()]),
+
+            results: vec![],
         }
         .into()
     }

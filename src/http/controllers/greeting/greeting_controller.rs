@@ -1,18 +1,23 @@
 use async_trait::async_trait;
 use my_http_server::{
     middlewares::controllers::{
-        actions::PostAction,
+        actions::{HttpStructsProvider, PostAction},
         documentation::{
-            HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
+            data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
+            in_parameters::{HttpInputParameter, HttpParameterInputSource},
+            out_results::HttpResult,
+            HttpActionDescription,
         },
     },
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+    HttpContext, HttpFailResult, HttpOkResult,
 };
 use std::sync::Arc;
 
 use crate::{app::AppContext, sessions::HttpConnectionData};
 
 use super::models::GreetingJsonResult;
+
+const SESSION_CONTRACT_RESPONSE: &str = "SessionContractResponse";
 
 pub struct GreetingController {
     app: Arc<AppContext>,
@@ -24,29 +29,53 @@ impl GreetingController {
     }
 }
 
+impl HttpStructsProvider for GreetingController {
+    fn get(&self) -> Vec<HttpObjectType> {
+        vec![HttpObjectType {
+            struct_id: SESSION_CONTRACT_RESPONSE.to_string(),
+            properties: vec![HttpDataProperty::new(
+                "session",
+                HttpDataType::as_string(),
+                true,
+            )],
+        }]
+    }
+}
+
 #[async_trait]
 impl PostAction for GreetingController {
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Greeting",
             description: "Issue new Http Session",
-            out_content_type: WebContentType::Json,
+
             input_params: Some(vec![
                 HttpInputParameter {
-                    name: "name".to_string(),
-                    param_type: HttpParameterType::String,
+                    data_property: HttpDataProperty::new("name", HttpDataType::as_string(), true),
+
                     description: "Name of client application".to_string(),
                     source: HttpParameterInputSource::Query,
                     required: true,
                 },
                 HttpInputParameter {
-                    name: "version".to_string(),
-                    param_type: HttpParameterType::String,
+                    data_property: HttpDataProperty::new(
+                        "version",
+                        HttpDataType::as_string(),
+                        true,
+                    ),
+
                     description: "Version of client application".to_string(),
                     source: HttpParameterInputSource::Query,
                     required: true,
                 },
             ]),
+
+            results: vec![HttpResult {
+                http_code: 200,
+                nullable: false,
+                description: "Session description".to_string(),
+                data_type: HttpDataType::as_object(SESSION_CONTRACT_RESPONSE),
+            }],
         }
         .into()
     }

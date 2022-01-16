@@ -2,16 +2,13 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use my_http_server::{
-    middlewares::controllers::{
-        actions::DeleteAction,
-        documentation::{
-            HttpActionDescription, HttpInputParameter, HttpParameterInputSource, HttpParameterType,
-        },
-    },
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+    middlewares::controllers::{actions::DeleteAction, documentation::HttpActionDescription},
+    HttpContext, HttpFailResult, HttpOkResult,
 };
 
 use crate::{app::AppContext, sessions::SessionId};
+
+use super::consts::*;
 
 pub struct ConnectionsController {
     app: Arc<AppContext>,
@@ -29,15 +26,10 @@ impl DeleteAction for ConnectionsController {
         HttpActionDescription {
             name: "Connections",
             description: "Disconnect connection",
-            out_content_type: WebContentType::Json,
-            input_params: vec![HttpInputParameter {
-                name: "id".to_string(),
-                param_type: HttpParameterType::String,
-                description: "Id of connection".to_string(),
-                source: HttpParameterInputSource::Query,
-                required: true,
-            }]
-            .into(),
+
+            input_params: vec![get_connection_id_parameter()].into(),
+
+            results: vec![],
         }
         .into()
     }
@@ -45,7 +37,7 @@ impl DeleteAction for ConnectionsController {
     async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let query = ctx.get_query_string()?;
 
-        let id: SessionId = query.get_required_parameter("id")?;
+        let id: SessionId = query.get_required_parameter("connectionId")?;
 
         match self.app.sessions.get(id).await {
             Some(session) => {
