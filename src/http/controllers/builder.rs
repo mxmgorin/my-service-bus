@@ -21,8 +21,8 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     );
 
     let greeting_controller = Arc::new(super::greeting::GreetingController::new(app.clone()));
-    controllers.register_post_action("/Greeting", greeting_controller.clone());
-    controllers.register_http_objects(greeting_controller);
+    controllers.register_post_action("/Greeting", greeting_controller);
+    //controllers.register_http_objects(greeting_controller);
 
     let greeting_ping_controller = Arc::new(super::greeting::PingController::new(app.clone()));
     controllers.register_post_action("/Greeting/Ping", greeting_ping_controller);
@@ -54,9 +54,9 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     let logs_by_process_controller =
         Arc::new(super::logs::LogsByProcessController::new(app.clone()));
     controllers.register_get_action("/Logs/Process/{processId}", logs_by_process_controller);
-    let publisher_controller = Arc::new(super::publisher::PublisherController::new(app.clone()));
-    controllers.register_post_action("/Publish", publisher_controller.clone());
-    controllers.register_http_objects(publisher_controller);
+
+    let publisher_controller = super::publisher::PublisherController::new(app.clone());
+    controllers.register_post_action("/Publish", Arc::new(publisher_controller));
 
     let home_controller = super::home_controller::HomeController::new(app.clone());
     controllers.register_get_action("/", Arc::new(home_controller));

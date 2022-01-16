@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use my_http_server::{
     middlewares::controllers::documentation::{
-        data_types::{HttpDataProperty, HttpDataType},
+        data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
         in_parameters::{HttpInputParameter, HttpParameterInputSource},
     },
     HttpContext, HttpFailResult, HttpOkResult,
@@ -26,6 +26,10 @@ impl OnDeliveryController {
 
 #[async_trait]
 impl GetAction for OnDeliveryController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",

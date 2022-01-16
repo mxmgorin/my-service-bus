@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use my_http_server::{
     middlewares::controllers::{
-        actions::{HttpStructsProvider, PostAction},
+        actions::PostAction,
         documentation::{
             data_types::{ArrayElement, HttpDataProperty, HttpDataType, HttpObjectType},
             in_parameters::{HttpInputParameter, HttpParameterInputSource},
@@ -29,39 +29,12 @@ impl PublisherController {
     }
 }
 
-const MESSAGE_HEADER_CONTRACT_ID: &str = "MessageHeaderContract";
-
-const MESSAGE_TO_PUBLISH_CONTRACT_ID: &str = "MessageToPublishContract";
-
-impl HttpStructsProvider for PublisherController {
-    fn get(&self) -> Vec<HttpObjectType> {
-        vec![
-            HttpObjectType {
-                struct_id: MESSAGE_HEADER_CONTRACT_ID.to_string(),
-                properties: vec![
-                    HttpDataProperty::new("key", HttpDataType::as_string(), true),
-                    HttpDataProperty::new("value", HttpDataType::as_string(), true),
-                ],
-            },
-            HttpObjectType {
-                struct_id: MESSAGE_TO_PUBLISH_CONTRACT_ID.to_string(),
-                properties: vec![
-                    HttpDataProperty::new(
-                        "headers",
-                        HttpDataType::ArrayOf(ArrayElement::Object {
-                            struct_id: MESSAGE_HEADER_CONTRACT_ID.to_string(),
-                        }),
-                        true,
-                    ),
-                    HttpDataProperty::new("base64Message", HttpDataType::as_string(), true),
-                ],
-            },
-        ]
-    }
-}
-
 #[async_trait]
 impl PostAction for PublisherController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Publish",
@@ -72,7 +45,13 @@ impl PostAction for PublisherController {
                 HttpInputParameter {
                     data_property: HttpDataProperty::new(
                         "messages",
-                        HttpDataType::as_array_of_object(MESSAGE_TO_PUBLISH_CONTRACT_ID),
+                        HttpDataType::ArrayOf(ArrayElement::Object(HttpObjectType {
+                            struct_id: "MessageToPublishContract".to_string(),
+                            properties: vec![
+                                message_headers_contract(),
+                                publish_message_contract(),
+                            ],
+                        })),
                         true,
                     ),
 
@@ -124,5 +103,29 @@ impl PostAction for PublisherController {
         http_session.update_written_amount(content_size);
 
         Ok(HttpOkResult::Ok)
+    }
+}
+
+fn message_headers_contract() -> HttpDataProperty {
+    let data_type = HttpObjectType {
+        struct_id: "MessageHeadersContract".to_string(),
+        properties: vec![
+            HttpDataProperty::new("key", HttpDataType::as_string(), true),
+            HttpDataProperty::new("value", HttpDataType::as_string(), true),
+        ],
+    };
+
+    HttpDataProperty {
+        name: "headers".to_string(),
+        data_type: HttpDataType::Object(data_type),
+        required: false,
+    }
+}
+
+fn publish_message_contract() -> HttpDataProperty {
+    HttpDataProperty {
+        name: "base64Message".to_string(),
+        data_type: HttpDataType::as_string(),
+        required: true,
     }
 }

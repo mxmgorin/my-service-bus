@@ -2,7 +2,10 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use my_http_server::{
-    middlewares::controllers::{actions::GetAction, documentation::HttpActionDescription},
+    middlewares::controllers::{
+        actions::GetAction,
+        documentation::{data_types::HttpObjectType, HttpActionDescription},
+    },
     HttpContext, HttpFailResult, HttpOkResult,
 };
 use rust_extensions::StopWatch;
@@ -21,6 +24,10 @@ impl LogsController {
 
 #[async_trait]
 impl GetAction for LogsController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Logs",

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use my_http_server::{
     middlewares::controllers::{
-        actions::{HttpStructsProvider, PostAction},
+        actions::PostAction,
         documentation::{
             data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
             in_parameters::{HttpInputParameter, HttpParameterInputSource},
@@ -17,8 +17,6 @@ use crate::{app::AppContext, sessions::HttpConnectionData};
 
 use super::models::GreetingJsonResult;
 
-const SESSION_CONTRACT_RESPONSE: &str = "SessionContractResponse";
-
 pub struct GreetingController {
     app: Arc<AppContext>,
 }
@@ -29,21 +27,12 @@ impl GreetingController {
     }
 }
 
-impl HttpStructsProvider for GreetingController {
-    fn get(&self) -> Vec<HttpObjectType> {
-        vec![HttpObjectType {
-            struct_id: SESSION_CONTRACT_RESPONSE.to_string(),
-            properties: vec![HttpDataProperty::new(
-                "session",
-                HttpDataType::as_string(),
-                true,
-            )],
-        }]
-    }
-}
-
 #[async_trait]
 impl PostAction for GreetingController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Greeting",
@@ -74,7 +63,10 @@ impl PostAction for GreetingController {
                 http_code: 200,
                 nullable: false,
                 description: "Session description".to_string(),
-                data_type: HttpDataType::as_object(SESSION_CONTRACT_RESPONSE),
+                data_type: HttpDataType::Object(
+                    HttpObjectType::new("SessionContractResponse")
+                        .with_string_property("session", true),
+                ),
             }],
         }
         .into()

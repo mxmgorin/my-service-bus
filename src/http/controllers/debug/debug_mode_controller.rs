@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use my_http_server::middlewares::controllers::{
     actions::{DeleteAction, PostAction},
     documentation::{
-        data_types::{HttpDataProperty, HttpDataType},
+        data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
         in_parameters::{HttpInputParameter, HttpParameterInputSource},
         HttpActionDescription,
     },
@@ -23,6 +23,10 @@ impl DebugModeController {
 
 #[async_trait]
 impl PostAction for DebugModeController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",
@@ -69,6 +73,10 @@ impl PostAction for DebugModeController {
 
 #[async_trait]
 impl DeleteAction for DebugModeController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Debug",

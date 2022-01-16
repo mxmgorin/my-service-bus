@@ -2,7 +2,10 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use my_http_server::{
-    middlewares::controllers::{actions::DeleteAction, documentation::HttpActionDescription},
+    middlewares::controllers::{
+        actions::DeleteAction,
+        documentation::{data_types::HttpObjectType, HttpActionDescription},
+    },
     HttpContext, HttpFailResult, HttpOkResult,
 };
 
@@ -22,6 +25,10 @@ impl ConnectionsController {
 
 #[async_trait]
 impl DeleteAction for ConnectionsController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Connections",

@@ -5,7 +5,7 @@ use my_http_server::{
     middlewares::controllers::{
         actions::GetAction,
         documentation::{
-            data_types::{HttpDataProperty, HttpDataType},
+            data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
             in_parameters::{HttpInputParameter, HttpParameterInputSource},
             HttpActionDescription,
         },
@@ -28,6 +28,10 @@ impl LogsByProcessController {
 
 #[async_trait]
 impl GetAction for LogsByProcessController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Logs",

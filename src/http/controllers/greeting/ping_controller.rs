@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use my_http_server::{
-    middlewares::controllers::{actions::PostAction, documentation::HttpActionDescription},
+    middlewares::controllers::{
+        actions::PostAction,
+        documentation::{data_types::HttpObjectType, HttpActionDescription},
+    },
     HttpContext, HttpFailResult, HttpOkResult,
 };
 
@@ -20,6 +23,10 @@ impl PingController {
 
 #[async_trait]
 impl PostAction for PingController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Greeting",

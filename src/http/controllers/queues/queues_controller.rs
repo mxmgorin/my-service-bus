@@ -6,7 +6,7 @@ use my_http_server::{
     middlewares::controllers::{
         actions::{DeleteAction, GetAction, PostAction},
         documentation::{
-            data_types::{HttpDataProperty, HttpDataType},
+            data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
             in_parameters::{HttpInputParameter, HttpParameterInputSource},
             HttpActionDescription,
         },
@@ -27,6 +27,10 @@ impl QueuesController {
 
 #[async_trait]
 impl GetAction for QueuesController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Queues",
@@ -73,6 +77,9 @@ impl GetAction for QueuesController {
 
 #[async_trait]
 impl DeleteAction for QueuesController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Queues",
@@ -97,6 +104,10 @@ impl DeleteAction for QueuesController {
 
 #[async_trait]
 impl PostAction for QueuesController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+        None
+    }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             name: "Queues",
