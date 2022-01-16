@@ -105,15 +105,17 @@ impl PostAction for PublisherController {
 }
 
 fn message_headers_contract() -> HttpField {
+    let object_structure = HttpObjectStructure {
+        struct_id: "MessageHeadersContract".to_string(),
+        fields: vec![
+            HttpField::new("key", HttpDataType::as_string(), true),
+            HttpField::new("value", HttpDataType::as_string(), true),
+        ],
+    };
+
     HttpField {
         name: "headers".to_string(),
-        data_type: HttpDataType::Object(HttpObjectStructure {
-            struct_id: "MessageHeadersContract".to_string(),
-            fields: vec![
-                HttpField::new("key", HttpDataType::as_string(), true),
-                HttpField::new("value", HttpDataType::as_string(), true),
-            ],
-        }),
+        data_type: HttpDataType::ArrayOf(ArrayElement::Object(object_structure)),
         required: false,
     }
 }
