@@ -46,7 +46,10 @@ impl PostAction for DebugModeController {
                     required: true,
                 },
             ]),
-            results: vec![response::empty("Debug mode is enabled")],
+            results: vec![
+                response::empty("Debug mode is enabled"),
+                response::topic_or_queue_not_found(),
+            ],
         }
         .into()
     }
@@ -82,8 +85,6 @@ impl DeleteAction for DebugModeController {
     async fn handle_request(&self, _ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         self.app.disable_debug_topic_and_queue().await;
 
-        Ok(HttpOkResult::Text {
-            text: "Ok".to_string(),
-        })
+        Ok(HttpOkResult::Empty)
     }
 }
