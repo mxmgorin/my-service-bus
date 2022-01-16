@@ -1,16 +1,16 @@
+use super::super::contracts::response;
 use crate::app::AppContext;
 use async_trait::async_trait;
 use my_http_server::middlewares::controllers::{
     actions::{DeleteAction, PostAction},
     documentation::{
-        data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
+        data_types::{HttpDataType, HttpField, HttpObjectStructure},
         in_parameters::{HttpInputParameter, HttpParameterInputSource},
         HttpActionDescription,
     },
 };
 use my_http_server::{HttpContext, HttpFailResult, HttpOkResult};
 use std::sync::Arc;
-
 pub struct DebugModeController {
     app: Arc<AppContext>,
 }
@@ -23,38 +23,30 @@ impl DebugModeController {
 
 #[async_trait]
 impl PostAction for DebugModeController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Debug",
+            controller_name: "Debug",
             description: "Enable debug mode for specific queue",
 
             input_params: Some(vec![
                 HttpInputParameter {
-                    data_property: HttpDataProperty::new(
-                        "topicId",
-                        HttpDataType::as_string(),
-                        true,
-                    ),
+                    field: HttpField::new("topicId", HttpDataType::as_string(), true),
                     description: "Id of topic".to_string(),
                     source: HttpParameterInputSource::Query,
                     required: true,
                 },
                 HttpInputParameter {
-                    data_property: HttpDataProperty::new(
-                        "queueId",
-                        HttpDataType::as_string(),
-                        true,
-                    ),
+                    field: HttpField::new("queueId", HttpDataType::as_string(), true),
                     description: "Id of queue".to_string(),
                     source: HttpParameterInputSource::Query,
                     required: true,
                 },
             ]),
-            results: super::super::consts::get_empty_result(),
+            results: vec![response::empty("Debug mode is enabled")],
         }
         .into()
     }
@@ -73,16 +65,16 @@ impl PostAction for DebugModeController {
 
 #[async_trait]
 impl DeleteAction for DebugModeController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Debug",
+            controller_name: "Debug",
             description: "Disable debug mode",
             input_params: None,
-            results: vec![],
+            results: vec![response::empty("Debug mode is disabled")],
         }
         .into()
     }

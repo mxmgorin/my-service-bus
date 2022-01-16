@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use my_http_server::{
     middlewares::controllers::{
         actions::GetAction,
-        documentation::{data_types::HttpObjectType, HttpActionDescription},
+        documentation::{data_types::HttpObjectStructure, HttpActionDescription},
     },
     HttpContext, HttpFailResult, HttpOkResult, WebContentType,
 };
@@ -22,7 +22,7 @@ impl HomeController {
 
 #[async_trait]
 impl GetAction for HomeController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use my_http_server::{
-    middlewares::controllers::documentation::data_types::HttpObjectType, HttpContext,
+    middlewares::controllers::documentation::data_types::HttpObjectStructure, HttpContext,
     HttpFailResult, HttpOkResult,
 };
 use rust_extensions::StringBuilder;
@@ -24,16 +24,16 @@ impl LocksController {
 
 #[async_trait]
 impl GetAction for LocksController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Debug",
+            controller_name: "Debug",
             description: "Show current locks",
             input_params: None,
-            results: super::super::consts::get_text_result(),
+            results: super::super::contracts::response::text("List of locks"),
         }
         .into()
     }

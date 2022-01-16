@@ -4,39 +4,40 @@ use std::sync::Arc;
 use my_http_server::{
     middlewares::controllers::{
         actions::DeleteAction,
-        documentation::{data_types::HttpObjectType, HttpActionDescription},
+        documentation::{data_types::HttpObjectStructure, HttpActionDescription},
     },
     HttpContext, HttpFailResult, HttpOkResult,
 };
 
+use super::super::contracts::response;
 use crate::{app::AppContext, sessions::SessionId};
-
-use super::consts::*;
-
-pub struct ConnectionsController {
+pub struct SessionsController {
     app: Arc<AppContext>,
 }
 
-impl ConnectionsController {
+impl SessionsController {
     pub fn new(app: Arc<AppContext>) -> Self {
         Self { app }
     }
 }
 
 #[async_trait]
-impl DeleteAction for ConnectionsController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+impl DeleteAction for SessionsController {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Connections",
-            description: "Disconnect connection",
+            controller_name: "Sessions",
+            description: "Disconnect and kick session",
 
-            input_params: vec![get_connection_id_parameter()].into(),
+            input_params: vec![super::super::contracts::input_parameters::connection_id()].into(),
 
-            results: vec![],
+            results: vec![
+                response::empty("Session is kicked"),
+                response::session_is_not_found(),
+            ],
         }
         .into()
     }
@@ -49,11 +50,7 @@ impl DeleteAction for ConnectionsController {
         match self.app.sessions.get(id).await {
             Some(session) => {
                 session.disconnect().await;
-
-                let result = HttpOkResult::Text {
-                    text: "Session is removed".to_string(),
-                };
-                Ok(result)
+                Ok(HttpOkResult::Empty)
             }
             None => Err(HttpFailResult::as_not_found(
                 format!("Session {} is not found", id),

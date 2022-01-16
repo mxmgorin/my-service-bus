@@ -4,7 +4,7 @@ use std::sync::Arc;
 use my_http_server::{
     middlewares::controllers::{
         actions::GetAction,
-        documentation::{data_types::HttpObjectType, HttpActionDescription},
+        documentation::{data_types::HttpObjectStructure, HttpActionDescription},
     },
     HttpContext, HttpFailResult, HttpOkResult,
 };
@@ -23,16 +23,16 @@ impl StatusController {
 
 #[async_trait]
 impl GetAction for StatusController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Status",
+            controller_name: "Status",
             description: "Get status of application",
             input_params: None,
-            results: vec![],
+            results: super::super::contracts::response::object("Objects snapshot"),
         }
         .into()
     }

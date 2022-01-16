@@ -1,10 +1,7 @@
 use async_trait::async_trait;
 use my_http_server::{
-    middlewares::controllers::documentation::{
-        data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
-        in_parameters::{HttpInputParameter, HttpParameterInputSource},
-    },
-    HttpContext, HttpFailResult, HttpOkResult,
+    middlewares::controllers::documentation::data_types::HttpObjectStructure, HttpContext,
+    HttpFailResult, HttpOkResult,
 };
 use std::sync::Arc;
 
@@ -13,6 +10,8 @@ use crate::app::AppContext;
 use my_http_server::middlewares::controllers::{
     actions::GetAction, documentation::HttpActionDescription,
 };
+
+use super::super::contracts::input_parameters;
 
 pub struct OnDeliveryController {
     app: Arc<AppContext>,
@@ -26,49 +25,21 @@ impl OnDeliveryController {
 
 #[async_trait]
 impl GetAction for OnDeliveryController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Debug",
+            controller_name: "Debug",
             description: "Show messages on delivery",
 
             input_params: Some(vec![
-                HttpInputParameter {
-                    data_property: HttpDataProperty::new(
-                        "topicId",
-                        HttpDataType::as_string(),
-                        true,
-                    ),
-                    description: "Id of topic".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
-                HttpInputParameter {
-                    data_property: HttpDataProperty::new(
-                        "queueId",
-                        HttpDataType::as_string(),
-                        true,
-                    ),
-
-                    description: "Id of queue".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
-                HttpInputParameter {
-                    data_property: HttpDataProperty::new(
-                        "subscriberId",
-                        HttpDataType::as_string(),
-                        true,
-                    ),
-                    description: "Id of subscriber".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
+                input_parameters::topic_id(),
+                input_parameters::queue_id(),
+                input_parameters::subscriber_id(),
             ]),
-            results: super::super::consts::get_text_result(),
+            results: super::super::contracts::response::text("Ids of subscribers on delivery"),
         }
         .into()
     }

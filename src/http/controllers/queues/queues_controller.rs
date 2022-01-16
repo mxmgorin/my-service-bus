@@ -6,15 +6,17 @@ use my_http_server::{
     middlewares::controllers::{
         actions::{DeleteAction, GetAction, PostAction},
         documentation::{
-            data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
-            in_parameters::{HttpInputParameter, HttpParameterInputSource},
+            data_types::{ArrayElement, HttpDataType, HttpObjectStructure, HttpSimpleType},
+            out_results::HttpResult,
             HttpActionDescription,
         },
     },
     HttpContext, HttpFailResult, HttpOkResult,
 };
 
-use crate::{app::AppContext, http::controllers::consts::*};
+use super::super::contracts::{input_parameters, response};
+
+use crate::app::AppContext;
 pub struct QueuesController {
     app: Arc<AppContext>,
 }
@@ -27,22 +29,17 @@ impl QueuesController {
 
 #[async_trait]
 impl GetAction for QueuesController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Queues",
-            description: "Set list of queues",
+            controller_name: "Queues",
+            description: "Get list of queues",
 
-            input_params: Some(vec![HttpInputParameter {
-                data_property: HttpDataProperty::new("topicId", HttpDataType::as_string(), true),
-                description: "Id of topic".to_string(),
-                source: HttpParameterInputSource::Query,
-                required: true,
-            }]),
-            results: vec![],
+            input_params: Some(vec![input_parameters::topic_id()]),
+            results: vec![list_of_queues_result(), response::topic_not_found()],
         }
         .into()
     }
@@ -77,15 +74,21 @@ impl GetAction for QueuesController {
 
 #[async_trait]
 impl DeleteAction for QueuesController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Queues",
+            controller_name: "Queues",
             description: "Delete queue",
-            input_params: Some(vec![get_topic_id_parameter(), get_queue_id_parameter()]),
-            results: vec![],
+            input_params: Some(vec![
+                super::super::contracts::input_parameters::topic_id(),
+                super::super::contracts::input_parameters::queue_id(),
+            ]),
+            results: vec![
+                response::empty("Topic is Deleted"),
+                response::topic_or_queue_not_found(),
+            ],
         }
         .into()
     }
@@ -98,25 +101,25 @@ impl DeleteAction for QueuesController {
 
         crate::operations::queues::delete_queue(self.app.as_ref(), topic_id, queue_id).await?;
 
-        Ok(HttpOkResult::Ok)
+        Ok(HttpOkResult::Empty)
     }
 }
 
 #[async_trait]
 impl PostAction for QueuesController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Queues",
+            controller_name: "Queues",
             description: "Set message id of the queue",
 
             input_params: Some(vec![
-                get_topic_id_parameter(),
-                get_queue_id_parameter(),
-                get_message_id_parameter(),
+                super::super::contracts::input_parameters::topic_id(),
+                super::super::contracts::input_parameters::queue_id(),
+                super::super::contracts::input_parameters::message_id(),
             ]),
             results: vec![],
         }
@@ -138,5 +141,14 @@ impl PostAction for QueuesController {
         .await?;
 
         Ok(HttpOkResult::Ok)
+    }
+}
+
+fn list_of_queues_result() -> HttpResult {
+    HttpResult {
+        http_code: 200,
+        nullable: false,
+        description: "List of queues".to_string(),
+        data_type: HttpDataType::ArrayOf(ArrayElement::SimpleType(HttpSimpleType::String)),
     }
 }

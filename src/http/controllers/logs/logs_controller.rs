@@ -4,7 +4,7 @@ use std::sync::Arc;
 use my_http_server::{
     middlewares::controllers::{
         actions::GetAction,
-        documentation::{data_types::HttpObjectType, HttpActionDescription},
+        documentation::{data_types::HttpObjectStructure, HttpActionDescription},
     },
     HttpContext, HttpFailResult, HttpOkResult,
 };
@@ -24,13 +24,13 @@ impl LogsController {
 
 #[async_trait]
 impl GetAction for LogsController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Logs",
+            controller_name: "Logs",
             description: "Show Logs",
             input_params: None,
             results: vec![],

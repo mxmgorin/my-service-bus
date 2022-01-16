@@ -1,4 +1,4 @@
-use crate::http::controllers::{consts::*, extensions::HttpContextExtensions};
+use crate::http::controllers::extensions::HttpContextExtensions;
 use async_trait::async_trait;
 use my_service_bus_tcp_shared::MessageToPublishTcpContract;
 use std::sync::Arc;
@@ -7,7 +7,7 @@ use my_http_server::{
     middlewares::controllers::{
         actions::PostAction,
         documentation::{
-            data_types::{ArrayElement, HttpDataProperty, HttpDataType, HttpObjectType},
+            data_types::{ArrayElement, HttpDataType, HttpField, HttpObjectStructure},
             in_parameters::{HttpInputParameter, HttpParameterInputSource},
             HttpActionDescription,
         },
@@ -31,26 +31,23 @@ impl PublisherController {
 
 #[async_trait]
 impl PostAction for PublisherController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Publish",
+            controller_name: "Publish",
             description: "Publish messages to topic",
             input_params: Some(vec![
-                get_auth_header_description(),
-                get_topic_id_parameter(),
+                super::super::contracts::input_parameters::auth_header(),
+                super::super::contracts::input_parameters::topic_id(),
                 HttpInputParameter {
-                    data_property: HttpDataProperty::new(
+                    field: HttpField::new(
                         "messages",
-                        HttpDataType::ArrayOf(ArrayElement::Object(HttpObjectType {
+                        HttpDataType::ArrayOf(ArrayElement::Object(HttpObjectStructure {
                             struct_id: "MessageToPublishContract".to_string(),
-                            properties: vec![
-                                message_headers_contract(),
-                                publish_message_contract(),
-                            ],
+                            fields: vec![message_headers_contract(), publish_message_contract()],
                         })),
                         true,
                     ),
@@ -69,7 +66,8 @@ impl PostAction for PublisherController {
         let query = ctx.get_query_string()?;
         let topic_id = query.get_required_string_parameter("topicId")?;
 
-        let session_id = ctx.get_required_header(AUTH_HEADER_NAME)?;
+        let session_id =
+            ctx.get_required_header(super::super::contracts::input_parameters::AUTH_HEADER_NAME)?;
         let session = self.app.get_http_session(session_id).await?;
 
         let as_json: Vec<MessageToPublishJsonModel> = ctx.get_body_as_json().await?;
@@ -106,24 +104,22 @@ impl PostAction for PublisherController {
     }
 }
 
-fn message_headers_contract() -> HttpDataProperty {
-    let data_type = HttpObjectType {
-        struct_id: "MessageHeadersContract".to_string(),
-        properties: vec![
-            HttpDataProperty::new("key", HttpDataType::as_string(), true),
-            HttpDataProperty::new("value", HttpDataType::as_string(), true),
-        ],
-    };
-
-    HttpDataProperty {
+fn message_headers_contract() -> HttpField {
+    HttpField {
         name: "headers".to_string(),
-        data_type: HttpDataType::Object(data_type),
+        data_type: HttpDataType::Object(HttpObjectStructure {
+            struct_id: "MessageHeadersContract".to_string(),
+            fields: vec![
+                HttpField::new("key", HttpDataType::as_string(), true),
+                HttpField::new("value", HttpDataType::as_string(), true),
+            ],
+        }),
         required: false,
     }
 }
 
-fn publish_message_contract() -> HttpDataProperty {
-    HttpDataProperty {
+fn publish_message_contract() -> HttpField {
+    HttpField {
         name: "base64Message".to_string(),
         data_type: HttpDataType::as_string(),
         required: true,

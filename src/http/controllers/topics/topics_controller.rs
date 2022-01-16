@@ -4,15 +4,19 @@ use std::sync::Arc;
 use my_http_server::{
     middlewares::controllers::{
         actions::{GetAction, PostAction},
-        documentation::{data_types::HttpObjectType, HttpActionDescription},
+        documentation::{
+            data_types::{ArrayElement, HttpDataType, HttpField, HttpObjectStructure},
+            out_results::HttpResult,
+            HttpActionDescription,
+        },
     },
     HttpContext, HttpFailResult, HttpOkResult,
 };
 
-use crate::{app::AppContext, http::controllers::consts::get_topic_id_parameter};
+use crate::app::AppContext;
 
+use super::super::contracts::response;
 use super::models::{JsonTopicResult, JsonTopicsResult};
-
 pub struct TopicsController {
     app: Arc<AppContext>,
 }
@@ -25,16 +29,16 @@ impl TopicsController {
 
 #[async_trait]
 impl GetAction for TopicsController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Topics",
+            controller_name: "Topics",
             description: "Get list of topics",
             input_params: None,
-            results: vec![],
+            results: vec![list_of_topics_result()],
         }
         .into()
     }
@@ -58,18 +62,18 @@ impl GetAction for TopicsController {
 
 #[async_trait]
 impl PostAction for TopicsController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Topics",
+            controller_name: "Topics",
             description: "Create topic",
 
-            input_params: Some(vec![get_topic_id_parameter()]),
+            input_params: Some(vec![super::super::contracts::input_parameters::topic_id()]),
 
-            results: vec![],
+            results: vec![response::empty("Topic is created")],
         }
         .into()
     }
@@ -87,4 +91,23 @@ impl PostAction for TopicsController {
 
         Ok(result)
     }
+}
+
+fn list_of_topics_result() -> HttpResult {
+    HttpResult {
+        http_code: 200,
+        nullable: false,
+        description: "List of topics".to_string(),
+        data_type: HttpDataType::ArrayOf(ArrayElement::Object(HttpObjectStructure {
+            struct_id: "TopicDescriptionContract".to_string(),
+            fields: topic_description_fields(),
+        })),
+    }
+}
+
+fn topic_description_fields() -> Vec<HttpField> {
+    vec![
+        HttpField::new("id", HttpDataType::as_string(), true),
+        HttpField::new("messageId", HttpDataType::as_long(), true),
+    ]
 }

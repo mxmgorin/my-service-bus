@@ -5,7 +5,7 @@ use my_http_server::{
     middlewares::controllers::{
         actions::GetAction,
         documentation::{
-            data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
+            data_types::{HttpDataType, HttpField, HttpObjectStructure},
             in_parameters::{HttpInputParameter, HttpParameterInputSource},
             HttpActionDescription,
         },
@@ -28,18 +28,17 @@ impl LogsByProcessController {
 
 #[async_trait]
 impl GetAction for LogsByProcessController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Logs",
+            controller_name: "Logs",
             description: "Show Logs of speciefic process",
 
             input_params: Some(vec![HttpInputParameter {
-                data_property: HttpDataProperty::new("processId", HttpDataType::as_string(), true),
-
+                field: HttpField::new("processId", HttpDataType::as_string(), true),
                 description: "Id of process".to_string(),
                 source: HttpParameterInputSource::Path,
                 required: false,

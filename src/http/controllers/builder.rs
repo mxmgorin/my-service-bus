@@ -12,13 +12,9 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     controllers.register_get_action("/Topics", topics_controller.clone());
     controllers.register_post_action("/Topics/Create", topics_controller);
 
-    let connections_controller =
-        super::connections_controller::ConnectionsController::new(app.clone());
+    let sessions_controller = super::sessions::SessionsController::new(app.clone());
 
-    controllers.register_delete_action(
-        "/Connections/KickTcpConnection",
-        Arc::new(connections_controller),
-    );
+    controllers.register_delete_action("/Sessions", Arc::new(sessions_controller));
 
     let greeting_controller = Arc::new(super::greeting::GreetingController::new(app.clone()));
     controllers.register_post_action("/Greeting", greeting_controller);

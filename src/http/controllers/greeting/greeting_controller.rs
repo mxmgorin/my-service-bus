@@ -3,7 +3,7 @@ use my_http_server::{
     middlewares::controllers::{
         actions::PostAction,
         documentation::{
-            data_types::{HttpDataProperty, HttpDataType, HttpObjectType},
+            data_types::{HttpDataType, HttpField, HttpObjectStructure},
             in_parameters::{HttpInputParameter, HttpParameterInputSource},
             out_results::HttpResult,
             HttpActionDescription,
@@ -29,30 +29,25 @@ impl GreetingController {
 
 #[async_trait]
 impl PostAction for GreetingController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectType>> {
+    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
         None
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
-            name: "Greeting",
+            controller_name: "Greeting",
             description: "Issue new Http Session",
 
             input_params: Some(vec![
                 HttpInputParameter {
-                    data_property: HttpDataProperty::new("name", HttpDataType::as_string(), true),
+                    field: HttpField::new("name", HttpDataType::as_string(), true),
 
                     description: "Name of client application".to_string(),
                     source: HttpParameterInputSource::Query,
                     required: true,
                 },
                 HttpInputParameter {
-                    data_property: HttpDataProperty::new(
-                        "version",
-                        HttpDataType::as_string(),
-                        true,
-                    ),
-
+                    field: HttpField::new("version", HttpDataType::as_string(), true),
                     description: "Version of client application".to_string(),
                     source: HttpParameterInputSource::Query,
                     required: true,
@@ -64,8 +59,8 @@ impl PostAction for GreetingController {
                 nullable: false,
                 description: "Session description".to_string(),
                 data_type: HttpDataType::Object(
-                    HttpObjectType::new("SessionContractResponse")
-                        .with_string_property("session", true),
+                    HttpObjectStructure::new("SessionContractResponse")
+                        .with_string_field("session", true),
                 ),
             }],
         }
