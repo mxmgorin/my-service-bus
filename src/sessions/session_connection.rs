@@ -27,6 +27,7 @@ impl TestConnection {
 pub enum SessionConnection {
     Tcp(TcpConnectionData),
     Http(HttpConnectionData),
+
     #[cfg(test)]
     Test(TestConnection),
 }

@@ -1,3 +1,4 @@
-mod sessions_controller;
-
-pub use sessions_controller::SessionsController;
+mod contracts;
+mod delete_session_action;
+pub use contracts::*;
+pub use delete_session_action::DeleteSessionAction;

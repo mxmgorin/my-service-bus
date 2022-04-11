@@ -1,10 +1,9 @@
+use my_http_server_swagger::MyHttpObjectStructure;
 use serde::{Deserialize, Serialize};
 
-use crate::sessions::SessionId;
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, MyHttpObjectStructure)]
 pub struct TopicPublisherJsonModel {
     #[serde(rename = "sessionId")]
-    pub session_id: SessionId,
+    pub session_id: i64,
     pub active: u8,
 }

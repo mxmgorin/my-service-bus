@@ -1,20 +1,15 @@
 use async_trait::async_trait;
+use my_http_server_controllers::controllers::{
+    actions::GetAction, documentation::HttpActionDescription,
+};
 use std::sync::Arc;
 
-use my_http_server::{
-    middlewares::controllers::{
-        actions::GetAction,
-        documentation::{
-            data_types::{HttpDataType, HttpField, HttpObjectStructure},
-            in_parameters::{HttpInputParameter, HttpParameterInputSource},
-            HttpActionDescription,
-        },
-    },
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
-};
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput, WebContentType};
 use rust_extensions::{StopWatch, StringBuilder};
 
 use crate::app::{logs::SystemProcess, AppContext};
+
+use super::models::ReadLogsByProcessInputModel;
 
 pub struct LogsByProcessController {
     app: Arc<AppContext>,
@@ -28,8 +23,8 @@ impl LogsByProcessController {
 
 #[async_trait]
 impl GetAction for LogsByProcessController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+    fn get_route(&self) -> &str {
+        "/Logs/Process/{processId}"
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
@@ -37,33 +32,31 @@ impl GetAction for LogsByProcessController {
             controller_name: "Logs",
             description: "Show Logs of speciefic process",
 
-            input_params: Some(vec![HttpInputParameter {
-                field: HttpField::new("processId", HttpDataType::as_string(), true),
-                description: "Id of process".to_string(),
-                source: HttpParameterInputSource::Path,
-                required: false,
-            }]),
+            input_params: ReadLogsByProcessInputModel::get_input_params().into(),
             results: vec![],
         }
         .into()
     }
 
-    async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let process_name = ctx.get_value_from_path_optional("processId")?;
+    async fn handle_request(&self, ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+        let input_params = ReadLogsByProcessInputModel::parse_http_input(ctx).await?;
 
-        if process_name.is_none() {
+        if input_params.process_id.is_none() {
             return render_select_process().await;
         }
 
-        let process_name = process_name.unwrap();
+        let process_id = input_params.process_id.unwrap();
 
-        let process = SystemProcess::parse(process_name);
+        let process = SystemProcess::parse(process_id.as_str());
 
         if process.is_none() {
-            return Ok(HttpOkResult::Content {
+            return HttpOutput::Content {
                 content_type: Some(WebContentType::Text),
-                content: format!("Invalid process name: {}", process_name).into(),
-            });
+                content: format!("Invalid process name: {}", process_id).into(),
+                headers: None,
+            }
+            .into_ok_result(false)
+            .into();
         }
 
         let process = process.unwrap();
@@ -77,15 +70,18 @@ impl GetAction for LogsByProcessController {
             None => {
                 sw.pause();
 
-                Ok(HttpOkResult::Content {
+                HttpOutput::Content {
                     content_type: Some(WebContentType::Text),
                     content: format!(
                         "Result compiled in: {:?}. No log recods for the process '{}'",
                         sw.duration(),
-                        process_name
+                        process_id
                     )
                     .into_bytes(),
-                })
+                    headers: None,
+                }
+                .into_ok_result(false)
+                .into()
             }
         }
     }

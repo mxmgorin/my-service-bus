@@ -4,7 +4,6 @@ use rust_extensions::ApplicationStates;
 use tokio::sync::RwLock;
 
 use crate::{
-    http::middlewares::prometheus::PrometheusDataSource,
     operations::delivery::DeliveryDependecies,
     persistence::{MessagesPagesGrpcRepo, TopcsAndQueuesSnapshotRepo},
     queue_subscribers::SubscriberIdGenerator,
@@ -135,11 +134,5 @@ impl ApplicationStates for AppContext {
 
     fn is_shutting_down(&self) -> bool {
         self.states.is_shutting_down()
-    }
-}
-
-impl PrometheusDataSource for AppContext {
-    fn get(&self) -> &prometheus::Registry {
-        &self.prometheus.get_registry()
     }
 }

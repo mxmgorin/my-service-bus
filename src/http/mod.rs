@@ -1,4 +1,4 @@
 pub mod controllers;
 mod errors;
 mod html;
-pub mod middlewares;
+pub mod start_up;

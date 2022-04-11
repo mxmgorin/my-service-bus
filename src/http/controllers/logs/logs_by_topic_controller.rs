@@ -1,19 +1,14 @@
 use async_trait::async_trait;
-use my_http_server::{
-    middlewares::controllers::{
-        actions::GetAction,
-        documentation::{
-            data_types::{HttpDataType, HttpField, HttpObjectStructure},
-            in_parameters::{HttpInputParameter, HttpParameterInputSource},
-            HttpActionDescription,
-        },
-    },
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput, WebContentType};
+use my_http_server_controllers::controllers::{
+    actions::GetAction, documentation::HttpActionDescription,
 };
 use rust_extensions::{StopWatch, StringBuilder};
 use std::sync::Arc;
 
 use crate::app::AppContext;
+
+use super::models::ReadLogsByTopicInputModel;
 
 pub struct LogsByTopicController {
     app: Arc<AppContext>,
@@ -27,8 +22,8 @@ impl LogsByTopicController {
 
 #[async_trait]
 impl GetAction for LogsByTopicController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+    fn get_route(&self) -> &str {
+        "/Logs/Topic/{topicId}"
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
@@ -36,29 +31,24 @@ impl GetAction for LogsByTopicController {
             controller_name: "Logs",
             description: "Show Logs of speciefic topic",
 
-            input_params: Some(vec![HttpInputParameter {
-                field: HttpField::new("topicId", HttpDataType::as_string(), true),
-                description: "Id of topic".to_string(),
-                source: HttpParameterInputSource::Path,
-                required: false,
-            }]),
+            input_params: ReadLogsByTopicInputModel::get_input_params().into(),
             results: vec![],
         }
         .into()
     }
 
-    async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let topic_name = ctx.get_value_from_path_optional("topicId")?;
+    async fn handle_request(&self, ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+        let input_data = ReadLogsByTopicInputModel::parse_http_input(ctx).await?;
 
-        if topic_name.is_none() {
+        if input_data.topic_id.is_none() {
             return render_select_topic(self.app.as_ref()).await;
         }
 
-        let topic_name = topic_name.unwrap();
+        let topic_id = input_data.topic_id.unwrap();
 
         let mut sw = StopWatch::new();
         sw.start();
-        let logs_result = self.app.logs.get_by_topic(topic_name).await;
+        let logs_result = self.app.logs.get_by_topic(topic_id.as_str()).await;
 
         match logs_result {
             Some(logs) => super::renderers::compile_result("logs by topic", logs, sw),
@@ -68,13 +58,16 @@ impl GetAction for LogsByTopicController {
                 let content = format!(
                     "Result compiled in: {:?}. No log recods for the topic '{}'",
                     sw.duration(),
-                    topic_name
+                    topic_id.as_str()
                 );
 
-                Ok(HttpOkResult::Content {
+                HttpOutput::Content {
                     content_type: Some(WebContentType::Text),
                     content: content.into_bytes(),
-                })
+                    headers: None,
+                }
+                .into_ok_result(false)
+                .into()
             }
         }
     }

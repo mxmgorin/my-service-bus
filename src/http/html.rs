@@ -1,4 +1,4 @@
-use my_http_server::{HttpOkResult, WebContentType};
+use my_http_server::{HttpOkResult, HttpOutput, WebContentType};
 
 pub fn compile(title: String, body: String) -> HttpOkResult {
     let content = format!(
@@ -10,8 +10,10 @@ pub fn compile(title: String, body: String) -> HttpOkResult {
         body = body
     );
 
-    HttpOkResult::Content {
+    HttpOutput::Content {
         content_type: Some(WebContentType::Html),
         content: content.into_bytes(),
+        headers: None,
     }
+    .into_ok_result(false)
 }

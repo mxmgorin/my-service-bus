@@ -1,20 +1,17 @@
 use async_trait::async_trait;
-use my_service_bus_shared::MessageId;
-use std::sync::Arc;
-
-use my_http_server::{
-    middlewares::controllers::{
-        actions::{DeleteAction, GetAction, PostAction},
-        documentation::{
-            data_types::{ArrayElement, HttpDataType, HttpObjectStructure, HttpSimpleType},
-            out_results::HttpResult,
-            HttpActionDescription,
-        },
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
+use my_http_server_controllers::controllers::{
+    actions::{DeleteAction, GetAction, PostAction},
+    documentation::{
+        data_types::{ArrayElement, HttpDataType, HttpSimpleType},
+        out_results::HttpResult,
+        HttpActionDescription,
     },
-    HttpContext, HttpFailResult, HttpOkResult,
 };
 
-use super::super::contracts::{input_parameters, response};
+use std::sync::Arc;
+
+use super::{super::contracts::response, *};
 
 use crate::app::AppContext;
 pub struct QueuesController {
@@ -29,8 +26,8 @@ impl QueuesController {
 
 #[async_trait]
 impl GetAction for QueuesController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+    fn get_route(&self) -> &str {
+        "/Queues"
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
@@ -38,21 +35,30 @@ impl GetAction for QueuesController {
             controller_name: "Queues",
             description: "Get list of queues",
 
-            input_params: Some(vec![input_parameters::topic_id()]),
-            results: vec![list_of_queues_result(), response::topic_not_found()],
+            input_params: GetListOfQueuesInputContract::get_input_params().into(),
+            results: vec![
+                HttpResult {
+                    http_code: 200,
+                    description: "List of queues".to_string(),
+                    nullable: false,
+                    data_type: HttpDataType::ArrayOf(ArrayElement::SimpleType(
+                        HttpSimpleType::String,
+                    )),
+                },
+                response::topic_not_found(),
+            ],
         }
         .into()
     }
 
-    async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let query = ctx.get_query_string()?;
-        let topic_id = query.get_required_string_parameter("topicId")?;
+    async fn handle_request(&self, ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+        let input_data = GetListOfQueuesInputContract::parse_http_input(ctx).await?;
 
-        let topic = self.app.topic_list.get(topic_id).await;
+        let topic = self.app.topic_list.get(input_data.topic_id).await;
 
         if topic.is_none() {
             return Err(HttpFailResult::as_not_found(
-                format!("Topic {} not found", topic_id),
+                format!("Topic {} not found", input_data.topic_id),
                 false,
             ));
         }
@@ -68,23 +74,21 @@ impl GetAction for QueuesController {
             }
         }
 
-        return HttpOkResult::create_json_response(result).into();
+        HttpOutput::as_json(result).into_ok_result(true).into()
     }
 }
 
 #[async_trait]
 impl DeleteAction for QueuesController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+    fn get_route(&self) -> &str {
+        "/Queues"
     }
+
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             controller_name: "Queues",
             description: "Delete queue",
-            input_params: Some(vec![
-                super::super::contracts::input_parameters::topic_id(),
-                super::super::contracts::input_parameters::queue_id(),
-            ]),
+            input_params: DeleteQueueInputContract::get_input_params().into(),
             results: vec![
                 response::empty("Topic is Deleted"),
                 response::topic_or_queue_not_found(),
@@ -93,22 +97,24 @@ impl DeleteAction for QueuesController {
         .into()
     }
 
-    async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let query = ctx.get_query_string()?;
+    async fn handle_request(&self, ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+        let http_input = DeleteQueueInputContract::parse_http_input(ctx).await?;
 
-        let topic_id = query.get_required_string_parameter("topicId")?;
-        let queue_id = query.get_required_string_parameter("queueId")?;
+        crate::operations::queues::delete_queue(
+            self.app.as_ref(),
+            http_input.topic_id,
+            http_input.queue_id,
+        )
+        .await?;
 
-        crate::operations::queues::delete_queue(self.app.as_ref(), topic_id, queue_id).await?;
-
-        Ok(HttpOkResult::Empty)
+        HttpOutput::Empty.into_ok_result(true).into()
     }
 }
 
 #[async_trait]
 impl PostAction for QueuesController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+    fn get_route(&self) -> &str {
+        "/Queues/SetMessageId"
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
@@ -116,39 +122,23 @@ impl PostAction for QueuesController {
             controller_name: "Queues",
             description: "Set message id of the queue",
 
-            input_params: Some(vec![
-                super::super::contracts::input_parameters::topic_id(),
-                super::super::contracts::input_parameters::queue_id(),
-                super::super::contracts::input_parameters::message_id(),
-            ]),
+            input_params: SetQueueMessageIdInputContract::get_input_params().into(),
             results: vec![],
         }
         .into()
     }
 
-    async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let query = ctx.get_query_string()?;
-        let topic_id = query.get_required_string_parameter("topicId")?;
-        let queue_id = query.get_required_string_parameter("queueId")?;
-        let message_id: MessageId = query.get_required_parameter("messageId")?;
+    async fn handle_request(&self, ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+        let http_input = SetQueueMessageIdInputContract::parse_http_input(ctx).await?;
 
         crate::operations::queues::set_message_id(
             self.app.as_ref(),
-            topic_id,
-            queue_id,
-            message_id,
+            http_input.topic_id,
+            http_input.queue_id,
+            http_input.message_id,
         )
         .await?;
 
-        Ok(HttpOkResult::Ok)
-    }
-}
-
-fn list_of_queues_result() -> HttpResult {
-    HttpResult {
-        http_code: 200,
-        nullable: false,
-        description: "List of queues".to_string(),
-        data_type: HttpDataType::ArrayOf(ArrayElement::SimpleType(HttpSimpleType::String)),
+        HttpOutput::Empty.into_ok_result(true).into()
     }
 }

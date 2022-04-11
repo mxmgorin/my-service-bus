@@ -1,16 +1,13 @@
 use async_trait::async_trait;
-use my_http_server::{
-    middlewares::controllers::documentation::data_types::HttpObjectStructure, HttpContext,
-    HttpFailResult, HttpOkResult,
+
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
+use my_http_server_controllers::controllers::{
+    actions::GetAction, documentation::HttpActionDescription,
 };
 use rust_extensions::StringBuilder;
 use std::sync::Arc;
 
 use crate::app::AppContext;
-
-use my_http_server::middlewares::controllers::{
-    actions::GetAction, documentation::HttpActionDescription,
-};
 
 pub struct LocksController {
     app: Arc<AppContext>,
@@ -24,8 +21,8 @@ impl LocksController {
 
 #[async_trait]
 impl GetAction for LocksController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+    fn get_route(&self) -> &str {
+        "/Locks"
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
@@ -38,7 +35,7 @@ impl GetAction for LocksController {
         .into()
     }
 
-    async fn handle_request(&self, _ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+    async fn handle_request(&self, _ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let topics = self.app.topic_list.get_all().await;
 
         let mut result = StringBuilder::new();
@@ -57,8 +54,8 @@ impl GetAction for LocksController {
             }
         }
 
-        return Ok(HttpOkResult::Text {
-            text: format!("{}", result.to_string_utf8().unwrap()),
-        });
+        HttpOutput::as_text(format!("{}", result.to_string_utf8().unwrap()))
+            .into_ok_result(true)
+            .into()
     }
 }

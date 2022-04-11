@@ -1,8 +1,9 @@
 use crate::{queues::TopicQueue, topics::TopicData};
 
+use my_http_server_swagger::MyHttpObjectStructure;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, MyHttpObjectStructure)]
 pub struct QueuesJsonResult {
     pub queues: Vec<QueueJsonContract>,
     #[serde(rename = "snapshotId")]
@@ -26,7 +27,7 @@ impl QueuesJsonResult {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, MyHttpObjectStructure)]
 pub struct QueueJsonContract {
     id: String,
     #[serde(rename = "queueType")]
@@ -46,7 +47,7 @@ impl QueueJsonContract {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, MyHttpObjectStructure)]
 pub struct QueueIndex {
     #[serde(rename = "fromId")]
     pub from_id: i64,

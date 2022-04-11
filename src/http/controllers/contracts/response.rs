@@ -1,6 +1,5 @@
-use my_http_server::middlewares::controllers::documentation::{
-    data_types::{HttpDataType, HttpObjectStructure},
-    out_results::HttpResult,
+use my_http_server_controllers::controllers::documentation::{
+    data_types::HttpDataType, out_results::HttpResult,
 };
 
 pub fn empty(description: &str) -> HttpResult {
@@ -10,15 +9,6 @@ pub fn empty(description: &str) -> HttpResult {
         description: description.to_string(),
         data_type: HttpDataType::None,
     }
-}
-
-pub fn object(description: &str) -> Vec<HttpResult> {
-    vec![HttpResult {
-        http_code: 200,
-        nullable: true,
-        description: description.to_string(),
-        data_type: HttpDataType::Object(HttpObjectStructure::new("EmptyContract")),
-    }]
 }
 
 pub fn empty_and_authorized(description: &str) -> Vec<HttpResult> {

@@ -2,15 +2,14 @@ use crate::http::controllers::extensions::HttpContextExtensions;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use my_http_server::{
-    middlewares::controllers::{
-        actions::PostAction,
-        documentation::{data_types::HttpObjectStructure, HttpActionDescription},
-    },
-    HttpContext, HttpFailResult, HttpOkResult,
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
+use my_http_server_controllers::controllers::{
+    actions::PostAction, documentation::HttpActionDescription,
 };
 
 use crate::app::AppContext;
+
+use super::models::PingInputModel;
 pub struct PingController {
     app: Arc<AppContext>,
 }
@@ -23,30 +22,30 @@ impl PingController {
 
 #[async_trait]
 impl PostAction for PingController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+    fn get_route(&self) -> &str {
+        "/Greeting/Ping"
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         HttpActionDescription {
             controller_name: "Greeting",
             description: "Ping Http Session",
-            input_params: Some(vec![
-                super::super::contracts::input_parameters::auth_header(),
-            ]),
+            input_params: PingInputModel::get_input_params().into(),
             results: super::super::contracts::response::empty_and_authorized("Ping is done Ok"),
         }
         .into()
     }
 
-    async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let session_id =
-            ctx.get_required_header(super::super::contracts::input_parameters::AUTH_HEADER_NAME)?;
+    async fn handle_request(&self, ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+        let input_data = PingInputModel::parse_http_input(ctx).await?;
 
-        let http_session = self.app.get_http_session(session_id).await?;
+        let http_session = self
+            .app
+            .get_http_session(input_data.authorization.as_str())
+            .await?;
 
         http_session.as_ref().connection.unwrap_as_http().ping();
 
-        Ok(HttpOkResult::Empty)
+        HttpOutput::Empty.into_ok_result(true).into()
     }
 }

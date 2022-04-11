@@ -1,7 +1,5 @@
 use app::AppContext;
-use my_http_server::middlewares::swagger::SwaggerMiddleware;
-use my_http_server::middlewares::StaticFilesMiddleware;
-use my_http_server::MyHttpServer;
+
 use my_service_bus_tcp_shared::{ConnectionAttributes, MySbTcpSerializer};
 use my_tcp_sockets::TcpServer;
 use tcp::socket_loop::TcpServerEvents;
@@ -57,27 +55,9 @@ async fn main() {
         )
         .await;
 
-    let mut http_server = MyHttpServer::new(SocketAddr::from(([0, 0, 0, 0], 6123)));
-
-    let controllers = Arc::new(crate::http::controllers::builder::build(app.clone()));
-
-    http_server.add_middleware(Arc::new(SwaggerMiddleware::new(
-        controllers.clone(),
-        "MyServiceBus".to_string(),
-        crate::app::APP_VERSION.to_string(),
-    )));
-
-    http_server.add_middleware(controllers);
-
-    http_server.add_middleware(Arc::new(
-        crate::http::middlewares::prometheus::PrometheusMiddleware::new(app.clone()),
-    ));
-
-    http_server.add_middleware(Arc::new(StaticFilesMiddleware::new(None)));
-
-    http_server.start(app.clone());
-
     tasks.push(tokio::task::spawn(crate::timers::start(app.clone())));
+
+    crate::http::start_up::setup_server(app.clone());
 
     signal_hook::flag::register(
         signal_hook::consts::SIGTERM,

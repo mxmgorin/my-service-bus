@@ -1,13 +1,9 @@
 use async_trait::async_trait;
-use std::sync::Arc;
-
-use my_http_server::{
-    middlewares::controllers::{
-        actions::GetAction,
-        documentation::{data_types::HttpObjectStructure, HttpActionDescription},
-    },
-    HttpContext, HttpFailResult, HttpOkResult,
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
+use my_http_server_controllers::controllers::{
+    actions::GetAction, documentation::HttpActionDescription,
 };
+use std::sync::Arc;
 
 use crate::app::AppContext;
 
@@ -23,8 +19,8 @@ impl StatusController {
 
 #[async_trait]
 impl GetAction for StatusController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+    fn get_route(&self) -> &str {
+        "/Status"
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
@@ -32,13 +28,13 @@ impl GetAction for StatusController {
             controller_name: "Status",
             description: "Get status of application",
             input_params: None,
-            results: super::super::contracts::response::object("Objects snapshot"),
+            results: Vec::new(),
         }
         .into()
     }
 
-    async fn handle_request(&self, _ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+    async fn handle_request(&self, _ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let result = super::index_models::StatusJsonResult::new(self.app.as_ref()).await;
-        return HttpOkResult::create_json_response(result).into();
+        return HttpOutput::as_json(result).into_ok_result(true).into();
     }
 }

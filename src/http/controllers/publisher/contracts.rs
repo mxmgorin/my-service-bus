@@ -1,15 +1,29 @@
 use std::collections::HashMap;
 
 use my_http_server::{HttpFailResult, WebContentType};
+
+use my_http_server_swagger::{MyHttpInput, MyHttpObjectStructure};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(MyHttpInput)]
+pub struct PublishMessageHttpInput<'s> {
+    #[http_header(description = "Http session")]
+    pub authorization: String,
+
+    #[http_query(name="topicId"; description = "Id of topic")]
+    pub topic_id: &'s str,
+
+    #[http_body(description = "Base64 encoded messages")]
+    pub messages: Vec<MessageToPublishJsonModel>,
+}
+
+#[derive(Serialize, Deserialize, Debug, MyHttpObjectStructure)]
 pub struct MessageKeyValueJsonModel {
     pub key: String,
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, MyHttpObjectStructure)]
 pub struct MessageToPublishJsonModel {
     pub headers: Option<Vec<MessageKeyValueJsonModel>>,
     #[serde(rename = "base64Message")]

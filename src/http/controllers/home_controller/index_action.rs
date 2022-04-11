@@ -1,36 +1,32 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
-use my_http_server::{
-    middlewares::controllers::{
-        actions::GetAction,
-        documentation::{data_types::HttpObjectStructure, HttpActionDescription},
-    },
-    HttpContext, HttpFailResult, HttpOkResult, WebContentType,
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput, WebContentType};
+use my_http_server_controllers::controllers::{
+    actions::GetAction, documentation::HttpActionDescription,
 };
 
 use crate::app::AppContext;
-pub struct HomeController {
+pub struct IndexAction {
     app: Arc<AppContext>,
 }
 
-impl HomeController {
+impl IndexAction {
     pub fn new(app: Arc<AppContext>) -> Self {
         Self { app }
     }
 }
 
-#[async_trait]
-impl GetAction for HomeController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+#[async_trait::async_trait]
+impl GetAction for IndexAction {
+    fn get_route(&self) -> &str {
+        "/"
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
         None
     }
 
-    async fn handle_request(&self, _ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+    async fn handle_request(&self, _ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let content = format!(
             r###"<html><head><title>{} MyServiceBus</title>
             <link href="/css/bootstrap.css" rel="stylesheet" type="text/css" />
@@ -41,10 +37,12 @@ impl GetAction for HomeController {
             rnd = self.app.process_id
         );
 
-        HttpOkResult::Content {
+        HttpOutput::Content {
             content_type: Some(WebContentType::Html),
             content: content.into_bytes(),
+            headers: None,
         }
+        .into_ok_result(false)
         .into()
     }
 }

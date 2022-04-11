@@ -1,5 +1,6 @@
 mod debug_mode_controller;
 mod locks_controller;
+mod models;
 mod on_delivery_controller;
 pub use debug_mode_controller::DebugModeController;
 pub use locks_controller::LocksController;

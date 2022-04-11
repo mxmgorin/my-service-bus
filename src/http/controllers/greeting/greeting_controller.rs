@@ -1,21 +1,14 @@
-use async_trait::async_trait;
-use my_http_server::{
-    middlewares::controllers::{
-        actions::PostAction,
-        documentation::{
-            data_types::{HttpDataType, HttpField, HttpObjectStructure},
-            in_parameters::{HttpInputParameter, HttpParameterInputSource},
-            out_results::HttpResult,
-            HttpActionDescription,
-        },
-    },
-    HttpContext, HttpFailResult, HttpOkResult,
-};
 use std::sync::Arc;
+
+use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
+use my_http_server_controllers::controllers::{
+    actions::PostAction,
+    documentation::{out_results::HttpResult, HttpActionDescription},
+};
 
 use crate::{app::AppContext, sessions::HttpConnectionData};
 
-use super::models::GreetingJsonResult;
+use super::models::{GreetingInputModel, GreetingJsonResult};
 
 pub struct GreetingController {
     app: Arc<AppContext>,
@@ -27,10 +20,10 @@ impl GreetingController {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl PostAction for GreetingController {
-    fn get_additional_types(&self) -> Option<Vec<HttpObjectStructure>> {
-        None
+    fn get_route(&self) -> &str {
+        "/Greeting"
     }
 
     fn get_description(&self) -> Option<HttpActionDescription> {
@@ -38,54 +31,31 @@ impl PostAction for GreetingController {
             controller_name: "Greeting",
             description: "Issue new Http Session",
 
-            input_params: Some(vec![
-                HttpInputParameter {
-                    field: HttpField::new("name", HttpDataType::as_string(), true),
-
-                    description: "Name of client application".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
-                HttpInputParameter {
-                    field: HttpField::new("version", HttpDataType::as_string(), true),
-                    description: "Version of client application".to_string(),
-                    source: HttpParameterInputSource::Query,
-                    required: true,
-                },
-            ]),
+            input_params: GreetingInputModel::get_input_params().into(),
 
             results: vec![HttpResult {
                 http_code: 200,
                 nullable: false,
                 description: "Session description".to_string(),
-                data_type: HttpDataType::Object(
-                    HttpObjectStructure::new("SessionContractResponse")
-                        .with_string_field("session", true),
-                ),
+                data_type: GreetingJsonResult::get_http_data_structure()
+                    .into_http_data_type_object(),
             }],
         }
         .into()
     }
 
-    async fn handle_request(&self, ctx: HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let query = ctx.get_query_string()?;
-
-        let app_name = query.get_required_string_parameter("name")?;
-        let app_version = query.get_required_string_parameter("version")?;
+    async fn handle_request(&self, ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
+        let ip = ctx.request.get_ip().get_real_ip().to_string();
+        let input_data = GreetingInputModel::parse_http_input(ctx).await?;
 
         let id = uuid::Uuid::new_v4().to_string();
 
-        let data = HttpConnectionData::new(
-            id.to_string(),
-            app_name.to_string(),
-            app_version.to_string(),
-            ctx.get_ip().get_real_ip().to_string(),
-        );
+        let data = HttpConnectionData::new(id.to_string(), input_data.name, input_data.version, ip);
 
         self.app.sessions.add_http(data).await;
 
         let result = GreetingJsonResult { session: id };
 
-        HttpOkResult::create_json_response(result).into()
+        HttpOutput::as_json(result).into_ok_result(true).into()
     }
 }

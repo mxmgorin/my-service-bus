@@ -34,7 +34,7 @@ impl TopicsList {
         let read_access = self.data.read().await;
 
         match read_access.topics.get(topic_id) {
-            Some(result) => Some(Arc::clone(result)),
+            Some(result) => Some(result.clone()),
             None => None,
         }
     }

@@ -1,24 +1,24 @@
 use crate::topics::TopicData;
 
-use my_service_bus_shared::{page_id::PageId, MessageId};
+use my_http_server_swagger::MyHttpObjectStructure;
 use serde::{Deserialize, Serialize};
 
 use super::{
     topic_publisher::TopicPublisherJsonModel, topic_queue_subscriber::TopicQueueSubscriberJsonModel,
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, MyHttpObjectStructure)]
 pub struct TopicsJsonResult {
     pub items: Vec<TopicJsonContract>,
     #[serde(rename = "snapshotId")]
     pub snapshot_id: usize,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, MyHttpObjectStructure)]
 pub struct TopicJsonContract {
     pub id: String,
     #[serde(rename = "messageId")]
-    pub message_id: MessageId,
+    pub message_id: i64,
     #[serde(rename = "packetPerSec")]
     pub packets_per_second: usize,
     #[serde(rename = "messagesPerSec")]
@@ -83,9 +83,9 @@ impl TopicJsonContract {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, MyHttpObjectStructure)]
 pub struct TopicPageJsonContract {
-    pub id: PageId,
+    pub id: i64,
     pub amount: usize,
     pub size: usize,
 }
