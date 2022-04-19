@@ -16,7 +16,9 @@ use super::contracts::PublishMessageHttpInput;
     controller: "Publish",
     description: "Publish messages to topic",
     input_data: "PublishMessageHttpInput",
-    ok_result_description: "Messages are published"
+    result: [
+        {status_code: 202, description: "Message is published"},
+    ]
 )]
 pub struct PublisherController {
     app: Arc<AppContext>,

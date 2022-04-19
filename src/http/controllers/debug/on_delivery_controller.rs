@@ -29,7 +29,7 @@ impl OnDeliveryAction {
 async fn handle_request(
     action: &OnDeliveryAction,
     input_model: GetOnDeliveryInputModel,
-    ctx: &mut HttpContext,
+    _ctx: &mut HttpContext,
 ) -> Result<HttpOkResult, HttpFailResult> {
     let topic = action
         .app

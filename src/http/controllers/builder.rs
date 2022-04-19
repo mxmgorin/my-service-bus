@@ -24,10 +24,13 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     let status_controller = super::status::status_controller::StatusController::new(app.clone());
     controllers.register_get_action(Arc::new(status_controller));
 
-    let queues_controller = Arc::new(super::queues::QueuesController::new(app.clone()));
-    controllers.register_get_action(queues_controller.clone());
-    controllers.register_post_action(queues_controller.clone());
-    controllers.register_delete_action(queues_controller);
+    controllers.register_get_action(Arc::new(super::queues::GetQueuesAction::new(app.clone())));
+    controllers.register_post_action(Arc::new(super::queues::SetMessageIdAction::new(
+        app.clone(),
+    )));
+
+    controllers
+        .register_delete_action(Arc::new(super::queues::DeleteQueueAction::new(app.clone())));
 
     let locks_controller = super::debug::LocksController::new(app.clone());
     controllers.register_get_action(Arc::new(locks_controller));
