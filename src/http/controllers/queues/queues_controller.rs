@@ -54,7 +54,7 @@ impl GetAction for QueuesController {
     async fn handle_request(&self, ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
         let input_data = GetListOfQueuesInputContract::parse_http_input(ctx).await?;
 
-        let topic = self.app.topic_list.get(input_data.topic_id).await;
+        let topic = self.app.topic_list.get(input_data.topic_id.as_str()).await;
 
         if topic.is_none() {
             return Err(HttpFailResult::as_not_found(
@@ -102,8 +102,8 @@ impl DeleteAction for QueuesController {
 
         crate::operations::queues::delete_queue(
             self.app.as_ref(),
-            http_input.topic_id,
-            http_input.queue_id,
+            http_input.topic_id.as_str(),
+            http_input.queue_id.as_str(),
         )
         .await?;
 
@@ -133,8 +133,8 @@ impl PostAction for QueuesController {
 
         crate::operations::queues::set_message_id(
             self.app.as_ref(),
-            http_input.topic_id,
-            http_input.queue_id,
+            http_input.topic_id.as_str(),
+            http_input.queue_id.as_str(),
             http_input.message_id,
         )
         .await?;

@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
-use my_http_server_controllers::controllers::{
-    actions::GetAction, documentation::HttpActionDescription,
-};
+
+use my_http_server_swagger::http_route;
 
 use crate::app::AppContext;
 
+#[http_route(method: "GET", route: "/metrics")]
 pub struct MetricsAction {
     app: Arc<AppContext>,
 }
@@ -17,24 +17,17 @@ impl MetricsAction {
     }
 }
 
-#[async_trait::async_trait]
-impl GetAction for MetricsAction {
-    fn get_route(&self) -> &str {
-        "/metrics"
-    }
-    fn get_description(&self) -> Option<HttpActionDescription> {
-        None
-    }
+async fn handle_request(
+    action: &MetricsAction,
+    _ctx: &mut HttpContext,
+) -> Result<HttpOkResult, HttpFailResult> {
+    let result = action.app.prometheus.build();
 
-    async fn handle_request(&self, _ctx: &mut HttpContext) -> Result<HttpOkResult, HttpFailResult> {
-        let result = self.app.prometheus.build();
-
-        HttpOutput::Content {
-            headers: None,
-            content_type: None,
-            content: result,
-        }
-        .into_ok_result(true)
-        .into()
+    HttpOutput::Content {
+        headers: None,
+        content_type: None,
+        content: result,
     }
+    .into_ok_result(true)
+    .into()
 }

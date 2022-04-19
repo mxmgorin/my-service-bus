@@ -6,12 +6,12 @@ use my_http_server_swagger::{MyHttpInput, MyHttpObjectStructure};
 use serde::{Deserialize, Serialize};
 
 #[derive(MyHttpInput)]
-pub struct PublishMessageHttpInput<'s> {
+pub struct PublishMessageHttpInput {
     #[http_header(description = "Http session")]
     pub authorization: String,
 
     #[http_query(name="topicId"; description = "Id of topic")]
-    pub topic_id: &'s str,
+    pub topic_id: String,
 
     #[http_body(description = "Base64 encoded messages")]
     pub messages: Vec<MessageToPublishJsonModel>,

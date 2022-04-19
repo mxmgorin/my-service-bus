@@ -16,12 +16,10 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
         app.clone(),
     )));
 
-    let greeting_controller = Arc::new(super::greeting::GreetingController::new(app.clone()));
-    controllers.register_post_action(greeting_controller);
+    controllers.register_post_action(Arc::new(super::greeting::GreetingAction::new(app.clone())));
     //controllers.register_http_objects(greeting_controller);
 
-    let greeting_ping_controller = Arc::new(super::greeting::PingController::new(app.clone()));
-    controllers.register_post_action(greeting_ping_controller);
+    controllers.register_post_action(Arc::new(super::greeting::PingAction::new(app.clone())));
 
     let status_controller = super::status::status_controller::StatusController::new(app.clone());
     controllers.register_get_action(Arc::new(status_controller));
@@ -38,7 +36,7 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     controllers.register_post_action(debug_mode_controller.clone());
     controllers.register_delete_action(debug_mode_controller.clone());
 
-    let on_delivery_controller = Arc::new(super::debug::OnDeliveryController::new(app.clone()));
+    let on_delivery_controller = Arc::new(super::debug::OnDeliveryAction::new(app.clone()));
     controllers.register_get_action(on_delivery_controller);
 
     let logs_controller = Arc::new(super::logs::LogsController::new(app.clone()));
