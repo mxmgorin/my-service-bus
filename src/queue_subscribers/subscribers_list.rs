@@ -1,12 +1,11 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use my_service_bus_shared::{messages_bucket::MessagesBucket, queue::TopicQueueType, MessageId};
+use my_service_bus_shared::{queue::TopicQueueType, MessageId};
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::{
-    queues::TopicQueue, sessions::MyServiceBusSession, tcp::tcp_server::ConnectionId, topics::Topic,
-};
+use crate::sessions::{MyServiceBusSession, SessionId};
 
-use super::{QueueSubscriber, SubscriberId, SubscriberMetrics};
+use super::{QueueSubscriber, SubscriberId};
 
 pub enum SubscribersData {
     MultiSubscribers(HashMap<SubscriberId, QueueSubscriber>),
@@ -31,25 +30,45 @@ impl DeadSubscriber {
 
 pub struct SubscribersList {
     data: SubscribersData,
-}
-
-pub enum SubscribeErrorResult {
-    SubscriberWithIdExists,
-    SubscriberOfSameConnectionExists,
+    pub snapshot_id: usize,
+    pub last_unsubscribe: DateTimeAsMicroseconds,
 }
 
 impl SubscribersList {
     pub fn new(queue_type: TopicQueueType) -> Self {
+        let last_unsubscribe = DateTimeAsMicroseconds::now();
         match queue_type {
             TopicQueueType::Permanent => Self {
+                snapshot_id: 0,
                 data: SubscribersData::MultiSubscribers(HashMap::new()),
+                last_unsubscribe,
             },
             TopicQueueType::DeleteOnDisconnect => Self {
+                snapshot_id: 0,
                 data: SubscribersData::MultiSubscribers(HashMap::new()),
+                last_unsubscribe,
             },
             TopicQueueType::PermanentWithSingleConnection => Self {
+                snapshot_id: 0,
                 data: SubscribersData::SingleSubscriber(None),
+                last_unsubscribe,
             },
+        }
+    }
+
+    pub fn get_all(&self) -> Option<Vec<&QueueSubscriber>> {
+        match &self.data {
+            SubscribersData::MultiSubscribers(hash_map) => {
+                if hash_map.len() == 0 {
+                    return None;
+                }
+
+                return Some(hash_map.values().collect());
+            }
+            SubscribersData::SingleSubscriber(single) => {
+                let subscriber = single.as_ref()?;
+                Some(vec![subscriber])
+            }
         }
     }
 
@@ -106,107 +125,78 @@ impl SubscribersList {
         }
     }
 
-    pub async fn get_with_disconnected_sockets(&self) -> Option<Vec<SubscriberId>> {
-        let mut result = None;
-
-        match &self.data {
-            SubscribersData::MultiSubscribers(subscribers) => {
-                for subscriber in subscribers.values() {
-                    if !subscriber.session.is_connected().await {
-                        if result.is_none() {
-                            result = Some(Vec::new());
-                        }
-                        result.as_mut().unwrap().push(subscriber.id);
-                    }
-                }
-            }
-            SubscribersData::SingleSubscriber(queue_subscriber) => {
-                if let Some(sub) = queue_subscriber {
-                    if !sub.session.is_connected().await {
-                        result = Some(vec![sub.id]);
-                    }
-                }
-            }
-        }
-
-        return result;
-    }
-
-    pub fn set_messages_on_delivery(
-        &mut self,
-        subscriber_id: SubscriberId,
-        messages_bucket: MessagesBucket,
-    ) -> Option<MessagesBucket> {
-        let subscriber_result = self.get_by_id_mut(subscriber_id);
-
-        if let Some(subscriber) = subscriber_result {
-            subscriber.set_messages_on_delivery(messages_bucket);
-            subscriber.metrics.set_started_delivery();
-            return None;
-        } else {
-            return Some(messages_bucket);
-        }
-    }
-
-    fn check_that_we_has_already_subscriber_for_that_session(
-        &self,
-        connection_id: ConnectionId,
-    ) -> Result<(), SubscribeErrorResult> {
+    fn check_that_we_has_already_subscriber_for_that_session(&self, session_id: SessionId) -> bool {
         match &self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 for subscriber in hash_map.values() {
-                    if subscriber.session.id == connection_id {
-                        return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
+                    if subscriber.session.id == session_id {
+                        return false;
                     }
                 }
             }
             SubscribersData::SingleSubscriber(single_subscriber) => {
                 if let Some(subscriber) = single_subscriber {
-                    if subscriber.session.id == connection_id {
-                        return Err(SubscribeErrorResult::SubscriberOfSameConnectionExists);
+                    if subscriber.session.id == session_id {
+                        return false;
                     }
                 }
             }
         }
 
-        Ok(())
+        true
     }
 
     ///Returns the subscriber which is kicked
     pub fn subscribe(
         &mut self,
         subscriber_id: SubscriberId,
-        topic: Arc<Topic>,
-        queue: Arc<TopicQueue>,
+        topic_id: String,
+        queue_id: String,
         session: Arc<MyServiceBusSession>,
-    ) -> Result<Option<QueueSubscriber>, SubscribeErrorResult> {
-        self.check_that_we_has_already_subscriber_for_that_session(session.id)?;
+    ) -> Option<QueueSubscriber> {
+        if !self.check_that_we_has_already_subscriber_for_that_session(session.id) {
+            panic!(
+                "Somehow we subscribe second time to the same queue {}/{} the same session_id {} for the new subscriber. Most probably there is a bug on the client",
+                topic_id, queue_id, subscriber_id
+            );
+        }
+        self.snapshot_id += 1;
 
         match &mut self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 if hash_map.contains_key(&subscriber_id) {
-                    return Err(SubscribeErrorResult::SubscriberWithIdExists);
+                    panic!(
+                        "Somehow we generated the same ID {} for the new subscriber {}/{}",
+                        subscriber_id, topic_id, queue_id
+                    );
                 }
 
-                let subscriber = QueueSubscriber::new(subscriber_id, topic, queue, session);
+                let subscriber = QueueSubscriber::new(subscriber_id, topic_id, queue_id, session);
 
                 hash_map.insert(subscriber_id, subscriber);
 
-                return Ok(None);
+                return None;
             }
             SubscribersData::SingleSubscriber(single) => {
                 if let Some(subscriber) = single {
                     if subscriber.id == subscriber_id {
-                        return Err(SubscribeErrorResult::SubscriberWithIdExists);
+                        panic!(
+                            "Somehow we generated the same ID {} for the new subscriber {}/{}",
+                            subscriber_id, topic_id, queue_id
+                        );
                     }
                 }
 
-                let mut old_subscriber =
-                    Some(QueueSubscriber::new(subscriber_id, topic, queue, session));
+                let mut old_subscriber = Some(QueueSubscriber::new(
+                    subscriber_id,
+                    topic_id,
+                    queue_id,
+                    session,
+                ));
 
                 std::mem::swap(&mut old_subscriber, single);
 
-                return Ok(old_subscriber);
+                return old_subscriber;
             }
         }
     }
@@ -239,40 +229,18 @@ impl SubscribersList {
         }
     }
 
-    pub fn get_all_subscriber_metrics(&self) -> Vec<SubscriberMetrics> {
-        let mut result = Vec::new();
-
+    fn resolve_subscriber_id_by_session_id(&self, session_id: SessionId) -> Option<SubscriberId> {
         match &self.data {
             SubscribersData::MultiSubscribers(hash_map) => {
                 for sub in hash_map.values() {
-                    result.push(sub.metrics.clone())
-                }
-            }
-            SubscribersData::SingleSubscriber(single) => {
-                if let Some(sub) = single {
-                    result.push(sub.metrics.clone())
-                }
-            }
-        }
-
-        result
-    }
-
-    fn resolve_subscriber_id_by_connection_id(
-        &self,
-        connection_id: ConnectionId,
-    ) -> Option<SubscriberId> {
-        match &self.data {
-            SubscribersData::MultiSubscribers(hash_map) => {
-                for sub in hash_map.values() {
-                    if sub.session.id == connection_id {
+                    if sub.session.id == session_id {
                         return Some(sub.id);
                     }
                 }
             }
             SubscribersData::SingleSubscriber(single) => {
                 if let Some(sub) = single {
-                    if sub.session.id == connection_id {
+                    if sub.session.id == session_id {
                         return Some(sub.id);
                     }
                 }
@@ -284,26 +252,31 @@ impl SubscribersList {
 
     pub fn remove(&mut self, subscriber_id: SubscriberId) -> Option<QueueSubscriber> {
         match &mut self.data {
-            SubscribersData::MultiSubscribers(multi) => multi.remove(&subscriber_id),
+            SubscribersData::MultiSubscribers(multi) => {
+                let result = multi.remove(&subscriber_id);
+                if result.is_some() {
+                    self.last_unsubscribe = DateTimeAsMicroseconds::now();
+                }
+                self.snapshot_id += 1;
+                result
+            }
             SubscribersData::SingleSubscriber(single) => {
                 let mut result = None;
 
                 if let Some(sub) = single {
                     if sub.id == subscriber_id {
+                        self.last_unsubscribe = DateTimeAsMicroseconds::now();
                         std::mem::swap(&mut result, single);
                     }
                 }
-
+                self.snapshot_id += 1;
                 result
             }
         }
     }
 
-    pub fn remove_by_connection_id(
-        &mut self,
-        connection_id: ConnectionId,
-    ) -> Option<QueueSubscriber> {
-        let subscriber_id = self.resolve_subscriber_id_by_connection_id(connection_id)?;
+    pub fn remove_by_session_id(&mut self, session_id: SessionId) -> Option<QueueSubscriber> {
+        let subscriber_id = self.resolve_subscriber_id_by_session_id(session_id)?;
         self.remove(subscriber_id)
     }
 

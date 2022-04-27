@@ -1,11 +1,3 @@
-interface IQueueSubscriber {
-    session: ISession, subscriber: ISubscriber
-}
-
-interface ITopicSession {
-    session: ISession,
-    active: boolean
-}
 
 class Utils {
 
@@ -67,32 +59,7 @@ class Utils {
     }
 
 
-    public static iterateTopicQueues(status: IStatus, callback: (topic: string, queues: ITopicQueues) => void) {
-        let topics = Object.keys(status.queues)
-        for (let topic of topics) {
-            callback(topic, status.queues[topic]);
-        }
-    }
 
-    public static iterateSessionPublishers(session: ISession, data: (topic: string, value: number) => void) {
-        let topics = Object.keys(session.publishers)
-        for (let topic of topics) {
-            data(topic, session.publishers[topic]);
-        }
-    }
-
-    public static getQueueSubscribers(status: IStatus, topicId: string, queueId: string): IQueueSubscriber[] {
-        let result: IQueueSubscriber[] = [];
-        for (let session of status.sessions.items) {
-            for (let subscriber of session.subscribers) {
-                if (subscriber.topicId == topicId && subscriber.queueId == queueId) {
-                    result.push({ session, subscriber });
-                }
-            }
-        }
-
-        return result;
-    }
 
 
     public static format_duration(micros: number): string {
@@ -114,24 +81,7 @@ class Utils {
 
     }
 
-    public static iterateBySessionsWithTopic(status: IStatus, topic: string): ITopicSession[] {
-
-        let result: ITopicSession[] = [];
-        for (let session of status.sessions.items) {
-
-            Utils.iterateSessionPublishers(session, (topicFromSession, active) => {
-
-                if (topicFromSession == topic) {
-                    result.push({
-                        session, active: active > 0
-                    });
-                }
-
-            });
-
-        }
 
 
-        return result;
-    }
+
 }

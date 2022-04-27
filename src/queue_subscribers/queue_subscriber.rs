@@ -1,16 +1,14 @@
 use std::{sync::Arc, time::Duration};
 
-use my_service_bus_shared::{
-    messages_bucket::MessagesBucket, queue_with_intervals::QueueWithIntervals, MessageId,
-};
+use my_service_bus_shared::{queue_with_intervals::QueueWithIntervals, MessageId};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::{queues::TopicQueue, sessions::MyServiceBusSession, topics::Topic};
+use crate::{queues::DeliveryBucket, sessions::MyServiceBusSession};
 
 use super::{SubscriberId, SubscriberMetrics};
 
 pub struct OnDeliveryStateData {
-    messages: MessagesBucket,
+    pub bucket: DeliveryBucket,
     inserted: DateTimeAsMicroseconds,
 }
 pub enum QueueSubscriberDeliveryState {
@@ -27,11 +25,19 @@ impl QueueSubscriberDeliveryState {
             QueueSubscriberDeliveryState::OnDelivery(_) => "OnDelivery",
         }
     }
+
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            QueueSubscriberDeliveryState::ReadyToDeliver => 0,
+            QueueSubscriberDeliveryState::Rented => 1,
+            QueueSubscriberDeliveryState::OnDelivery(_) => 2,
+        }
+    }
 }
 
 pub struct QueueSubscriber {
-    pub topic: Arc<Topic>,
-    pub queue: Arc<TopicQueue>,
+    pub topic_id: String,
+    pub queue_id: String,
     pub subscribed: DateTimeAsMicroseconds,
     pub metrics: SubscriberMetrics,
     pub delivery_state: QueueSubscriberDeliveryState,
@@ -43,15 +49,15 @@ pub struct QueueSubscriber {
 impl QueueSubscriber {
     pub fn new(
         id: SubscriberId,
-        topic: Arc<Topic>,
-        queue: Arc<TopicQueue>,
+        topic_id: String,
+        queue_id: String,
         session: Arc<MyServiceBusSession>,
     ) -> Self {
         Self {
-            topic: topic.clone(),
-            queue: queue.clone(),
+            topic_id: topic_id.to_string(),
+            queue_id: queue_id.to_string(),
             subscribed: DateTimeAsMicroseconds::now(),
-            metrics: SubscriberMetrics::new(id, session.id, topic, queue),
+            metrics: SubscriberMetrics::new(id, session.id, topic_id, queue_id),
             delivery_state: QueueSubscriberDeliveryState::ReadyToDeliver,
             session,
             id,
@@ -81,13 +87,13 @@ impl QueueSubscriber {
         );
     }
 
-    pub fn reset_delivery(&mut self) -> Option<MessagesBucket> {
+    pub fn reset_delivery(&mut self) -> Option<DeliveryBucket> {
         let mut prev_delivery_state = QueueSubscriberDeliveryState::ReadyToDeliver;
         std::mem::swap(&mut prev_delivery_state, &mut self.delivery_state);
 
         self.metrics.set_delivery_mode_as_ready_to_deliver();
         if let QueueSubscriberDeliveryState::OnDelivery(state) = prev_delivery_state {
-            return Some(state.messages);
+            return Some(state.bucket);
         }
 
         return None;
@@ -95,14 +101,14 @@ impl QueueSubscriber {
 
     pub fn intermediary_confirmed(&mut self, queue: &QueueWithIntervals) {
         if let QueueSubscriberDeliveryState::OnDelivery(state) = &mut self.delivery_state {
-            state.messages.intermediary_confirmed(queue);
+            state.bucket.confirmed(queue);
         }
     }
 
-    pub fn set_messages_on_delivery(&mut self, messages_bucket: MessagesBucket) {
+    pub fn set_messages_on_delivery(&mut self, messages: &QueueWithIntervals) {
         if let QueueSubscriberDeliveryState::Rented = &self.delivery_state {
             self.delivery_state = QueueSubscriberDeliveryState::OnDelivery(OnDeliveryStateData {
-                messages: messages_bucket,
+                bucket: DeliveryBucket::new(messages.clone()),
                 inserted: DateTimeAsMicroseconds::now(),
             });
             self.metrics.set_delivery_mode_as_on_delivery();
@@ -119,7 +125,7 @@ impl QueueSubscriber {
         match &self.delivery_state {
             QueueSubscriberDeliveryState::ReadyToDeliver => None,
             QueueSubscriberDeliveryState::Rented => None,
-            QueueSubscriberDeliveryState::OnDelivery(state) => Some(state.messages.ids.clone()),
+            QueueSubscriberDeliveryState::OnDelivery(state) => Some(state.bucket.ids.clone()),
         }
     }
 
@@ -144,7 +150,7 @@ impl QueueSubscriber {
             QueueSubscriberDeliveryState::ReadyToDeliver => None,
             QueueSubscriberDeliveryState::Rented => None,
             QueueSubscriberDeliveryState::OnDelivery(on_delivery) => {
-                on_delivery.messages.ids.get_min_id()
+                on_delivery.bucket.ids.get_min_id()
             }
         }
     }

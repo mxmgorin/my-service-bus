@@ -74,18 +74,26 @@ class main {
 
 
         $.ajax({ url: '/status', type: 'get' })
-            .then((result: IStatus) => {
+            .then((result: IStatusApiContract) => {
                 this.requested = false;
 
                 let filterPhrase = (<HTMLInputElement>document.getElementById('filter')).value;
 
                 filterPhrase == filterPhrase.trim();
 
-                let filterPhraseChanged = filterPhrase != ServiceLocator.prevFilterPhrase || !ServiceLocator.prevFilterPhrase;
+                let filterPhraseIsChanged = ServiceLocator.checkIfFilterPhraseIsChanged(filterPhrase);
 
-                ServiceLocator.prevFilterPhrase = filterPhrase;
+                if (filterPhraseIsChanged) {
+                    console.log("filterPhraseIsChanged");
+                }
 
-                if (ServiceLocator.checkIfTopicsAreChanged(result.topics) || filterPhraseChanged) {
+                let topics_are_changed = ServiceLocator.checkIfTopicsAreChanged(result.topics);
+
+                if (topics_are_changed) {
+                    console.log("topics_are_changed");
+                }
+
+                if (topics_are_changed || filterPhraseIsChanged) {
                     this.topicsElement.innerHTML = HtmlTopics.renderTopics(result.topics);
                     ServiceLocator.topics = result.topics;
                 }
@@ -94,11 +102,11 @@ class main {
                 }
 
                 if (ServiceLocator.checkIfSessionsAreChanged(result.sessions)) {
-                    this.connectionsElement.innerHTML = HtmlSessions.renderSessions(result.sessions);
+                    this.connectionsElement.innerHTML = HtmlSessions.renderSessions(result);
                     ServiceLocator.sessions = result.sessions;
                 }
                 else {
-                    HtmlSessions.updateSessionData(result.sessions);
+                    HtmlSessions.updateSessionData(result);
                 }
 
                 HtmlTopics.updateTopicSessions(result);

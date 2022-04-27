@@ -1,95 +1,71 @@
-use std::time::Duration;
-
 use my_service_bus_shared::{
-    messages_bucket::MessagesBucket,
     queue::TopicQueueType,
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
     MessageId,
 };
 use rust_extensions::date_time::DateTimeAsMicroseconds;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
 
 use crate::{
-    app::AppContext,
     operations::OperationFailResult,
-    queue_subscribers::{DeadSubscriber, QueueSubscriber, SubscriberId, SubscriberMetrics},
-    tcp::tcp_server::ConnectionId,
+    queue_subscribers::{QueueSubscriber, SubscriberId, SubscribersList},
     topics::TopicQueueSnapshot,
-    utils::rw_locks::RwWriteAccess,
 };
 
-use super::{QueueData, TopicQueueMetrics};
-
-pub struct TopicQueueGcData {
-    pub subscribers_amount: usize,
-    pub subscribers_with_no_connection: Option<Vec<SubscriberId>>,
-    pub queue_type: TopicQueueType,
-    pub last_subscriber_disconnect: DateTimeAsMicroseconds,
-}
+use super::{delivery_attempts::DeliveryAttempts, DeliveryBucket};
 
 pub struct TopicQueue {
     pub topic_id: String,
     pub queue_id: String,
-    data: RwLock<QueueData>,
+    pub queue: QueueWithIntervals,
+    pub subscribers: SubscribersList,
+    pub delivery_attempts: DeliveryAttempts,
+    pub queue_type: TopicQueueType,
+
     pub delivery_lock: Mutex<usize>,
-    pub metrics: TopicQueueMetrics,
 }
 
 impl TopicQueue {
-    pub async fn new(topic_id: &str, queue_id: &str, queue_type: TopicQueueType) -> TopicQueue {
-        let data = QueueData::new(topic_id.to_string(), queue_id.to_string(), queue_type);
-
-        let metrics = TopicQueueMetrics::new(queue_id.to_string(), queue_type);
-        data.update_metrics(&metrics).await;
-
-        TopicQueue {
-            topic_id: topic_id.to_string(),
-            queue_id: queue_id.to_string(),
-            data: RwLock::new(data),
+    pub fn new(topic_id: String, queue_id: String, queue_type: TopicQueueType) -> Self {
+        Self {
+            topic_id,
+            queue_id,
+            queue: QueueWithIntervals::new(),
+            subscribers: SubscribersList::new(queue_type),
+            delivery_attempts: DeliveryAttempts::new(),
+            queue_type,
             delivery_lock: Mutex::new(0),
-            metrics: TopicQueueMetrics::new(queue_id.to_string(), queue_type),
         }
     }
 
-    pub async fn restore(
-        topic_id: &str,
-        queue_id: &str,
+    pub fn restore(
+        topic_id: String,
+        queue_id: String,
         queue_type: TopicQueueType,
         queue: QueueWithIntervals,
-    ) -> TopicQueue {
-        let data = QueueData::restore(
-            topic_id.to_string(),
-            queue_id.to_string(),
-            queue_type,
+    ) -> Self {
+        Self {
+            topic_id,
+            queue_id,
             queue,
-        );
-
-        let metrics = TopicQueueMetrics::new(queue_id.to_string(), queue_type);
-        data.update_metrics(&metrics).await;
-
-        TopicQueue {
-            topic_id: topic_id.to_string(),
-            queue_id: queue_id.to_string(),
-            data: RwLock::new(data),
+            subscribers: SubscribersList::new(queue_type),
+            delivery_attempts: DeliveryAttempts::new(),
+            queue_type,
             delivery_lock: Mutex::new(0),
-            metrics,
         }
     }
 
-    pub async fn get_min_msg_id(&self) -> Option<MessageId> {
-        let read_access = self.data.read().await;
-        read_access.queue.get_min_id()
+    pub fn get_min_msg_id(&self) -> Option<MessageId> {
+        self.queue.get_min_id()
     }
 
-    pub async fn get_snapshot_to_persist(&self) -> Option<TopicQueueSnapshot> {
-        let read = self.data.read().await;
-
-        match read.queue_type {
+    pub fn get_snapshot_to_persist(&self) -> Option<TopicQueueSnapshot> {
+        match self.queue_type {
             TopicQueueType::Permanent => {
                 let result = TopicQueueSnapshot {
-                    queue_id: read.queue_id.to_string(),
-                    queue_type: read.queue_type.clone(),
-                    ranges: read.get_snapshot(),
+                    queue_id: self.queue_id.to_string(),
+                    queue_type: self.queue_type.clone(),
+                    ranges: self.queue.get_snapshot(),
                 };
 
                 Some(result)
@@ -97,9 +73,9 @@ impl TopicQueue {
             TopicQueueType::DeleteOnDisconnect => None,
             TopicQueueType::PermanentWithSingleConnection => {
                 let result = TopicQueueSnapshot {
-                    queue_id: read.queue_id.to_string(),
-                    queue_type: read.queue_type.clone(),
-                    ranges: read.get_snapshot(),
+                    queue_id: self.queue_id.to_string(),
+                    queue_type: self.queue_type.clone(),
+                    ranges: self.queue.get_snapshot(),
                 };
 
                 Some(result)
@@ -107,98 +83,28 @@ impl TopicQueue {
         }
     }
 
-    pub async fn get_gc_data(&self) -> TopicQueueGcData {
-        let read_access = self.data.read().await;
-
-        let subscribers_with_no_connection = read_access
-            .subscribers
-            .get_with_disconnected_sockets()
-            .await;
-
-        TopicQueueGcData {
-            queue_type: read_access.queue_type,
-            subscribers_amount: read_access.subscribers.get_amount(),
-            last_subscriber_disconnect: read_access.last_ubsubscribe,
-            subscribers_with_no_connection,
+    pub fn enqueue_messages(&mut self, msgs: &QueueWithIntervals) {
+        for msg_id in msgs {
+            self.queue.enqueue(msg_id);
         }
     }
 
-    pub async fn update_queue_type(&self, queue_type: TopicQueueType) {
-        let mut write_access = self.data.write().await;
-        write_access.queue_type = queue_type;
-    }
-
-    pub async fn get_queue_size(&self) -> i64 {
-        let read_access = self.data.read().await;
-        return read_access.queue.len();
-    }
-
-    pub async fn enqueue_messages(&self, msgs: &QueueWithIntervals) {
-        let mut write_access = self.data.write().await;
-        write_access.enqueue_messages(msgs);
-        write_access.update_metrics(&self.metrics).await;
-    }
-
-    pub async fn one_second_tick(&self) {
-        let mut write_access = self.data.write().await;
-
-        write_access.subscribers.one_second_tick();
-    }
-
-    pub async fn get_write_access<'a>(
-        &'a self,
-        process_id: i64,
-        process: String,
-        app: &AppContext,
-    ) -> RwWriteAccess<'a, QueueData> {
-        let write_access = self.data.write().await;
-        return RwWriteAccess::new(write_access, process_id, process, app.locks.clone());
-    }
-
-    pub async fn get_all_subscribers_metrics(&self) -> Vec<SubscriberMetrics> {
-        let mut result = Vec::new();
-
-        let read_acess = self.data.read().await;
-
-        let metrics_vec = read_acess.subscribers.get_all_subscriber_metrics();
-
-        result.extend(metrics_vec);
-
-        result
-    }
-
-    pub async fn find_subscribers_dead_on_delivery(
-        &self,
-        max_delivery_duration: Duration,
-    ) -> Option<Vec<DeadSubscriber>> {
-        let write_access = self.data.write().await;
-
-        return write_access
-            .subscribers
-            .find_subscribers_dead_on_delivery(max_delivery_duration);
-    }
-
-    #[inline]
-    pub async fn remove_subscribers_by_connection_id(
-        &self,
-        connection_id: ConnectionId,
-    ) -> Option<QueueSubscriber> {
-        let mut write_access = self.data.write().await;
-
-        let result = write_access
-            .subscribers
-            .remove_by_connection_id(connection_id);
-
-        if result.is_some() {
-            write_access.last_ubsubscribe = DateTimeAsMicroseconds::now();
+    pub fn update_queue_type(&mut self, queue_type: TopicQueueType) {
+        if !self.queue_type_is_about_to_change(queue_type) {
+            return;
         }
-
-        result
+        self.queue_type = queue_type;
     }
 
-    pub async fn set_message_id(&self, message_id: MessageId, max_message_id: MessageId) {
-        let mut topic_queue_data = self.data.write().await;
+    pub fn get_queue_size(&self) -> i64 {
+        return self.queue.len();
+    }
 
+    pub fn one_second_tick(&mut self) {
+        self.subscribers.one_second_tick();
+    }
+
+    pub fn set_message_id(&mut self, message_id: MessageId, max_message_id: MessageId) {
         let mut intervals = Vec::new();
 
         intervals.push(QueueIndexRange {
@@ -206,74 +112,165 @@ impl TopicQueue {
             to_id: max_message_id,
         });
 
-        topic_queue_data.queue.reset(intervals);
+        self.queue.reset(intervals);
     }
 
-    pub async fn mark_not_delivered(&self, messages_on_delivery: &MessagesBucket) {
-        let mut write_access = self.data.write().await;
-        write_access.process_not_delivered(&messages_on_delivery.ids);
+    pub fn mark_not_delivered(&mut self, delivery_bucket: &DeliveryBucket) {
+        self.process_not_delivered(&delivery_bucket.ids);
     }
 
-    pub async fn confirmed_delivered(
-        &self,
+    fn process_not_delivered(&mut self, not_delivered_ids: &QueueWithIntervals) {
+        self.queue.merge_with(not_delivered_ids);
+
+        for msg_id in not_delivered_ids {
+            self.delivery_attempts.add(msg_id);
+        }
+    }
+
+    pub fn confirmed_delivered(
+        &mut self,
         subscriber_id: SubscriberId,
     ) -> Result<(), OperationFailResult> {
-        let mut write_access = self.data.write().await;
-        write_access.confirmed_delivered(subscriber_id)
+        let subscriber = self.subscribers.get_by_id_mut(subscriber_id);
+
+        if subscriber.is_none() {
+            return Err(OperationFailResult::SubscriberNotFound { id: subscriber_id });
+        }
+
+        let subscriber = subscriber.unwrap();
+
+        let messages_bucket = subscriber.reset_delivery();
+
+        if messages_bucket.is_none() {
+            println!(
+                "{}/{} confirmed_delivered: No messages on delivery at subscriber {}",
+                self.topic_id, self.queue_id, subscriber_id
+            );
+
+            return Ok(());
+        };
+
+        let mut messages_bucket = messages_bucket.unwrap();
+        messages_bucket.confirm_everything();
+
+        update_delivery_time(subscriber, messages_bucket.confirmed, true);
+
+        self.process_delivered(&messages_bucket.ids);
+
+        Ok(())
     }
 
-    pub async fn confirmed_non_delivered(
-        &self,
+    fn process_delivered(&mut self, delivered_ids: &QueueWithIntervals) {
+        for msg_id in delivered_ids {
+            self.delivery_attempts.reset(msg_id);
+        }
+    }
+
+    pub fn confirmed_non_delivered(
+        &mut self,
         subscriber_id: SubscriberId,
     ) -> Result<(), OperationFailResult> {
-        let mut write_access = self.data.write().await;
-        write_access.confirmed_non_delivered(subscriber_id)
+        let subscriber = self.subscribers.get_by_id_mut(subscriber_id);
+
+        if subscriber.is_none() {
+            return Err(OperationFailResult::SubscriberNotFound { id: subscriber_id });
+        }
+
+        let subscriber = subscriber.unwrap();
+
+        let messages_bucket = subscriber.reset_delivery();
+
+        if messages_bucket.is_none() {
+            println!(
+                "{}/{} confirmed_non_delivered: No messages on delivery at subscriber {}",
+                self.topic_id, self.queue_id, subscriber_id
+            );
+
+            return Ok(());
+        };
+
+        let messages_bucket = messages_bucket.unwrap();
+
+        update_delivery_time(subscriber, messages_bucket.confirmed, false);
+
+        self.process_not_delivered(&messages_bucket.ids);
+
+        Ok(())
     }
 
-    pub async fn confirmed_some_delivered(
-        &self,
+    pub fn confirmed_some_delivered(
+        &mut self,
         subscriber_id: SubscriberId,
         delivered: QueueWithIntervals,
     ) -> Result<(), OperationFailResult> {
-        let mut write_access = self.data.write().await;
-        write_access.confirmed_some_delivered(subscriber_id, delivered)
+        let subscriber = self.subscribers.get_by_id_mut(subscriber_id);
+
+        if subscriber.is_none() {
+            return Err(OperationFailResult::SubscriberNotFound { id: subscriber_id });
+        }
+
+        let subscriber = subscriber.unwrap();
+
+        let delivery_bucket = subscriber.reset_delivery();
+
+        if delivery_bucket.is_none() {
+            println!(
+                "{}/{} confirmed_some_delivered: No messages on delivery at subscriber {}",
+                self.topic_id, self.queue_id, subscriber_id
+            );
+
+            return Ok(());
+        };
+
+        let mut delivery_bucket = delivery_bucket.unwrap();
+
+        //Remove delivered and what remains - is not delivered
+        delivery_bucket.confirmed(&delivered);
+
+        update_delivery_time(subscriber, delivery_bucket.confirmed, false);
+
+        if delivery_bucket.ids.len() > 0 {
+            self.process_not_delivered(&delivery_bucket.ids);
+        } else {
+            self.process_delivered(&delivered);
+        }
+
+        Ok(())
     }
 
-    pub async fn intermediary_confirm(
-        &self,
+    pub fn intermediary_confirmed(
+        &mut self,
         subscriber_id: SubscriberId,
         confirmed: QueueWithIntervals,
     ) -> Result<(), OperationFailResult> {
-        let mut write_access = self.data.write().await;
-        write_access.intermediary_confirmed(subscriber_id, confirmed)
-    }
+        let subscriber = self.subscribers.get_by_id_mut(subscriber_id);
 
-    pub async fn remove_subscribers(&self, ids: Vec<SubscriberId>) -> Vec<QueueSubscriber> {
-        let mut result = Vec::new();
-        let mut write_access = self.data.write().await;
-        for sub_id in ids {
-            if let Some(subscriber) = write_access.subscribers.remove(sub_id) {
-                result.push(subscriber);
-            }
+        if subscriber.is_none() {
+            return Err(OperationFailResult::SubscriberNotFound { id: subscriber_id });
         }
 
-        result
+        let subscriber = subscriber.unwrap();
+
+        if confirmed.len() > 0 {
+            subscriber.intermediary_confirmed(&confirmed);
+            self.process_delivered(&confirmed);
+        }
+
+        return Ok(());
     }
 
-    pub async fn get_messages_on_delivery(
+    pub fn get_messages_on_delivery(
         &self,
         subscriber_id: SubscriberId,
     ) -> Option<QueueWithIntervals> {
-        let read_access = self.data.read().await;
-        return read_access.get_messages_on_delivery(subscriber_id).await;
+        let subscriber = self.subscribers.get_by_id(subscriber_id)?;
+        return subscriber.get_messages_on_delivery();
     }
 
-    pub async fn get_min_message_id(&self) -> Option<MessageId> {
-        let read_access = self.data.read().await;
+    pub fn get_min_message_id(&self) -> Option<MessageId> {
+        let min_queue_message_id_result = self.queue.get_min_id();
 
-        let min_queue_message_id_result = read_access.queue.get_min_id();
-
-        let min_message_id_from_subscribers = read_access.subscribers.get_min_message_id();
+        let min_message_id_from_subscribers = self.subscribers.get_min_message_id();
 
         match min_queue_message_id_result {
             Some(min_queue_message_id) => {
@@ -291,5 +288,40 @@ impl TopicQueue {
                 return min_message_id_from_subscribers;
             }
         }
+    }
+
+    pub fn queue_type_is_about_to_change(&self, new_queue_type: TopicQueueType) -> bool {
+        match self.queue_type {
+            TopicQueueType::Permanent => match new_queue_type {
+                TopicQueueType::Permanent => false,
+                TopicQueueType::DeleteOnDisconnect => true,
+                TopicQueueType::PermanentWithSingleConnection => true,
+            },
+            TopicQueueType::DeleteOnDisconnect => match new_queue_type {
+                TopicQueueType::Permanent => true,
+                TopicQueueType::DeleteOnDisconnect => false,
+                TopicQueueType::PermanentWithSingleConnection => true,
+            },
+            TopicQueueType::PermanentWithSingleConnection => match new_queue_type {
+                TopicQueueType::Permanent => true,
+                TopicQueueType::DeleteOnDisconnect => true,
+                TopicQueueType::PermanentWithSingleConnection => false,
+            },
+        }
+    }
+}
+
+fn update_delivery_time(subscriber: &mut QueueSubscriber, amount: usize, positive: bool) {
+    let delivery_duration =
+        DateTimeAsMicroseconds::now().duration_since(subscriber.metrics.start_delivery_time);
+
+    if positive {
+        subscriber
+            .metrics
+            .set_delivered_statistic(amount, delivery_duration);
+    } else {
+        subscriber
+            .metrics
+            .set_not_delivered_statistic(amount as i32, delivery_duration);
     }
 }

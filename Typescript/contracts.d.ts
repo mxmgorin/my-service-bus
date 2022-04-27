@@ -1,10 +1,11 @@
 
-interface IStatus {
+interface IStatusApiContract {
     topics: ITopics,
     queues: object,
     sessions: ISessions
-    system: ISystemStatus
+    system: ISystemStatus,
 }
+
 interface ISession {
     id: number,
     ip: string,
@@ -16,8 +17,6 @@ interface ISession {
     writtenSize: number,
     readPerSec: number,
     writtenPerSec: number,
-    publishers: object,
-    subscribers: ISubscriber[]
 }
 
 interface ISessions {
@@ -30,6 +29,10 @@ interface ITopics {
     items: ITopic[],
 }
 
+interface ITopicPublisherApiContract {
+    sessionId: number,
+    active: number
+}
 
 interface ITopic {
     id: string,
@@ -37,13 +40,15 @@ interface ITopic {
     packetPerSec: number,
     messagesPerSec: number,
     persistSize: number,
-    publishHistory: number[]
-    pages: IPage[]
+    publishHistory: number[],
+    pages: IPage[],
+    publishers: ITopicPublisherApiContract[],
+    subscribers: ISubscriberApiContract[]
 }
 
 interface IPage {
     id: number,
-    percent: number,
+    amount: number,
     size: number
 }
 
@@ -60,18 +65,14 @@ interface ITopicQueue {
     data: IQueueIndexRange[]
 }
 
-
-
-interface ISubscriber {
+interface ISubscriberApiContract {
     id: number,
-    topicId: string,
+    sessionId: number;
     queueId: string,
     active: number,
-    deliveryMode: number,
-    deliveryHistory: number[],
+    deliveryState: number,
+    history: number[],
 }
-
-
 
 interface IQueueIndexRange {
     fromId: number,

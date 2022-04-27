@@ -1,147 +1,137 @@
-use std::{collections::HashMap, sync::Arc};
+use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use my_service_bus_tcp_shared::TcpContract;
-use rust_extensions::date_time::{AtomicDateTimeAsMicroseconds, DateTimeAsMicroseconds};
-use tokio::{io::WriteHalf, net::TcpStream, sync::RwLock};
-
-use crate::{app::AppContext, queue_subscribers::SubscriberId};
-
-use super::{
-    my_sb_session_data::ConnectedState, MySbSessionMetrics, MyServiceBusSessionData,
-    SessionOperationError,
-};
-
-pub type ConnectionId = i64;
-
-pub struct MyServiceBusSession {
-    data: RwLock<MyServiceBusSessionData>,
-    pub ip: String,
-    pub id: ConnectionId,
-    pub connected: DateTimeAsMicroseconds,
-    pub last_incoming_package: AtomicDateTimeAsMicroseconds,
-    pub app: Arc<AppContext>,
-}
-
-const BADGE_HIGHLIGHT_TIMOUT: u8 = 2;
-
+use super::{ConnectionMetricsSnapshot, SessionConnection, SessionId};
 pub struct SessionMetrics {
     pub name: Option<String>,
     pub version: Option<String>,
     pub ip: String,
-    pub id: SubscriberId,
-    pub metrics: MySbSessionMetrics,
-    pub protocol_version: i32,
+    pub id: SessionId,
+    pub connection_metrics: ConnectionMetricsSnapshot,
+    pub protocol_version: String,
+}
+
+pub struct MyServiceBusSession {
+    pub id: SessionId,
+    pub connection: SessionConnection,
+    pub connected: DateTimeAsMicroseconds,
 }
 
 impl MyServiceBusSession {
-    pub fn new(
-        id: ConnectionId,
-        ip: String,
-        tcp_stream: WriteHalf<TcpStream>,
-        app: Arc<AppContext>,
-    ) -> Self {
-        let data = MyServiceBusSessionData::new(tcp_stream, app.clone());
-
+    pub fn new(id: SessionId, connection: SessionConnection) -> Self {
         Self {
+            connection,
             id,
-            ip,
-            data: RwLock::new(data),
             connected: DateTimeAsMicroseconds::now(),
-            last_incoming_package: AtomicDateTimeAsMicroseconds::now(),
-            app,
         }
     }
 
-    pub async fn increase_read_size(&self, read_size: usize) {
-        let mut data = self.data.write().await;
-        data.metrics.increase_read_size(read_size).await;
+    pub async fn set_tcp_socket_name(
+        &self,
+        set_socket_name: String,
+        client_version: Option<String>,
+    ) {
+        if let SessionConnection::Tcp(data) = &self.connection {
+            data.set_socket_name(set_socket_name, client_version).await;
+        } else {
+            panic!("Something went wrong. You re trying to set socket name for tcp session. But session has type: {}", self.connection.get_connection_type())
+        }
     }
 
-    pub async fn set_socket_name(&self, set_socket_name: String, client_version: Option<String>) {
-        let mut data = self.data.write().await;
-        data.name = Some(set_socket_name);
-        data.client_version = client_version;
+    pub fn update_tcp_protocol_version(&self, value: i32) {
+        if let SessionConnection::Tcp(connection_data) = &self.connection {
+            connection_data.update_protocol_version(value);
+        } else {
+            panic!(
+                "Invalid connection type  [{}] to update Tcp protocol version",
+                self.connection.get_connection_type()
+            );
+        }
     }
 
-    pub async fn set_protocol_version(&self, protocol_version: i32) {
-        let mut data = self.data.write().await;
-        data.attr.protocol_version = protocol_version;
+    pub fn update_tcp_delivery_packet_version(&self, value: i32) {
+        if let SessionConnection::Tcp(connection_data) = &self.connection {
+            connection_data.update_deliver_message_packet_version(value);
+        } else {
+            panic!(
+                "Invalid connection type  [{}] to update Tcp delivery packet version",
+                self.connection.get_connection_type()
+            );
+        }
     }
 
-    pub async fn update_packet_versions(&self, packet_versions: &HashMap<u8, i32>) {
-        let mut data = self.data.write().await;
-        data.attr.versions.update(packet_versions);
+    pub async fn get_name_and_client_version(&self) -> (Option<String>, Option<String>) {
+        match &self.connection {
+            SessionConnection::Tcp(data) => {
+                let attr = data.get_attrs().await;
+                (attr.name, attr.version)
+            }
+            SessionConnection::Http(data) => {
+                (Some(data.name.to_string()), Some(data.version.to_string()))
+            }
+            #[cfg(test)]
+            SessionConnection::Test(_) => {
+                todo!("Not Implemented");
+            }
+        }
     }
 
-    pub async fn one_second_tick(&self) {
-        let mut write_access = self.data.write().await;
-        write_access.metrics.one_second_tick();
-    }
-
-    pub async fn get_name(&self) -> String {
-        let data = self.data.read().await;
-
-        let result = match &data.name {
-            Some(name) => format!("{} {}", name, self.ip),
-            None => self.ip.clone(),
-        };
-        result
+    fn get_protocol_version(&self) -> String {
+        match &self.connection {
+            SessionConnection::Tcp(data) => format!("Tcp: {}", data.get_protocol_version()),
+            SessionConnection::Http(_) => "Http".to_string(),
+            #[cfg(test)]
+            SessionConnection::Test(_) => "Test".to_string(),
+        }
     }
 
     pub async fn get_metrics(&self) -> SessionMetrics {
-        let read_access = self.data.read().await;
+        let connection_metrics = match &self.connection {
+            SessionConnection::Tcp(data) => data.get_connection_metrics(),
+            SessionConnection::Http(data) => data.get_connection_metrics(),
+            #[cfg(test)]
+            SessionConnection::Test(_) => {
+                panic!("We do not have metrics in test enviroment");
+            }
+        };
+
+        let protocol_version = self.get_protocol_version();
+
+        let (name, version) = self.get_name_and_client_version().await;
 
         SessionMetrics {
             id: self.id,
-            name: read_access.get_name(),
-            version: read_access.get_version(),
-            ip: self.ip.to_string(),
-            metrics: read_access.metrics.clone(),
-            protocol_version: read_access.attr.protocol_version,
+            name,
+            version,
+            ip: self.connection.get_ip().to_string(),
+            protocol_version,
+            connection_metrics,
         }
     }
 
-    pub async fn send(&self, tcp_contract: TcpContract) -> Result<(), SessionOperationError> {
-        let buf = tcp_contract.serialize();
+    pub async fn disconnect(&self) -> bool {
+        match &self.connection {
+            SessionConnection::Tcp(data) => {
+                return data.connection.disconnect().await;
+            }
+            SessionConnection::Http(data) => {
+                return data.disconnect();
+            }
+            #[cfg(test)]
+            SessionConnection::Test(connection) => {
+                let result = connection
+                    .connected
+                    .load(std::sync::atomic::Ordering::SeqCst);
 
-        let mut write_access = self.data.write().await;
-        let result = write_access.send(&buf).await;
+                if result == false {
+                    return false;
+                }
 
-        result
-    }
+                connection
+                    .connected
+                    .store(false, std::sync::atomic::Ordering::SeqCst);
 
-    pub async fn add_publisher(&self, topic: &str) {
-        let mut data = self.data.write().await;
-
-        data.metrics
-            .publishers
-            .insert(topic.to_string(), BADGE_HIGHLIGHT_TIMOUT);
-
-        if !data.metrics.publishers.contains_key(topic) {
-            data.metrics
-                .publishers
-                .insert(topic.to_string(), BADGE_HIGHLIGHT_TIMOUT);
+                return true;
+            }
         }
-    }
-
-    pub async fn disconnect(&self) -> Result<ConnectedState, ()> {
-        let mut write_access = self.data.write().await;
-
-        let result = write_access.disconnect().await;
-
-        match result {
-            Some(state) => Ok(state),
-            None => Err(()),
-        }
-    }
-
-    pub async fn get_packet_version(&self, packet: u8) -> i32 {
-        let read_access = self.data.read().await;
-        read_access.attr.versions.get_packet_version(packet)
-    }
-
-    pub async fn is_connected(&self) -> bool {
-        let read_access = self.data.read().await;
-        read_access.connected_state.is_some()
     }
 }

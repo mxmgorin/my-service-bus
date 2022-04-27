@@ -1,7 +1,7 @@
 class ServiceLocator {
     public static topics: ITopics;
     public static sessions: ISessions;
-    public static prevFilterPhrase: string;
+    static prevFilterPhrase: string;
 
 
     public static checkIfTopicsAreChanged(topics: ITopics): boolean {
@@ -21,4 +21,21 @@ class ServiceLocator {
         return this.sessions.snapshotId != sessions.snapshotId;
 
     }
+
+
+    public static checkIfFilterPhraseIsChanged(filterPhrase: string): boolean {
+
+        if (this.prevFilterPhrase == undefined) {
+            ServiceLocator.prevFilterPhrase = filterPhrase;
+            return true;
+        }
+
+        if (filterPhrase != ServiceLocator.prevFilterPhrase) {
+            ServiceLocator.prevFilterPhrase = filterPhrase;
+            return true;
+        }
+
+        return false;
+    }
+
 }

@@ -1,14 +1,14 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
-use rust_extensions::date_time::DateTimeAsMicroseconds;
+use my_tcp_sockets::ConnectionId;
 use tokio::sync::RwLock;
 
-use super::MyServiceBusSession;
+use super::{
+    sessions_list_data::SessionsListData, HttpConnectionData, MyServiceBusSession,
+    SessionConnection, TcpConnectionData,
+};
 
-pub struct SessionsListData {
-    snapshot_id: usize,
-    sessions: HashMap<i64, Arc<MyServiceBusSession>>,
-}
+pub type SessionId = i64;
 
 pub struct SessionsList {
     data: RwLock<SessionsListData>,
@@ -16,72 +16,84 @@ pub struct SessionsList {
 
 impl SessionsList {
     pub fn new() -> Self {
-        let data = SessionsListData {
-            snapshot_id: 0,
-            sessions: HashMap::new(),
-        };
-
         Self {
-            data: RwLock::new(data),
+            data: RwLock::new(SessionsListData::new()),
         }
     }
 
-    pub async fn add(&self, session: Arc<MyServiceBusSession>) {
+    pub async fn add_tcp(&self, data: TcpConnectionData) {
         let mut write_access = self.data.write().await;
-        write_access.sessions.insert(session.id, session);
-        write_access.snapshot_id += 1;
+
+        let session = MyServiceBusSession::new(
+            write_access.get_next_session_id(),
+            SessionConnection::Tcp(data),
+        );
+
+        write_access.add(Arc::new(session));
+    }
+
+    pub async fn add_http(&self, data: HttpConnectionData) {
+        let mut write_access = self.data.write().await;
+
+        let session = MyServiceBusSession::new(
+            write_access.get_next_session_id(),
+            SessionConnection::Http(data),
+        );
+
+        write_access.add(Arc::new(session));
+    }
+
+    pub async fn get_http(&self, session_id: &str) -> Option<Arc<MyServiceBusSession>> {
+        let read_access = self.data.read().await;
+        read_access.get_by_http_session(session_id)
+    }
+
+    pub async fn resolve_session_id_by_tcp_connection_id(
+        &self,
+        connection_id: ConnectionId,
+    ) -> Option<SessionId> {
+        let read_access = self.data.read().await;
+        read_access.get_session_id_by_tcp_connection(connection_id)
+    }
+
+    pub async fn get(&self, id: SessionId) -> Option<Arc<MyServiceBusSession>> {
+        let read_access = self.data.read().await;
+        read_access.get(id)
+    }
+
+    pub async fn get_by_tcp_connection_id(
+        &self,
+        connection_id: ConnectionId,
+    ) -> Option<Arc<MyServiceBusSession>> {
+        let read_access = self.data.read().await;
+        read_access.get_by_tcp_connection_id(connection_id)
+    }
+
+    pub async fn remove_tcp(&self, id: ConnectionId) -> Option<Arc<MyServiceBusSession>> {
+        let mut write_access = self.data.write().await;
+        write_access.remove_tcp(id)
     }
 
     pub async fn get_snapshot(&self) -> (usize, Vec<Arc<MyServiceBusSession>>) {
         let read_access = self.data.read().await;
-
-        let result = read_access
-            .sessions
-            .values()
-            .into_iter()
-            .map(|itm| itm.clone())
-            .collect();
-
-        (read_access.snapshot_id, result)
-    }
-
-    pub async fn remove(&self, id: &i64) -> Option<Arc<MyServiceBusSession>> {
-        let mut write_access = self.data.write().await;
-
-        let result = write_access.sessions.remove(id)?;
-
-        write_access.snapshot_id += 1;
-
-        return Some(result);
+        read_access.get_snapshot()
     }
 
     pub async fn one_second_tick(&self) {
         let read_access = self.data.read().await;
-
-        for session in read_access.sessions.values() {
-            session.one_second_tick().await;
-        }
+        read_access.one_second_tick();
     }
 
-    pub async fn get_dead_connections(
+    pub async fn remove_and_disconnect_expired_http_sessions(
         &self,
-        timeout: Duration,
+        inactive_timeout: Duration,
     ) -> Option<Vec<Arc<MyServiceBusSession>>> {
-        let now = DateTimeAsMicroseconds::now();
+        let mut write_access = self.data.write().await;
+        let result = write_access.remove_and_disconnect_expired_http_sessions(inactive_timeout);
 
-        let mut result = None;
-
-        let read_access = self.data.read().await;
-
-        for session in read_access.sessions.values() {
-            let last_incoming_package = session.last_incoming_package.as_date_time();
-
-            if now.duration_since(last_incoming_package) > timeout {
-                if result.is_none() {
-                    result = Some(Vec::new());
-                }
-
-                result.as_mut().unwrap().push(session.clone());
+        if let Some(sessions) = &result {
+            for session in sessions {
+                session.disconnect().await;
             }
         }
 

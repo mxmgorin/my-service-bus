@@ -18,16 +18,19 @@ pub async fn set_message_id(
             topic_id: topic_id.to_string(),
         })?;
 
+    let mut topic_data = topic.get_access("set_message_id").await;
+
+    let topic_message_id = topic_data.message_id;
+
     let topic_queue =
-        topic
-            .get_queue(queue_id)
-            .await
+        topic_data
+            .queues
+            .get_mut(queue_id)
             .ok_or(OperationFailResult::QueueNotFound {
                 queue_id: queue_id.to_string(),
             })?;
 
-    let max_message_id = topic.get_message_id().await;
-    topic_queue.set_message_id(message_id, max_message_id).await;
+    topic_queue.set_message_id(message_id, topic_message_id);
 
     Ok(())
 }
@@ -45,7 +48,9 @@ pub async fn delete_queue(
             topic_id: topic_id.to_string(),
         })?;
 
-    topic.queues.delete_queue(queue_id).await;
+    let mut topic_data = topic.get_access("delete_queue").await;
+
+    topic_data.queues.delete_queue(queue_id);
 
     Ok(())
 }

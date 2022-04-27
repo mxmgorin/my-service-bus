@@ -7,7 +7,6 @@ use crate::{app::AppContext, queue_subscribers::SubscriberId};
 use super::OperationFailResult;
 
 pub async fn all_confirmed(
-    process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
@@ -21,31 +20,32 @@ pub async fn all_confirmed(
             topic_id: topic_id.to_string(),
         })?;
 
-    let topic_queue =
-        topic
-            .get_queue(queue_id)
-            .await
-            .ok_or(OperationFailResult::QueueNotFound {
-                queue_id: queue_id.to_string(),
-            })?;
+    let mut topic_data = topic.get_access("all_confirmed").await;
 
-    if let Err(err) = topic_queue.confirmed_delivered(subscriber_id).await {
-        app.logs
-            .add_fatal_error(
+    {
+        let topic_queue =
+            topic_data
+                .queues
+                .get_mut(queue_id)
+                .ok_or(OperationFailResult::QueueNotFound {
+                    queue_id: queue_id.to_string(),
+                })?;
+
+        if let Err(err) = topic_queue.confirmed_delivered(subscriber_id) {
+            app.logs.add_fatal_error(
                 crate::app::logs::SystemProcess::DeliveryOperation,
                 "confirm_delivery".to_string(),
                 format!("{:?}", err),
-            )
-            .await
+            );
+        }
     }
 
-    super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
+    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
 
     Ok(())
 }
 
 pub async fn all_fail(
-    process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
@@ -59,25 +59,27 @@ pub async fn all_fail(
             topic_id: topic_id.to_string(),
         })?;
 
-    let topic_queue =
-        topic
-            .get_queue(queue_id)
-            .await
-            .ok_or(OperationFailResult::QueueNotFound {
-                queue_id: queue_id.to_string(),
-            })?;
+    let mut topic_data = topic.get_access("all_fail").await;
 
-    if let Err(err) = topic_queue.confirmed_non_delivered(subscriber_id).await {
-        app.logs
-            .add_fatal_error(
+    {
+        let topic_queue =
+            topic_data
+                .queues
+                .get_mut(queue_id)
+                .ok_or(OperationFailResult::QueueNotFound {
+                    queue_id: queue_id.to_string(),
+                })?;
+
+        if let Err(err) = topic_queue.confirmed_non_delivered(subscriber_id) {
+            app.logs.add_fatal_error(
                 crate::app::logs::SystemProcess::DeliveryOperation,
                 "confirm_non_delivery".to_string(),
                 format!("{:?}", err),
-            )
-            .await
+            );
+        }
     }
 
-    super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
+    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
 
     Ok(())
 }
@@ -97,32 +99,32 @@ pub async fn intermediary_confirm(
             topic_id: topic_id.to_string(),
         })?;
 
-    let topic_queue =
-        topic
-            .get_queue(queue_id)
-            .await
-            .ok_or(OperationFailResult::QueueNotFound {
-                queue_id: queue_id.to_string(),
-            })?;
+    let mut topic_data = topic.get_access("intermediary_confirm").await;
 
-    if let Err(err) = topic_queue
-        .intermediary_confirm(subscriber_id, confirmed)
-        .await
     {
-        app.logs
-            .add_fatal_error(
+        let topic_queue =
+            topic_data
+                .queues
+                .get_mut(queue_id)
+                .ok_or(OperationFailResult::QueueNotFound {
+                    queue_id: queue_id.to_string(),
+                })?;
+
+        if let Err(err) = topic_queue.intermediary_confirmed(subscriber_id, confirmed) {
+            app.logs.add_fatal_error(
                 crate::app::logs::SystemProcess::DeliveryOperation,
                 "some_messages_are_not_confirmed".to_string(),
                 format!("{:?}", err),
-            )
-            .await
+            );
+        }
     }
+
+    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
 
     Ok(())
 }
 
 pub async fn some_messages_are_confirmed(
-    process_id: i64,
     app: Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
@@ -137,28 +139,26 @@ pub async fn some_messages_are_confirmed(
             topic_id: topic_id.to_string(),
         })?;
 
-    let topic_queue =
-        topic
-            .get_queue(queue_id)
-            .await
-            .ok_or(OperationFailResult::QueueNotFound {
-                queue_id: queue_id.to_string(),
-            })?;
-
-    if let Err(err) = topic_queue
-        .confirmed_some_delivered(subscriber_id, confirmed_messages)
-        .await
+    let mut topic_data = topic.get_access("some_messages_are_confirmed").await;
     {
-        app.logs
-            .add_fatal_error(
+        let topic_queue =
+            topic_data
+                .queues
+                .get_mut(queue_id)
+                .ok_or(OperationFailResult::QueueNotFound {
+                    queue_id: queue_id.to_string(),
+                })?;
+
+        if let Err(err) = topic_queue.confirmed_some_delivered(subscriber_id, confirmed_messages) {
+            app.logs.add_fatal_error(
                 crate::app::logs::SystemProcess::DeliveryOperation,
                 "some_messages_are_confirmed".to_string(),
                 format!("{:?}", err),
-            )
-            .await
+            );
+        }
     }
 
-    super::delivery::deliver_to_queue(process_id, app.clone(), topic.clone(), topic_queue.clone());
+    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
 
     Ok(())
 }

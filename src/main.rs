@@ -1,5 +1,9 @@
 use app::AppContext;
 
+use my_service_bus_tcp_shared::{ConnectionAttributes, MySbTcpSerializer};
+use my_tcp_sockets::TcpServer;
+use tcp::socket_loop::TcpServerEvents;
+
 use std::time::Duration;
 use std::{net::SocketAddr, sync::Arc};
 
@@ -27,31 +31,33 @@ pub mod persistence_grpc {
 async fn main() {
     let settings = crate::settings::read().await;
 
-    let (locks_sender, locks_reseiver) = tokio::sync::mpsc::unbounded_channel();
-    let app = Arc::new(AppContext::new(&settings, locks_sender));
+    let app = Arc::new(AppContext::new(&settings));
 
     let mut tasks = Vec::new();
-
-    tasks.push(tokio::task::spawn(crate::app::locks_registry::start_loop(
-        app.locks.locks.clone(),
-        locks_reseiver,
-    )));
 
     tasks.push(tokio::task::spawn(crate::operations::initialization::init(
         app.clone(),
     )));
 
-    tasks.push(tokio::task::spawn(tcp::tcp_server::start(
+    let tcp_server = TcpServer::new(
+        "MySbTcpServer".to_string(),
         SocketAddr::from(([0, 0, 0, 0], 6421)),
-        app.clone(),
-    )));
+    );
 
-    tasks.push(tokio::task::spawn(http::http_server::start(
-        SocketAddr::from(([0, 0, 0, 0], 6123)),
-        app.clone(),
-    )));
+    tcp_server
+        .start(
+            app.clone(),
+            Arc::new(|| -> MySbTcpSerializer {
+                let attrs = ConnectionAttributes::new(0);
+                MySbTcpSerializer::new(attrs)
+            }),
+            Arc::new(TcpServerEvents::new(app.clone())),
+        )
+        .await;
 
     tasks.push(tokio::task::spawn(crate::timers::start(app.clone())));
+
+    crate::http::start_up::setup_server(app.clone());
 
     signal_hook::flag::register(
         signal_hook::consts::SIGTERM,

@@ -4,7 +4,6 @@ use my_service_bus_shared::MessageId;
 use tokio::sync::RwLock;
 
 use super::topic::Topic;
-use crate::topics::topic_snapshot::TopicSnapshot;
 
 pub struct TopicListData {
     pub topics: HashMap<String, Arc<Topic>>,
@@ -35,7 +34,7 @@ impl TopicsList {
         let read_access = self.data.read().await;
 
         match read_access.topics.get(topic_id) {
-            Some(result) => Some(Arc::clone(result)),
+            Some(result) => Some(result.clone()),
             None => None,
         }
     }
@@ -51,11 +50,22 @@ impl TopicsList {
         result
     }
 
-    pub async fn add_if_not_exists(&self, topic_id: &str) -> Arc<Topic> {
+    pub async fn get_all_with_snapshot_id(&self) -> (usize, Vec<Arc<Topic>>) {
+        let mut result = Vec::new();
+        let read_access = self.data.read().await;
+
+        for topic in read_access.topics.values() {
+            result.push(Arc::clone(topic))
+        }
+
+        (read_access.snapshot_id, result)
+    }
+
+    pub async fn add_if_not_exists(&self, topic_id: String) -> Arc<Topic> {
         let mut write_access = self.data.write().await;
 
-        if !write_access.topics.contains_key(topic_id) {
-            let topic = Topic::new(topic_id, 0);
+        if !write_access.topics.contains_key(&topic_id) {
+            let topic = Topic::new(topic_id.to_string(), 0);
             write_access
                 .topics
                 .insert(topic_id.to_string(), Arc::new(topic));
@@ -63,48 +73,28 @@ impl TopicsList {
         }
 
         //Safety: This unwrap is handeled - since we create topic by all means during previous if statement.
-        let result = write_access.topics.get(topic_id).unwrap();
+        let result = write_access.topics.get(topic_id.as_str()).unwrap();
 
         return result.clone();
     }
 
-    pub async fn restore(&self, topic_id: &str, message_id: MessageId) -> Arc<Topic> {
+    pub async fn restore(&self, topic_id: String, message_id: MessageId) -> Arc<Topic> {
         let mut write_access = self.data.write().await;
 
-        let topic = Topic::new(topic_id, message_id);
+        let topic = Topic::new(topic_id.to_string(), message_id);
         let result = Arc::new(topic);
 
-        write_access
-            .topics
-            .insert(topic_id.to_string(), result.clone());
+        write_access.topics.insert(topic_id, result.clone());
 
         write_access.snapshot_id += 1;
 
         return result;
     }
 
-    pub async fn get_snapshot_to_persist(&self) -> Vec<TopicSnapshot> {
-        let mut result = Vec::new();
-
+    pub async fn one_second_tick(&self) {
         let topics = self.get_all().await;
 
         for topic in topics {
-            let snapshot = topic.get_snapshot_to_persist().await;
-            result.push(snapshot);
-        }
-
-        result
-    }
-
-    pub async fn get_snapshot_id(&self) -> usize {
-        let read_access = self.data.read().await;
-        return read_access.snapshot_id;
-    }
-
-    pub async fn one_second_tick(&self) {
-        let read_access = self.data.read().await;
-
-        for topic in read_access.topics.values() {
             topic.one_second_tick().await;
         }
     }

@@ -1,119 +1,101 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::{
+    hash_map::{Values, ValuesMut},
+    HashMap,
+};
 
 use my_service_bus_shared::{
     queue::TopicQueueType, queue_with_intervals::QueueWithIntervals, MessageId,
 };
-use tokio::sync::RwLock;
 
-use crate::{
-    queue_subscribers::QueueSubscriber, tcp::tcp_server::ConnectionId, topics::TopicQueueSnapshot,
-};
+use crate::{queue_subscribers::QueueSubscriber, sessions::SessionId, topics::TopicQueueSnapshot};
 
 use super::queue::TopicQueue;
 
-pub struct TopicQueueListData {
-    queues: HashMap<String, Arc<TopicQueue>>,
-    snapshot_id: usize,
-}
-
 pub struct TopicQueuesList {
-    data: RwLock<TopicQueueListData>,
+    queues: HashMap<String, TopicQueue>,
+    snapshot_id: usize,
 }
 
 impl TopicQueuesList {
     pub fn new() -> Self {
-        let data = TopicQueueListData {
+        TopicQueuesList {
             queues: HashMap::new(),
             snapshot_id: 0,
-        };
-
-        TopicQueuesList {
-            data: RwLock::new(data),
         }
     }
 
-    pub async fn add_queue_if_not_exists(
-        &self,
-        topic_id: &str,
-        queue_id: &str,
+    pub fn get_snapshot_id(&self) -> usize {
+        self.snapshot_id
+    }
+
+    pub fn add_queue_if_not_exists(
+        &mut self,
+        topic_id: String,
+        queue_id: String,
         queue_type: TopicQueueType,
-    ) -> Arc<TopicQueue> {
-        let mut write_access = self.data.write().await;
+    ) -> &mut TopicQueue {
+        if !self.queues.contains_key(queue_id.as_str()) {
+            let queue = TopicQueue::new(topic_id, queue_id.to_string(), queue_type);
 
-        if !write_access.queues.contains_key(queue_id) {
-            let queue = TopicQueue::new(topic_id, queue_id, queue_type).await;
+            self.queues.insert(queue_id.to_string(), queue);
 
-            let queue = Arc::new(queue);
-            write_access
-                .queues
-                .insert(queue_id.to_string(), queue.clone());
-
-            write_access.snapshot_id += 1;
+            self.snapshot_id += 1;
         }
 
-        let result = write_access.queues.get(queue_id).unwrap();
+        let result = self.queues.get_mut(queue_id.as_str()).unwrap();
 
-        result.update_queue_type(queue_type).await;
+        result.update_queue_type(queue_type);
 
-        return result.clone();
+        return result;
     }
 
-    pub async fn restore(
-        &self,
-        topic_id: &str,
-        queue_id: &str,
+    pub fn restore(
+        &mut self,
+        topic_id: String,
+        queue_id: String,
         queue_type: TopicQueueType,
         queue: QueueWithIntervals,
-    ) -> Arc<TopicQueue> {
-        let topic_queue = TopicQueue::restore(topic_id, queue_id, queue_type, queue).await;
-        let topic_queue = Arc::new(topic_queue);
+    ) -> &TopicQueue {
+        let topic_queue = TopicQueue::restore(topic_id, queue_id.to_string(), queue_type, queue);
 
-        let mut write_access = self.data.write().await;
+        self.queues.insert(queue_id.to_string(), topic_queue);
 
-        write_access
-            .queues
-            .insert(queue_id.to_string(), topic_queue.clone());
+        self.snapshot_id += 1;
 
-        write_access.snapshot_id += 1;
-
-        topic_queue
+        return self.queues.get(queue_id.as_str()).unwrap();
     }
 
-    pub async fn get(&self, queue_id: &str) -> Option<Arc<TopicQueue>> {
-        let read_access = self.data.read().await;
-
-        match read_access.queues.get(queue_id) {
-            Some(result) => Some(Arc::clone(result)),
-            None => None,
-        }
+    pub fn get(&self, queue_id: &str) -> Option<&TopicQueue> {
+        return self.queues.get(queue_id);
     }
 
-    pub async fn delete_queue(&self, queue_id: &str) -> Option<Arc<TopicQueue>> {
-        let mut write_access = self.data.write().await;
-        let result = write_access.queues.remove(queue_id);
-        write_access.snapshot_id += 1;
+    pub fn get_mut(&mut self, queue_id: &str) -> Option<&mut TopicQueue> {
+        return self.queues.get_mut(queue_id);
+    }
+
+    pub fn delete_queue(&mut self, queue_id: &str) -> Option<TopicQueue> {
+        let result = self.queues.remove(queue_id);
+        self.snapshot_id += 1;
         result
     }
 
-    pub async fn get_queues(&self) -> Vec<Arc<TopicQueue>> {
-        let mut result = Vec::new();
-
-        let read_access = self.data.read().await;
-
-        for queue in read_access.queues.values() {
-            result.push(Arc::clone(queue));
-        }
-
-        result
+    pub fn get_queues(&self) -> Values<String, TopicQueue> {
+        self.queues.values()
     }
 
-    pub async fn get_snapshot_to_persist(&self) -> Vec<TopicQueueSnapshot> {
+    pub fn get_all(&self) -> Values<String, TopicQueue> {
+        self.queues.values()
+    }
+
+    pub fn get_all_mut(&mut self) -> ValuesMut<String, TopicQueue> {
+        self.queues.values_mut()
+    }
+
+    pub fn get_snapshot_to_persist(&self) -> Vec<TopicQueueSnapshot> {
         let mut result = Vec::new();
 
-        let read_access = self.data.read().await;
-
-        for queue in read_access.queues.values() {
-            let get_snapshot_to_persist_result = queue.get_snapshot_to_persist().await;
+        for queue in self.queues.values() {
+            let get_snapshot_to_persist_result = queue.get_snapshot_to_persist();
 
             if let Some(snapshot_to_persist) = get_snapshot_to_persist_result {
                 result.push(snapshot_to_persist);
@@ -122,53 +104,59 @@ impl TopicQueuesList {
         return result;
     }
 
-    pub async fn get_queues_with_snapshot_id(&self) -> (usize, Vec<Arc<TopicQueue>>) {
-        let mut result = Vec::new();
-
-        let read_access = self.data.read().await;
-
-        for queue in read_access.queues.values() {
-            result.push(Arc::clone(queue));
-        }
-
-        (read_access.snapshot_id, result)
+    pub fn remove(&mut self, queue_id: &str) -> Option<TopicQueue> {
+        self.delete_queue(queue_id)
     }
 
-    pub async fn one_second_tick(&self) {
-        let queues = self.get_queues().await;
+    pub fn get_queues_with_no_subscribers(&self) -> Option<Vec<&TopicQueue>> {
+        let mut result = None;
 
-        for queue in queues {
-            queue.one_second_tick().await;
+        for queue in self.queues.values() {
+            if queue.subscribers.get_amount() > 0 {
+                continue;
+            }
+
+            if result.is_none() {
+                result = Some(Vec::new());
+            }
+
+            result.as_mut().unwrap().push(queue);
+        }
+
+        result
+    }
+
+    pub fn one_second_tick(&mut self) {
+        for queue in self.queues.values_mut() {
+            queue.one_second_tick();
         }
     }
 
-    pub async fn remove_subscribers_by_connection_id(
-        &self,
-        connection_id: ConnectionId,
-    ) -> Vec<QueueSubscriber> {
-        let mut result = Vec::new();
+    pub fn remove_subscribers_by_session_id(
+        &mut self,
+        session_id: SessionId,
+    ) -> Option<Vec<(&mut TopicQueue, QueueSubscriber)>> {
+        let mut result = None;
 
-        let queues = self.get_queues().await;
-
-        for queue in queues {
-            let remove_result = queue
-                .remove_subscribers_by_connection_id(connection_id)
-                .await;
+        for queue in self.queues.values_mut() {
+            let remove_result = queue.subscribers.remove_by_session_id(session_id);
             if let Some(sub) = remove_result {
-                result.push(sub);
+                if result.is_none() {
+                    result = Some(Vec::new());
+                }
+
+                result.as_mut().unwrap().push((queue, sub));
             }
         }
 
         result
     }
 
-    pub async fn get_min_message_id(&self) -> Option<MessageId> {
-        let queues = self.get_queues().await;
-
+    pub fn get_min_message_id(&self) -> Option<MessageId> {
         let mut result = None;
 
-        for queue in queues {
-            let queue_min_message_id = queue.get_min_message_id().await;
+        for queue in self.queues.values() {
+            let queue_min_message_id = queue.get_min_message_id();
 
             if queue_min_message_id.is_none() {
                 continue;

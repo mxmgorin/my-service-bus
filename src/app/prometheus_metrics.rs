@@ -39,24 +39,24 @@ impl PrometheusMetrics {
         };
     }
 
-    pub async fn update_persist_queue_size(&self, topic_id: &str, value: i64) {
+    pub fn update_persist_queue_size(&self, topic_id: &str, value: i64) {
         self.persist_queue_size
             .with_label_values(&[topic_id])
             .set(value);
     }
 
-    pub async fn update_topic_queue_size(&self, topic_id: &str, queue_id: &str, value: i64) {
+    pub fn update_topic_queue_size(&self, topic_id: &str, queue_id: &str, value: i64) {
         self.topic_queue_size
             .with_label_values(&[topic_id, queue_id])
             .set(value);
     }
 
-    pub fn build_prometheus_content(&self) -> String {
+    pub fn build(&self) -> Vec<u8> {
         let mut buffer = vec![];
         let encoder = TextEncoder::new();
         let metric_families = self.registry.gather();
         encoder.encode(&metric_families, &mut buffer).unwrap();
 
-        return String::from_utf8(buffer).unwrap();
+        buffer
     }
 }

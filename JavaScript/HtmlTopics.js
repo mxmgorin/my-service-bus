@@ -2,20 +2,21 @@ var HtmlTopics = /** @class */ (function () {
     function HtmlTopics() {
     }
     HtmlTopics.updateTopicQueues = function (status) {
-        Utils.iterateTopicQueues(status, function (topic, queues) {
+        for (var _i = 0, _a = status.topics.items; _i < _a.length; _i++) {
+            var topic = _a[_i];
             var html = '<table class="table table-dark" style="width:100%">';
-            for (var _i = 0, _a = queues.queues; _i < _a.length; _i++) {
-                var queue = _a[_i];
-                var subscribers = Utils.getQueueSubscribers(status, topic, queue.id);
+            for (var _b = 0, _c = Iterators.iterateTopicQueues(status, topic); _b < _c.length; _b++) {
+                var queue = _c[_b];
+                var subscribers = Iterators.getQueueSubscribers(status, topic, queue.id);
                 html += '<tr><td style="width:100%"><div' + Utils.copyToClipboardHtml(queue.id) + '>' + queue.id + '</div>' +
                     '<div>' + HtmlQueue.renderQueueSubscribersCountBadge(subscribers.length) + ' ' + HtmlQueue.renderQueueTypeBadge(queue) + " " + HtmlQueue.renderQueueSizeBadge(queue) + " " + HtmlQueue.renderQueueRanges(queue) + '</div></td>' +
                     '<td style="width:100px">' + HtmlQueue.renderQueueSubscribers(subscribers) + '</td>';
             }
-            var el = document.getElementById("topic-queues-" + topic);
+            var el = document.getElementById("topic-queues-" + topic.id);
             if (el) {
                 el.innerHTML = html + "</table>";
             }
-        });
+        }
     };
     HtmlTopics.renderTopicData = function (topic) {
         var queuesizeColor = topic.persistSize < 1000 ? "lightgray" : "red";
@@ -33,9 +34,9 @@ var HtmlTopics = /** @class */ (function () {
         for (var _i = 0, pages_1 = pages; _i < pages_1.length; _i++) {
             var page = pages_1[_i];
             result +=
-                '<div><div>Page:' + page.id + '</div>' +
+                '<div><div>Page:' + page.id + ' [' + page.amount + ']</div>' +
                     '<div class="progress">' +
-                    '<div class="progress-bar" role="progressbar" style="text-shadow: 1px 1px 2px black; width: ' + page.percent + '%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">' +
+                    '<div class="progress-bar" role="progressbar" style="text-shadow: 1px 1px 2px black; width: ' + (page.amount / 1000).toFixed(0) + '%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">' +
                     Utils.format_bytes(page.size) + '</div></div></div>';
         }
         return result;
@@ -45,7 +46,8 @@ var HtmlTopics = /** @class */ (function () {
             '<tr><th>Topics</th><th>Topic Connections</th><th>Queues</th></tr>';
         for (var _i = 0, _a = topics.items.sort(function (a, b) { return a.id > b.id ? 1 : -1; }); _i < _a.length; _i++) {
             var topic = _a[_i];
-            result += '<tr class="filter-line"><td><b' + Utils.copyToClipboardHtml(topic.id) + '>' + topic.id + '</b><div style="font-size:10px" id="topic-data-' + topic.id + '">' + this.renderTopicData(topic) + '</div></td>' +
+            result += '<tr class="filter-line"><td><b' + Utils.copyToClipboardHtml(topic.id) + '>' + topic.id + '</b>' +
+                '<div style="font-size:10px" id="topic-data-' + topic.id + '">' + this.renderTopicData(topic) + '</div></td>' +
                 '<td id="topic-sessions-' + topic.id + '"></td>' +
                 '<td id="topic-queues-' + topic.id + '"></td>';
         }
@@ -55,9 +57,9 @@ var HtmlTopics = /** @class */ (function () {
         for (var _i = 0, _a = status.topics.items; _i < _a.length; _i++) {
             var topic = _a[_i];
             var html = "";
-            for (var _b = 0, _c = Utils.iterateBySessionsWithTopic(status, topic.id).sort(function (a, b) { return a.session.name > b.session.name ? 1 : -1; }); _b < _c.length; _b++) {
+            for (var _b = 0, _c = Iterators.getTopicPublishers(status, topic).sort(function (a, b) { return a.session.name > b.session.name ? 1 : -1; }); _b < _c.length; _b++) {
                 var itm = _c[_b];
-                html += '<table class="table table-dark" style=" width:100%; box-shadow: 0 0 3px black;"><tr><td>' + HtmlMain.drawLed(itm.active, 'green') + '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-secondary">' + itm.session.id + '</span></div></td>' +
+                html += '<table class="table table-dark" style=" width:100%; box-shadow: 0 0 3px black;"><tr><td>' + HtmlMain.drawLed(itm.publisher.active > 0, 'green') + '<div style="margin-top: 10px;font-size: 12px;"><span class="badge badge-secondary">' + itm.session.id + '</span></div></td>' +
                     '<td><b>' + itm.session.name + '</b><div>' + itm.session.version + '</div><div>' + itm.session.ip + '</div></td></tr></table>';
             }
             var el = document.getElementById("topic-sessions-" + topic.id);

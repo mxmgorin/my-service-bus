@@ -1,12 +1,14 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-use crate::{app::AppContext, queues::TopicQueue, topics::Topic};
+use crate::app::AppContext;
 
 use serde::{Deserialize, Serialize};
 use sysinfo::SystemExt;
 
 use super::models::{
-    queue_model::QueuesJsonResult, session_model::SessionsJsonResult, topic_model::TopicsJsonResult,
+    queue_model::QueuesJsonResult,
+    session_model::SessionsJsonResult,
+    topic_model::{TopicJsonContract, TopicsJsonResult},
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -25,19 +27,30 @@ pub struct StatusJsonResult {
 
 impl StatusJsonResult {
     pub async fn new(app: &AppContext) -> Self {
-        let all_topics = app.topic_list.get_all().await;
-
-        let queues_as_hashmap = get_queues_as_hashmap(&all_topics).await;
-
         let mut sys_info = sysinfo::System::new_all();
 
         sys_info.refresh_all();
 
-        let topics = TopicsJsonResult::new(app, &all_topics).await;
+        let (snapshot_id, all_topics) = app.topic_list.get_all_with_snapshot_id().await;
 
-        let queues = QueuesJsonResult::new(&queues_as_hashmap).await;
+        let mut queues = HashMap::new();
 
-        let sessions = SessionsJsonResult::new(app, &queues_as_hashmap).await;
+        let mut topics = TopicsJsonResult {
+            snapshot_id,
+            items: Vec::new(),
+        };
+
+        let sessions = SessionsJsonResult::new(app).await;
+
+        for topic in all_topics {
+            let topic_data = topic.get_access("StatusJsonResult.new").await;
+            queues.insert(
+                topic_data.topic_id.to_string(),
+                QueuesJsonResult::new(&topic_data),
+            );
+
+            topics.items.push(TopicJsonContract::new(&topic_data));
+        }
 
         Self {
             topics,
@@ -49,17 +62,4 @@ impl StatusJsonResult {
             },
         }
     }
-}
-
-async fn get_queues_as_hashmap(
-    topics: &[Arc<Topic>],
-) -> HashMap<String, (usize, Vec<Arc<TopicQueue>>)> {
-    let mut result = HashMap::new();
-
-    for topic in topics {
-        let with_snapshot_id = topic.get_all_queues_with_snapshot_id().await;
-        result.insert(topic.topic_id.to_string(), with_snapshot_id);
-    }
-
-    result
 }

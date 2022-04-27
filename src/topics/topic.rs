@@ -1,147 +1,114 @@
-use my_service_bus_shared::messages_page::MessagesPagesCache;
+use std::sync::Arc;
+use std::time::Duration;
+
 use my_service_bus_shared::page_id::{get_page_id, PageId};
-use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
-use my_service_bus_shared::MySbMessageContent;
-use my_service_bus_shared::{queue::TopicQueueType, MessageId};
+use my_service_bus_shared::MessageId;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
-use tokio::sync::RwLock;
+use tokio::sync::Mutex;
 
-use crate::queues::TopicQueue;
-use crate::queues::TopicQueuesList;
-use std::collections::HashMap;
-use std::{collections::VecDeque, sync::Arc};
+use crate::queue_subscribers::DeadSubscriber;
 
-use super::topic_snapshot::TopicSnapshot;
-use super::TopicMetrics;
-
-pub struct TopicData {
-    message_id: MessageId,
-}
-
-pub struct GetMinMessageIdResult {
-    pub topic_message_id: MessageId,
-    pub queue_min_message_id: Option<MessageId>,
-}
+use super::topic_data::TopicData;
+use super::topic_data_access::TopicDataAccess;
+use super::TopicSnapshot;
 
 pub struct Topic {
     pub topic_id: String,
-    pub data: RwLock<TopicData>,
-    pub metrics: TopicMetrics,
-    pub messages: MessagesPagesCache,
-    pub queues: TopicQueuesList,
+    data: Mutex<TopicData>,
+    pub restore_page_lock: Mutex<DateTimeAsMicroseconds>,
+
+    topic_data_access: Arc<Mutex<Vec<String>>>,
 }
 
 impl Topic {
-    pub fn new(topic_id: &str, message_id: MessageId) -> Self {
+    pub fn new(topic_id: String, message_id: MessageId) -> Self {
         Self {
             topic_id: topic_id.to_string(),
-            data: RwLock::new(TopicData { message_id }),
-            queues: TopicQueuesList::new(),
-            metrics: TopicMetrics::new(),
-            messages: MessagesPagesCache::new(),
+            data: Mutex::new(TopicData::new(topic_id, message_id)),
+            restore_page_lock: Mutex::new(DateTimeAsMicroseconds::now()),
+            topic_data_access: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
-    pub async fn publish_messages(&self, messages: Vec<Vec<u8>>) -> VecDeque<MySbMessageContent> {
-        self.metrics.update_topic_metrics(messages.len()).await;
+    async fn add_to_topic_data_access(&self, process: &str) {
+        let mut write_access = self.topic_data_access.lock().await;
+        write_access.push(process.to_string());
+    }
 
-        let mut result = VecDeque::new();
+    pub async fn get_locks(&self) -> Option<Vec<String>> {
+        let read_access = self.topic_data_access.lock().await;
 
-        let mut topic_write_access = self.data.write().await;
-
-        for content in messages {
-            let message = MySbMessageContent {
-                id: topic_write_access.message_id,
-                content,
-                time: DateTimeAsMicroseconds::now(),
-            };
-            result.push_back(message);
-            topic_write_access.message_id = topic_write_access.message_id + 1;
+        if read_access.len() == 0 {
+            return None;
         }
 
-        result
+        return Some(read_access.clone());
+    }
+
+    pub async fn get_access<'s>(&'s self, process: &str) -> TopicDataAccess<'s> {
+        self.add_to_topic_data_access(process).await;
+        let access = self.data.lock().await;
+        TopicDataAccess::new(access, self.topic_data_access.clone(), process.to_string())
     }
 
     pub async fn get_message_id(&self) -> MessageId {
-        self.data.read().await.message_id
-    }
-
-    pub async fn restore_queue(
-        &self,
-        queue_id: &str,
-        queue_type: TopicQueueType,
-        queue: QueueWithIntervals,
-    ) -> Arc<TopicQueue> {
-        let result = self
-            .queues
-            .restore(self.topic_id.as_str(), queue_id, queue_type, queue)
-            .await;
-
-        result
-    }
-
-    pub async fn get_queue(&self, queue_id: &str) -> Option<Arc<TopicQueue>> {
-        self.queues.get(queue_id).await
-    }
-
-    pub async fn get_all_queues(&self) -> Vec<Arc<TopicQueue>> {
-        self.queues.get_queues().await
-    }
-
-    pub async fn get_all_queues_with_snapshot_id(&self) -> (usize, Vec<Arc<TopicQueue>>) {
-        self.queues.get_queues_with_snapshot_id().await
-    }
-
-    pub async fn delete_queue(&self, queue_id: &str) -> Option<Arc<TopicQueue>> {
-        self.queues.delete_queue(queue_id).await
-    }
-
-    pub async fn get_snapshot_to_persist(&self) -> TopicSnapshot {
-        return TopicSnapshot {
-            topic_id: self.topic_id.clone(),
-            message_id: self.get_message_id().await,
-            queues: self.queues.get_snapshot_to_persist().await,
-        };
+        let read_access = self.data.lock().await;
+        read_access.message_id
     }
 
     pub async fn get_current_page(&self) -> PageId {
-        let read_access = self.data.read().await;
+        let read_access = self.data.lock().await;
 
         get_page_id(read_access.message_id)
     }
 
-    pub async fn get_active_pages(&self) -> HashMap<i64, i64> {
-        let mut result: HashMap<i64, i64> = HashMap::new();
+    pub async fn one_second_tick(&self) {
+        let mut write_access = self.data.lock().await;
+        write_access.one_second_tick();
+    }
 
-        let last_message_id = self.get_message_id().await;
+    pub async fn get_topic_snapshot(&self) -> TopicSnapshot {
+        let topic_data = self.data.lock().await;
 
-        let last_message_page_id = get_page_id(last_message_id);
+        TopicSnapshot {
+            message_id: topic_data.message_id,
+            topic_id: topic_data.topic_id.to_string(),
+            queues: topic_data.queues.get_snapshot_to_persist(),
+        }
+    }
 
-        result.insert(last_message_page_id, last_message_page_id);
+    pub async fn find_subscribers_dead_on_delivery(
+        &self,
+        delivery_timeout_duration: Duration,
+    ) -> Option<Vec<DeadSubscriber>> {
+        let mut result = None;
+        let mut topic_data = self.data.lock().await;
 
-        for queue in self.get_all_queues().await {
-            if let Some(topic_min_msg_id) = queue.get_min_msg_id().await {
-                let last_min_page_id = get_page_id(topic_min_msg_id);
+        for queue in topic_data.queues.get_all_mut() {
+            if let Some(dead_subscribers) = queue
+                .subscribers
+                .find_subscribers_dead_on_delivery(delivery_timeout_duration)
+            {
+                if result.is_none() {
+                    result = Some(Vec::new());
+                }
 
-                if !result.contains_key(&last_min_page_id) {
-                    result.insert(last_min_page_id, last_min_page_id);
+                let result_mut = result.as_mut().unwrap();
+
+                for dead_subscriber in dead_subscribers {
+                    if result_mut
+                        .iter()
+                        .position(|itm: &DeadSubscriber| {
+                            itm.subscriber_id == dead_subscriber.subscriber_id
+                        })
+                        .is_none()
+                    {
+                        result_mut.push(dead_subscriber);
+                    }
                 }
             }
         }
 
         result
-    }
-
-    pub async fn one_second_tick(&self) {
-        let persist_queue_size = self.messages.get_persist_queue_size().await;
-        self.metrics.one_second_tick(persist_queue_size).await;
-        self.queues.one_second_tick().await;
-    }
-
-    pub async fn get_min_message_id(&self) -> GetMinMessageIdResult {
-        GetMinMessageIdResult {
-            topic_message_id: self.get_message_id().await,
-            queue_min_message_id: self.queues.get_min_message_id().await,
-        }
     }
 }

@@ -1,13 +1,13 @@
-name: Test commit
+name: Test our build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, rc ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, rc ]
 
 jobs:
-  build:
+  test:
 
     runs-on: ubuntu-latest
 
@@ -16,7 +16,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Test Build      
+      - name: Test out our build     
         run: |
           ver=$(cat Cargo.toml | grep -m1 version | grep  -Eo '["\047].*["\047]' | tr -d '"')
           echo $ver

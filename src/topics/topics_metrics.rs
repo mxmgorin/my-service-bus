@@ -1,15 +1,6 @@
-use tokio::sync::RwLock;
-
 use crate::metric_data::{MetricOneSecond, MetricsHistory};
 
-pub struct TopicMetricsReadData {
-    pub messages_per_second: usize,
-    pub packets_per_second: usize,
-    pub persist_queue_size: i64,
-    pub publish_history: Vec<i32>,
-}
-
-pub struct TopicMetricsData {
+pub struct TopicMetrics {
     messages_per_second_going: MetricOneSecond,
     packets_per_second_going: MetricOneSecond,
 
@@ -21,7 +12,7 @@ pub struct TopicMetricsData {
     pub publish_history: MetricsHistory,
 }
 
-impl TopicMetricsData {
+impl TopicMetrics {
     pub fn new() -> Self {
         Self {
             messages_per_second_going: MetricOneSecond::new(),
@@ -32,48 +23,19 @@ impl TopicMetricsData {
             persist_queue_size: 0,
         }
     }
-}
 
-pub struct TopicMetrics {
-    data: RwLock<TopicMetricsData>,
-}
+    pub fn update_topic_metrics(&mut self, new_messages_count: usize) {
+        self.messages_per_second_going.increase(new_messages_count);
 
-impl TopicMetrics {
-    pub fn new() -> Self {
-        Self {
-            data: RwLock::new(TopicMetricsData::new()),
-        }
+        self.packets_per_second_going.increase(1);
     }
 
-    pub async fn update_topic_metrics(&self, new_messages_count: usize) {
-        let mut write_access = self.data.write().await;
+    pub fn one_second_tick(&mut self, persist_queue_size: i64) {
+        let messages_per_second = self.messages_per_second_going.get_and_reset();
+        self.packets_per_second = self.packets_per_second_going.get_and_reset();
+        self.messages_per_second = messages_per_second;
+        self.persist_queue_size = persist_queue_size;
 
-        write_access
-            .messages_per_second_going
-            .increase(new_messages_count);
-
-        write_access.packets_per_second_going.increase(1);
-    }
-
-    pub async fn one_second_tick(&self, persist_queue_size: i64) {
-        let mut write_access = self.data.write().await;
-
-        let messages_per_second = write_access.messages_per_second_going.get_and_reset();
-        write_access.packets_per_second = write_access.packets_per_second_going.get_and_reset();
-        write_access.messages_per_second = messages_per_second;
-        write_access.persist_queue_size = persist_queue_size;
-
-        write_access.publish_history.put(messages_per_second as i32);
-    }
-
-    pub async fn get(&self) -> TopicMetricsReadData {
-        let read_access = self.data.read().await;
-
-        TopicMetricsReadData {
-            packets_per_second: read_access.packets_per_second,
-            messages_per_second: read_access.messages_per_second,
-            publish_history: read_access.publish_history.get(),
-            persist_queue_size: read_access.persist_queue_size,
-        }
+        self.publish_history.put(messages_per_second as i32);
     }
 }
