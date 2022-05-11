@@ -12,6 +12,7 @@ use super::models::{GreetingInputModel, GreetingJsonResult};
     route: "/Greeting",
     controller: "Greeting",
     description: "Issue new Http Session",
+    input_data: "GreetingInputModel",
     result: [
         {status_code: 200, description: "Session description", model: "GreetingJsonResult"},
         {status_code: 400, description: "Bad request"}, 
@@ -30,10 +31,10 @@ impl GreetingAction {
 
 async fn handle_request(
     action: &GreetingAction,
+    input_data: GreetingInputModel,
     ctx: &mut HttpContext,
 ) -> Result<HttpOkResult, HttpFailResult> {
     let ip = ctx.request.get_ip().get_real_ip().to_string();
-    let input_data = GreetingInputModel::parse_http_input(ctx).await?;
 
     let id = uuid::Uuid::new_v4().to_string();
 
