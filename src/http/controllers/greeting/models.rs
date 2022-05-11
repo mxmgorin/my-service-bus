@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, MyHttpInput)]
 pub struct GreetingInputModel {
-    #[http_form(description = "Name of application")]
+    #[http_query(description = "Name of application")]
     pub name: String,
 
-    #[http_form(description = "Version of application")]
+    #[http_query(description = "Version of application")]
     pub version: String,
 }
 
