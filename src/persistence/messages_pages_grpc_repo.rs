@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use futures_util::stream;
-use my_service_bus_shared::bcl::{BclDateTime, BclToUnixMicroseconds};
 use my_service_bus_shared::page_compressor::CompressedPageReader;
 use my_service_bus_shared::page_id::PageId;
 use my_service_bus_shared::protobuf_models::MessageProtobufModel;
@@ -148,7 +147,7 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
         let grpc_model = reader.unzip_messages();
 
         if let Err(err) = &grpc_model {
-            print!(
+            println!(
                 "We can not resore page {}/{}. Reason: {:?}. Creating empty page ",
                 topic_id, page_id, err
             );
@@ -159,7 +158,7 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
         let mut msgs = HashMap::new();
 
         for message in grpc_model.unwrap().messages {
-            let time = parse_date_time_from_bcl(message.message_id, message.created);
+            let time = DateTimeAsMicroseconds::new(message.created);
 
             let msg = MySbMessageContent::new(message.message_id, message.data, None, time);
             msgs.insert(msg.id, msg);
@@ -194,25 +193,4 @@ fn split(src: &[u8], max_payload_size: usize) -> Vec<Vec<u8>> {
     }
 
     result
-}
-
-fn parse_date_time_from_bcl(msg_id: MessageId, bcl: Option<BclDateTime>) -> DateTimeAsMicroseconds {
-    if bcl.is_none() {
-        print!("MessageID {} has None DateTime", msg_id);
-        return DateTimeAsMicroseconds::now();
-    }
-
-    let bcl_time = bcl.unwrap();
-
-    let microseconds = bcl_time.to_unix_microseconds();
-
-    if let Err(err) = microseconds {
-        print!(
-            "MessageID {} has a problem with DateTime. Err {}",
-            msg_id, err
-        );
-        return DateTimeAsMicroseconds::now();
-    }
-
-    return DateTimeAsMicroseconds::new(microseconds.unwrap());
 }
