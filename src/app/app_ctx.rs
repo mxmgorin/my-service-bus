@@ -113,12 +113,15 @@ impl DeliveryDependecies for Arc<AppContext> {
         page_id: my_service_bus_shared::page_id::PageId,
     ) {
         let app = self.clone();
+
         tokio::spawn(async move {
+            let message_id = topic.get_message_id().await;
             crate::operations::page_loader::load_full_page_to_cache(
                 topic.clone(),
                 &app.messages_pages_repo,
                 Some(app.logs.as_ref()),
                 page_id,
+                message_id,
             )
             .await;
             let mut topic_data = topic.get_access("app.load_page").await;

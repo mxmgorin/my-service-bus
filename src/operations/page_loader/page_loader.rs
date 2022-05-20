@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use my_service_bus_shared::{messages_page::MessagesPage, page_id::PageId};
+use my_service_bus_shared::{
+    messages_page::MessagesPage,
+    page_id::{PageId, MESSAGES_IN_PAGE},
+    MessageId,
+};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{app::logs::Logs, persistence::MessagesPagesRepo, topics::Topic};
@@ -46,10 +50,30 @@ pub async fn load_full_page_to_cache<TMessagesPagesRepo: MessagesPagesRepo>(
     messages_page_repo: &TMessagesPagesRepo,
     logs: Option<&Logs>,
     page_id: PageId,
+    max_message_id: MessageId,
 ) {
     let mut dt = topic.restore_page_lock.lock().await;
-    let restore_snapshot =
-        super::operations::load_page(topic.as_ref(), messages_page_repo, logs, page_id, 0, 0).await;
+    let from_message_id = page_id * MESSAGES_IN_PAGE as i64;
+    let mut to_message_id = from_message_id + MESSAGES_IN_PAGE as i64;
+
+    if to_message_id > max_message_id {
+        to_message_id = max_message_id;
+    }
+
+    println!(
+        "Loading Page: {}. Messages range {}-{}",
+        page_id, from_message_id, to_message_id
+    );
+
+    let restore_snapshot = super::operations::load_page(
+        topic.as_ref(),
+        messages_page_repo,
+        logs,
+        page_id,
+        from_message_id,
+        to_message_id,
+    )
+    .await;
 
     {
         let mut topic_data = topic.get_access("load_full_page_to_cache").await;

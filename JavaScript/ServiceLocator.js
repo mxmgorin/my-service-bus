@@ -14,12 +14,10 @@ var ServiceLocator = /** @class */ (function () {
     ServiceLocator.checkIfFilterPhraseIsChanged = function (filterPhrase) {
         if (this.prevFilterPhrase == undefined) {
             ServiceLocator.prevFilterPhrase = filterPhrase;
-            console.log("[1]Changed here. filterPhrase: " + filterPhrase);
             return true;
         }
         if (filterPhrase != ServiceLocator.prevFilterPhrase) {
             ServiceLocator.prevFilterPhrase = filterPhrase;
-            console.log("[2]Changed here. filterPhrase: " + filterPhrase);
             return true;
         }
         return false;
