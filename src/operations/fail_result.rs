@@ -1,4 +1,4 @@
-use my_service_bus_shared::validators::InvalidTopicOrQueueName;
+use my_service_bus_shared::validators::InvalidTopicName;
 
 use crate::queue_subscribers::SubscriberId;
 
@@ -13,11 +13,11 @@ pub enum OperationFailResult {
     TonicError(tonic::Status),
     Other(String),
     ShuttingDown,
-    TopicOrQueueValidationError(InvalidTopicOrQueueName),
+    TopicOrQueueValidationError(InvalidTopicName),
 }
 
-impl From<InvalidTopicOrQueueName> for OperationFailResult {
-    fn from(src: InvalidTopicOrQueueName) -> Self {
+impl From<InvalidTopicName> for OperationFailResult {
+    fn from(src: InvalidTopicName) -> Self {
         Self::TopicOrQueueValidationError(src)
     }
 }

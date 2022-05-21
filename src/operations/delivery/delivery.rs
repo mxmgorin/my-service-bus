@@ -139,14 +139,11 @@ mod tests {
         ));
 
         {
-            let queue = topic_data
-                .queues
-                .add_queue_if_not_exists(
-                    TOPIC_NAME.to_string(),
-                    QUEUE_NAME.to_string(),
-                    TopicQueueType::Permanent,
-                )
-                .unwrap();
+            let queue = topic_data.queues.add_queue_if_not_exists(
+                TOPIC_NAME.to_string(),
+                QUEUE_NAME.to_string(),
+                TopicQueueType::Permanent,
+            );
 
             let prev_subscriber = queue.subscribers.subscribe(
                 SUBSCRIBER_ID,
@@ -210,14 +207,11 @@ mod tests {
         ));
 
         {
-            let queue = topic_data
-                .queues
-                .add_queue_if_not_exists(
-                    TOPIC_NAME.to_string(),
-                    QUEUE_NAME.to_string(),
-                    TopicQueueType::Permanent,
-                )
-                .unwrap();
+            let queue = topic_data.queues.add_queue_if_not_exists(
+                TOPIC_NAME.to_string(),
+                QUEUE_NAME.to_string(),
+                TopicQueueType::Permanent,
+            );
 
             let prev_subscriber = queue.subscribers.subscribe(
                 SUBSCRIBER_ID,
@@ -280,14 +274,11 @@ mod tests {
         ));
 
         {
-            let queue = topic_data
-                .queues
-                .add_queue_if_not_exists(
-                    TOPIC_NAME.to_string(),
-                    QUEUE_NAME.to_string(),
-                    TopicQueueType::Permanent,
-                )
-                .unwrap();
+            let queue = topic_data.queues.add_queue_if_not_exists(
+                TOPIC_NAME.to_string(),
+                QUEUE_NAME.to_string(),
+                TopicQueueType::Permanent,
+            );
 
             let prev_subscrber = queue.subscribers.subscribe(
                 SUBSCRIBER_ID,
@@ -364,14 +355,11 @@ mod tests {
         ));
 
         {
-            let queue = topic_data
-                .queues
-                .add_queue_if_not_exists(
-                    TOPIC_NAME.to_string(),
-                    QUEUE_NAME.to_string(),
-                    TopicQueueType::Permanent,
-                )
-                .unwrap();
+            let queue = topic_data.queues.add_queue_if_not_exists(
+                TOPIC_NAME.to_string(),
+                QUEUE_NAME.to_string(),
+                TopicQueueType::Permanent,
+            );
 
             let prev_subscriber = queue.subscribers.subscribe(
                 SUBSCRIBER_ID,

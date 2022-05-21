@@ -4,8 +4,7 @@ use std::collections::{
 };
 
 use my_service_bus_shared::{
-    queue::TopicQueueType, queue_with_intervals::QueueWithIntervals,
-    validators::InvalidTopicOrQueueName, MessageId,
+    queue::TopicQueueType, queue_with_intervals::QueueWithIntervals, MessageId,
 };
 
 use crate::{queue_subscribers::QueueSubscriber, sessions::SessionId, topics::TopicQueueSnapshot};
@@ -34,9 +33,8 @@ impl TopicQueuesList {
         topic_id: String,
         queue_id: String,
         queue_type: TopicQueueType,
-    ) -> Result<&mut TopicQueue, InvalidTopicOrQueueName> {
+    ) -> &mut TopicQueue {
         if !self.queues.contains_key(queue_id.as_str()) {
-            my_service_bus_shared::validators::validate_topic_or_queue_name(queue_id.as_str())?;
             let queue = TopicQueue::new(topic_id, queue_id.to_string(), queue_type);
 
             self.queues.insert(queue_id.to_string(), queue);
@@ -48,7 +46,7 @@ impl TopicQueuesList {
 
         result.update_queue_type(queue_type);
 
-        return Ok(result);
+        return result;
     }
 
     pub fn restore(
