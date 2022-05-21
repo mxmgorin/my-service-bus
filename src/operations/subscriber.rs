@@ -20,7 +20,7 @@ pub async fn subscribe_to_queue(
 
     if topic.is_none() {
         if app.auto_create_topic_on_subscribe {
-            topic = Some(app.topic_list.add_if_not_exists(topic_id).await);
+            topic = Some(app.topic_list.add_if_not_exists(topic_id.as_str()).await?);
         } else {
             return Err(OperationFailResult::TopicNotFound { topic_id });
         }

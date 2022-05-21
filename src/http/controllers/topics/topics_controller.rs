@@ -87,7 +87,7 @@ impl PostAction for TopicsController {
             None,
             input_data.topic_id.as_ref(),
         )
-        .await;
+        .await?;
 
         HttpOutput::as_text("Topic is created".to_string())
             .into_ok_result(true)

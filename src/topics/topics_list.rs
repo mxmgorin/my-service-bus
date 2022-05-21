@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use my_service_bus_shared::MessageId;
+use my_service_bus_shared::{validators::InvalidTopicName, MessageId};
 use tokio::sync::RwLock;
 
 use super::topic::Topic;
@@ -61,10 +61,12 @@ impl TopicsList {
         (read_access.snapshot_id, result)
     }
 
-    pub async fn add_if_not_exists(&self, topic_id: String) -> Arc<Topic> {
+    pub async fn add_if_not_exists(&self, topic_id: &str) -> Result<Arc<Topic>, InvalidTopicName> {
         let mut write_access = self.data.write().await;
 
-        if !write_access.topics.contains_key(&topic_id) {
+        if !write_access.topics.contains_key(topic_id) {
+            my_service_bus_shared::validators::validate_topic_name(topic_id)?;
+
             let topic = Topic::new(topic_id.to_string(), 0);
             write_access
                 .topics
@@ -72,10 +74,9 @@ impl TopicsList {
             write_access.snapshot_id += 1;
         }
 
-        //Safety: This unwrap is handeled - since we create topic by all means during previous if statement.
-        let result = write_access.topics.get(topic_id.as_str()).unwrap();
+        let result = write_access.topics.get(topic_id).unwrap();
 
-        return result.clone();
+        return Ok(result.clone());
     }
 
     pub async fn restore(&self, topic_id: String, message_id: MessageId) -> Arc<Topic> {

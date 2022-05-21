@@ -138,7 +138,7 @@ mod tests {
         const SESSION_ID: SessionId = 13;
 
         let topic_id = "test";
-        let queue_id = "test_queue";
+        let queue_id = "test-queue";
         let mut topic_data = TopicData::new(topic_id.to_string(), 0);
 
         let session = Arc::new(MyServiceBusSession::new(

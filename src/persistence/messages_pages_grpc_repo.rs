@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use futures_util::stream;
-use my_service_bus_shared::bcl::{BclDateTime, BclToUnixMicroseconds};
-use my_service_bus_shared::page_compressor::CompressedPageReader;
+
 use my_service_bus_shared::page_id::PageId;
 use my_service_bus_shared::protobuf_models::MessageProtobufModel;
 use my_service_bus_shared::{MessageId, MySbMessageContent};
@@ -123,7 +122,7 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
         let grpc_client = grpc_client.unwrap();
 
         let grpc_stream = grpc_client
-            .get_page_compressed(GetMessagesPageGrpcRequest {
+            .get_page(GetMessagesPageGrpcRequest {
                 topic_id: topic_id.to_string(),
                 page_no: page_id,
                 from_message_id,
@@ -134,46 +133,28 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
 
         let mut grpc_stream = grpc_stream.into_inner();
 
-        let mut buffer: Vec<u8> = Vec::new();
+        let mut messages: HashMap<MessageId, MySbMessageContent> = HashMap::new();
 
         while let Some(stream_result) = grpc_stream.next().await {
-            let stream_result = stream_result?;
-            buffer.extend(stream_result.chunk);
-        }
-
-        let zip_size = buffer.len();
-
-        let mut reader = CompressedPageReader::new(buffer)?;
-
-        let grpc_model = reader.unzip_messages();
-
-        if let Err(err) = &grpc_model {
-            print!(
-                "We can not resore page {}/{}. Reason: {:?}. Creating empty page ",
-                topic_id, page_id, err
+            let grpc_model = stream_result?;
+            messages.insert(
+                grpc_model.message_id,
+                MySbMessageContent {
+                    id: grpc_model.message_id,
+                    content: grpc_model.data,
+                    time: DateTimeAsMicroseconds::new(grpc_model.created),
+                    headers: None, //TODO - restore it
+                },
             );
-
-            return Ok(None);
-        }
-
-        let mut msgs = HashMap::new();
-
-        for message in grpc_model.unwrap().messages {
-            let time = parse_date_time_from_bcl(message.message_id, message.created);
-
-            let msg = MySbMessageContent::new(message.message_id, message.data, None, time);
-            msgs.insert(msg.id, msg);
         }
 
         println!(
-            "{}/{} restored messages {}. Zip Size: {}",
-            topic_id,
+            "Read Page{} with messages amount: {}",
             page_id,
-            msgs.len(),
-            zip_size
+            messages.len()
         );
 
-        Ok(Some(msgs))
+        Ok(Some(messages))
     }
 }
 
@@ -194,25 +175,4 @@ fn split(src: &[u8], max_payload_size: usize) -> Vec<Vec<u8>> {
     }
 
     result
-}
-
-fn parse_date_time_from_bcl(msg_id: MessageId, bcl: Option<BclDateTime>) -> DateTimeAsMicroseconds {
-    if bcl.is_none() {
-        print!("MessageID {} has None DateTime", msg_id);
-        return DateTimeAsMicroseconds::now();
-    }
-
-    let bcl_time = bcl.unwrap();
-
-    let microseconds = bcl_time.to_unix_microseconds();
-
-    if let Err(err) = microseconds {
-        print!(
-            "MessageID {} has a problem with DateTime. Err {}",
-            msg_id, err
-        );
-        return DateTimeAsMicroseconds::now();
-    }
-
-    return DateTimeAsMicroseconds::new(microseconds.unwrap());
 }

@@ -1,6 +1,8 @@
+#[cfg(test)]
+use my_service_bus_tcp_shared::PacketProtVer;
 use std::sync::Arc;
 
-use my_service_bus_tcp_shared::{DeliveryPackageBuilder, PacketProtVer};
+use my_service_bus_tcp_shared::DeliveryPackageBuilder;
 
 use crate::{
     queues::delivery_iterator::DeliveryIterator,

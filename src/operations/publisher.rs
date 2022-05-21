@@ -14,8 +14,8 @@ pub async fn create_topic_if_not_exists(
     app: Arc<AppContext>,
     session: Option<&MyServiceBusSession>,
     topic_id: &str,
-) -> Arc<Topic> {
-    let topic = app.topic_list.add_if_not_exists(topic_id.to_string()).await;
+) -> Result<Arc<Topic>, OperationFailResult> {
+    let topic = app.topic_list.add_if_not_exists(topic_id).await?;
 
     tokio::task::spawn(crate::timers::persist::persist_topics_and_queues::save(
         app.clone(),
@@ -33,7 +33,7 @@ pub async fn create_topic_if_not_exists(
         }
     }
 
-    return topic;
+    return Ok(topic);
 }
 
 pub async fn publish(
@@ -51,7 +51,7 @@ pub async fn publish(
 
     if topic.is_none() {
         if app.auto_create_topic_on_publish {
-            app.topic_list.add_if_not_exists(topic_id.to_string()).await;
+            app.topic_list.add_if_not_exists(topic_id).await?;
         } else {
             return Err(OperationFailResult::TopicNotFound {
                 topic_id: topic_id.to_string(),
