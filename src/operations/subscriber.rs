@@ -20,7 +20,7 @@ pub async fn subscribe_to_queue(
 
     if topic.is_none() {
         if app.auto_create_topic_on_subscribe {
-            topic = Some(app.topic_list.add_if_not_exists(topic_id).await);
+            topic = Some(app.topic_list.add_if_not_exists(topic_id.as_str()).await?);
         } else {
             return Err(OperationFailResult::TopicNotFound { topic_id });
         }
@@ -30,11 +30,10 @@ pub async fn subscribe_to_queue(
 
     let mut topic_data = topic.get_access("subscribe_to_queue").await;
 
-    let topic_queue = topic_data.queues.add_queue_if_not_exists(
-        topic.topic_id.to_string(),
-        queue_id,
-        queue_type.clone(),
-    );
+    let topic_queue = topic_data
+        .queues
+        .add_queue_if_not_exists(topic.topic_id.to_string(), queue_id, queue_type.clone())
+        .unwrap();
 
     let subscriber_id = app.subscriber_id_generator.get_next_subsriber_id();
 

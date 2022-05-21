@@ -147,11 +147,14 @@ mod tests {
         ));
 
         {
-            let queue = topic_data.queues.add_queue_if_not_exists(
-                topic_id.to_string(),
-                queue_id.to_string(),
-                my_service_bus_shared::queue::TopicQueueType::Permanent,
-            );
+            let queue = topic_data
+                .queues
+                .add_queue_if_not_exists(
+                    topic_id.to_string(),
+                    queue_id.to_string(),
+                    my_service_bus_shared::queue::TopicQueueType::Permanent,
+                )
+                .unwrap();
 
             let prev_subscrber =
                 queue

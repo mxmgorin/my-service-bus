@@ -126,7 +126,7 @@ pub async fn handle(
                     Some(session.as_ref()),
                     topic_id.as_str(),
                 )
-                .await;
+                .await?;
             }
 
             Ok(())
