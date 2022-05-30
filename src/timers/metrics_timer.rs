@@ -37,6 +37,8 @@ async fn tick_topics(app: Arc<AppContext>) {
     app.topic_list.one_second_tick().await;
     app.sessions.one_second_tick().await;
 
+    let mut permanent_queues_without_subscribers = 0;
+
     for topic in app.topic_list.get_all().await {
         let topic_data = topic.get_access("tick_topics").await;
 
@@ -52,6 +54,19 @@ async fn tick_topics(app: Arc<AppContext>) {
                 queue.queue_id.as_str(),
                 queue_size,
             );
+
+            let is_permanent = match &queue.queue_type {
+                my_service_bus_shared::queue::TopicQueueType::Permanent => true,
+                my_service_bus_shared::queue::TopicQueueType::DeleteOnDisconnect => false,
+                my_service_bus_shared::queue::TopicQueueType::PermanentWithSingleConnection => true,
+            };
+
+            if is_permanent && queue.subscribers.get_amount() == 0 {
+                permanent_queues_without_subscribers += 1;
+            }
         }
     }
+
+    app.prometheus
+        .update_permanent_queues_without_subscribers(permanent_queues_without_subscribers);
 }
