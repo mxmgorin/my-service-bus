@@ -5,6 +5,7 @@ pub struct PrometheusMetrics {
     pub persist_queue_size: IntGaugeVec,
     pub topic_queue_size: IntGaugeVec,
     permanent_queues_without_subscribers: IntGauge,
+    topics_without_queues: IntGauge,
 }
 
 impl PrometheusMetrics {
@@ -17,6 +18,8 @@ impl PrometheusMetrics {
         let permanent_queues_without_subscribers = create_permanent_queues_without_subscribers();
 
         let topic_queue_size = create_topic_queue_size();
+
+        let topics_without_queues = create_topics_without_queues();
 
         registry
             .register(Box::new(topic_queue_size.clone()))
@@ -35,6 +38,7 @@ impl PrometheusMetrics {
             persist_queue_size,
             topic_queue_size,
             permanent_queues_without_subscribers,
+            topics_without_queues,
         };
     }
 
@@ -52,6 +56,10 @@ impl PrometheusMetrics {
 
     pub fn update_permanent_queues_without_subscribers(&self, value: i64) {
         self.permanent_queues_without_subscribers.set(value);
+    }
+
+    pub fn update_topics_without_queues(&self, value: i64) {
+        self.topics_without_queues.set(value);
     }
 
     pub fn build(&self) -> Vec<u8> {
@@ -87,4 +95,8 @@ fn create_permanent_queues_without_subscribers() -> IntGauge {
         "Permanent queues without subscribers count",
     )
     .unwrap()
+}
+
+fn create_topics_without_queues() -> IntGauge {
+    IntGauge::new("topics_without_queues", "Topics without queues").unwrap()
 }

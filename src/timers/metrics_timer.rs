@@ -38,6 +38,7 @@ async fn tick_topics(app: Arc<AppContext>) {
     app.sessions.one_second_tick().await;
 
     let mut permanent_queues_without_subscribers = 0;
+    let mut topics_without_queues = 0;
 
     for topic in app.topic_list.get_all().await {
         let topic_data = topic.get_access("tick_topics").await;
@@ -47,8 +48,11 @@ async fn tick_topics(app: Arc<AppContext>) {
         app.prometheus
             .update_persist_queue_size(topic.topic_id.as_str(), persist_queue_size);
 
+        let mut queues_count = 0;
+
         for queue in topic_data.queues.get_all() {
             let queue_size = queue.get_queue_size();
+            queues_count += 1;
             app.prometheus.update_topic_queue_size(
                 topic.topic_id.as_str(),
                 queue.queue_id.as_str(),
@@ -65,8 +69,15 @@ async fn tick_topics(app: Arc<AppContext>) {
                 permanent_queues_without_subscribers += 1;
             }
         }
+
+        if queues_count == 0 {
+            topics_without_queues += 1;
+        }
     }
 
     app.prometheus
         .update_permanent_queues_without_subscribers(permanent_queues_without_subscribers);
+
+    app.prometheus
+        .update_topics_without_queues(topics_without_queues);
 }
