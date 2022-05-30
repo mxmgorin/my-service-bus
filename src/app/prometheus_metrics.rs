@@ -33,6 +33,10 @@ impl PrometheusMetrics {
             .register(Box::new(permanent_queues_without_subscribers.clone()))
             .unwrap();
 
+        registry
+            .register(Box::new(topics_without_queues.clone()))
+            .unwrap();
+
         return Self {
             registry,
             persist_queue_size,

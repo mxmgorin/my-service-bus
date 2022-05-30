@@ -21,7 +21,7 @@ class Iterators {
 
     public static topicPublishersBySession(status: IStatusApiContract, sessionId: number, callback: (topic: ITopic, publisher: ITopicPublisherApiContract) => void) {
         for (let topic of status.topics.items)
-            for (let publisher of topic.publishers)
+            for (let publisher of topic.publishers.sort((a, b) => a.sessionId < b.sessionId ? -1 : 1))
                 if (publisher.sessionId === sessionId)
                     callback(topic, publisher);
 
@@ -38,7 +38,7 @@ class Iterators {
     public static getQueueSubscribers(status: IStatusApiContract, topic: ITopic, queueId: string): IQueueSubscriber[] {
         let result: IQueueSubscriber[] = [];
 
-        for (let subscriber of topic.subscribers) {
+        for (let subscriber of topic.subscribers.sort((a, b) => a.sessionId < b.sessionId ? -1 : 1)) {
             if (subscriber.queueId == queueId) {
 
                 let session = this.findSession(status, subscriber.sessionId);
@@ -59,7 +59,7 @@ class Iterators {
     public static getTopicPublishers(status: IStatusApiContract, topic: ITopic): ITopicPublisher[] {
         let result: ITopicPublisher[] = [];
 
-        for (let publisher of topic.publishers) {
+        for (let publisher of topic.publishers.sort((a, b) => a.sessionId < b.sessionId ? -1 : 1)) {
 
             let session = this.findSession(status, publisher.sessionId);
 
