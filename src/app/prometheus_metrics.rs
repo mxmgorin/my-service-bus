@@ -14,18 +14,9 @@ impl PrometheusMetrics {
         // This unwraps runs on application start. If it fails - applications is not started
         let persist_queue_size = create_topic_persist_queue_size();
 
-        let gauge_opts = Opts::new("topic_queue_size", "Topic queue size");
-
-        let lables = &["topic", "queue"];
-
-        // This unwraps runs on application start. If it fails - applications is not started
-        let topic_queue_size = IntGaugeVec::new(gauge_opts, lables).unwrap();
-
         let permanent_queues_without_subscribers = create_permanent_queues_without_subscribers();
 
-        registry
-            .register(Box::new(topic_queue_size.clone()))
-            .unwrap();
+        let topic_queue_size = create_topic_queue_size();
 
         registry
             .register(Box::new(topic_queue_size.clone()))
@@ -78,6 +69,15 @@ fn create_topic_persist_queue_size() -> IntGaugeVec {
 
     let lables = &["topic"];
 
+    IntGaugeVec::new(gauge_opts, lables).unwrap()
+}
+
+fn create_topic_queue_size() -> IntGaugeVec {
+    let gauge_opts = Opts::new("topic_queue_size", "Topic queue size");
+
+    let lables = &["topic", "queue"];
+
+    // This unwraps runs on application start. If it fails - applications is not started
     IntGaugeVec::new(gauge_opts, lables).unwrap()
 }
 
