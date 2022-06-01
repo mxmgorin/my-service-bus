@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use rust_extensions::ApplicationStates;
+use rust_extensions::{ApplicationStates, MyTimerLogger};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -12,7 +12,11 @@ use crate::{
     topics::TopicsList,
 };
 
-use super::{logs::Logs, prometheus_metrics::PrometheusMetrics, GlobalStates};
+use super::{
+    logs::{Logs, SystemProcess},
+    prometheus_metrics::PrometheusMetrics,
+    GlobalStates,
+};
 
 pub const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -36,7 +40,7 @@ pub struct AppContext {
     pub empty_queue_gc_timeout: Duration,
     pub prometheus: PrometheusMetrics,
 
-    pub delivery_timeout: Option<Duration>,
+    pub delivery_timeout: Duration,
 
     pub debug_topic_and_queue: RwLock<Option<DebugTopicAndQueue>>,
 
@@ -60,7 +64,11 @@ impl AppContext {
             subscriber_id_generator: SubscriberIdGenerator::new(),
             prometheus: PrometheusMetrics::new(),
 
-            delivery_timeout: settings.delivery_timeout,
+            delivery_timeout: if let Some(delivery_timeout) = settings.delivery_timeout {
+                delivery_timeout
+            } else {
+                Duration::from_secs(30)
+            },
             debug_topic_and_queue: RwLock::new(None),
             auto_create_topic_on_publish: settings.auto_create_topic_on_publish,
             auto_create_topic_on_subscribe: settings.auto_create_topic_on_subscribe,
@@ -96,7 +104,7 @@ impl DeliveryDependecies for Arc<AppContext> {
         tokio::spawn(async move {
             match &session.connection {
                 crate::sessions::SessionConnection::Tcp(data) => {
-                    data.connection.send(tcp_packet).await;
+                    crate::tcp::send_with_timeout(&data.connection, tcp_packet).await;
                 }
                 #[cfg(test)]
                 crate::sessions::SessionConnection::Test(_) => {
@@ -137,5 +145,16 @@ impl ApplicationStates for AppContext {
 
     fn is_shutting_down(&self) -> bool {
         self.states.is_shutting_down()
+    }
+}
+
+impl MyTimerLogger for AppContext {
+    fn write_info(&self, timer_id: String, message: String) {
+        self.logs
+            .add_info(None, SystemProcess::Timer, timer_id, message);
+    }
+    fn write_error(&self, timer_id: String, message: String) {
+        self.logs
+            .add_fatal_error(SystemProcess::Timer, timer_id, message);
     }
 }

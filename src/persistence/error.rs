@@ -1,27 +1,26 @@
 use my_service_bus_shared::page_compressor::CompressedPageReaderError;
 use zip::result::ZipError;
 
-use super::GrpcClientError;
-
 #[derive(Debug)]
 pub enum PersistenceError {
     ZipOperationError(ZipError),
     TonicError(tonic::Status),
     InvalidProtobufPayload(String),
-    GrpcClientError(tonic::transport::Error),
     GrpcClientIsNotInitialized(String),
     CompressedPageReaderError(CompressedPageReaderError),
+    CanNotInitializeGrpcService,
+    Timeout(Option<tokio::time::error::Elapsed>),
+}
+
+impl From<tokio::time::error::Elapsed> for PersistenceError {
+    fn from(src: tokio::time::error::Elapsed) -> Self {
+        Self::Timeout(Some(src))
+    }
 }
 
 impl From<CompressedPageReaderError> for PersistenceError {
     fn from(src: CompressedPageReaderError) -> Self {
         Self::CompressedPageReaderError(src)
-    }
-}
-
-impl From<GrpcClientError> for PersistenceError {
-    fn from(src: GrpcClientError) -> Self {
-        Self::GrpcClientError(src.err)
     }
 }
 

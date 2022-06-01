@@ -34,8 +34,4 @@ impl GlobalStates {
         self.shutted_down
             .store(true, std::sync::atomic::Ordering::SeqCst);
     }
-
-    pub fn app_is_shutted_down(&self) -> bool {
-        return self.shutted_down.load(std::sync::atomic::Ordering::Relaxed);
-    }
 }

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
 use futures_util::stream;
 
@@ -15,9 +16,8 @@ use crate::utils::{LazyObject, LazyObjectAccess};
 use crate::persistence_grpc::my_service_bus_messages_persistence_grpc_service_client::MyServiceBusMessagesPersistenceGrpcServiceClient;
 use crate::persistence_grpc::*;
 
-use super::errors::{GrpcClientError, PersistenceError};
 use super::protobuf_models::NewMessagesProtobufContract;
-use super::MessagesPagesRepo;
+use super::{MessagesPagesRepo, PersistenceError};
 use async_trait::async_trait;
 pub struct MessagesPagesGrpcRepo {
     grpc_address: String,
@@ -36,14 +36,11 @@ impl MessagesPagesGrpcRepo {
         &'s self,
     ) -> Result<
         LazyObjectAccess<'s, MyServiceBusMessagesPersistenceGrpcServiceClient<Channel>>,
-        GrpcClientError,
+        PersistenceError,
     > {
         if !self.grpc_client.has_instance().await {
-            let grpc_addess = self.grpc_address.to_string();
-            let result =
-                MyServiceBusMessagesPersistenceGrpcServiceClient::connect(grpc_addess).await?;
-
-            self.grpc_client.init(result).await;
+            let instance = init_grpc_client(&self.grpc_address).await?;
+            self.grpc_client.init(instance).await;
         }
 
         let instance = self.grpc_client.get();
@@ -88,7 +85,13 @@ impl MessagesPagesGrpcRepo {
             grpc_chunks.push(CompressedMessageChunkModel { chunk });
         }
 
-        let result = grpc_client.save_messages(stream::iter(grpc_chunks)).await;
+        let time_out = Duration::from_secs(5);
+
+        let result = tokio::time::timeout(
+            time_out,
+            grpc_client.save_messages(stream::iter(grpc_chunks)),
+        )
+        .await?;
 
         if let Err(status) = result {
             return Err(PersistenceError::TonicError(status));
@@ -121,21 +124,24 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
 
         let grpc_client = grpc_client.unwrap();
 
-        let grpc_stream = grpc_client
-            .get_page(GetMessagesPageGrpcRequest {
+        let time_out = Duration::from_secs(5);
+
+        let mut grpc_stream = tokio::time::timeout(
+            time_out,
+            grpc_client.get_page(GetMessagesPageGrpcRequest {
                 topic_id: topic_id.to_string(),
                 page_no: page_id,
                 from_message_id,
                 to_message_id,
                 version: 1,
-            })
-            .await?;
-
-        let mut grpc_stream = grpc_stream.into_inner();
+            }),
+        )
+        .await??
+        .into_inner();
 
         let mut messages: HashMap<MessageId, MySbMessageContent> = HashMap::new();
 
-        while let Some(stream_result) = grpc_stream.next().await {
+        while let Some(stream_result) = tokio::time::timeout(time_out, grpc_stream.next()).await? {
             let grpc_model = stream_result?;
             messages.insert(
                 grpc_model.message_id,
@@ -175,4 +181,39 @@ fn split(src: &[u8], max_payload_size: usize) -> Vec<Vec<u8>> {
     }
 
     result
+}
+
+async fn init_grpc_client(
+    grpc_address: &str,
+) -> Result<MyServiceBusMessagesPersistenceGrpcServiceClient<Channel>, PersistenceError> {
+    let time_out = Duration::from_secs(3);
+    let mut attempt_no = 0;
+
+    loop {
+        let init_result = tokio::time::timeout(
+            time_out,
+            MyServiceBusMessagesPersistenceGrpcServiceClient::connect(grpc_address.to_string()),
+        )
+        .await;
+
+        if let Ok(init_result) = init_result {
+            match init_result {
+                Ok(result) => {
+                    return Ok(result);
+                }
+                Err(err) => {
+                    println!("Can no initilize Messages Pages GRPC Repo. Err:{:?}", err);
+                }
+            }
+        } else {
+            println!("Initializing Messages Pages GRPC Repo timeout");
+        }
+
+        if attempt_no >= 5 {
+            return Err(PersistenceError::CanNotInitializeGrpcService);
+        }
+
+        attempt_no += 1;
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
 }

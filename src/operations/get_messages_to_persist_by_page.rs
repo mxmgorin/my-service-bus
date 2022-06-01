@@ -30,16 +30,6 @@ fn get_messages_to_persist(
     messages_to_persist_by_page
 }
 
-pub async fn commit_persist_result(topic: &Topic, page_id: PageId, ok: bool) {
-    let mut topic_data = topic.get_access("commit_persist_result").await;
-
-    if ok {
-        topic_data.pages.persisted(page_id);
-    } else {
-        topic_data.pages.not_persisted(page_id);
-    }
-}
-
 #[cfg(test)]
 mod tests {
 

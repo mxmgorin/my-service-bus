@@ -1,7 +1,8 @@
 mod dead_subscribers_kicker;
-mod gc;
-mod main;
+mod gc_timer;
 mod metrics_timer;
-pub mod persist;
-
-pub use main::start;
+mod persist_topics_and_queues;
+pub use dead_subscribers_kicker::DeadSubscribersKickerTimer;
+pub use gc_timer::GcTimer;
+pub use metrics_timer::MetricsTimer;
+pub use persist_topics_and_queues::PersistTopicsAndQueuesTimer;

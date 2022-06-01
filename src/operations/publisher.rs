@@ -17,13 +17,7 @@ pub async fn create_topic_if_not_exists(
 ) -> Result<Arc<Topic>, OperationFailResult> {
     let topic = app.topic_list.add_if_not_exists(topic_id).await?;
 
-    tokio::task::spawn(crate::timers::persist::persist_topics_and_queues::save(
-        app.clone(),
-    ));
-    tokio::task::spawn(crate::timers::persist::save_messages_for_topic(
-        app,
-        topic.clone(),
-    ));
+    crate::operations::persist_topics_and_queues(&app).await;
 
     {
         let mut topic_data = topic.get_access("create_topic_if_not_exists").await;
@@ -70,12 +64,13 @@ pub async fn publish(
     topic_data.metrics.update_topic_metrics(messages_count);
 
     if persist_immediately {
-        tokio::task::spawn(crate::timers::persist::save_messages_for_topic(
-            app.clone(),
-            topic.clone(),
-        ));
+        tokio::task::spawn(persist_after_publish(app.clone(), topic.clone()));
     }
 
     super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
     Ok(())
+}
+
+async fn persist_after_publish(app: Arc<AppContext>, topic: Arc<Topic>) {
+    crate::operations::save_messages_for_topic(&app, &topic).await;
 }

@@ -1,7 +1,7 @@
 use crate::app::AppContext;
 use crate::topics::TopicData;
 
-pub fn execute(app: &AppContext, topic_data: &mut TopicData) {
+pub fn gc_message_pages(app: &AppContext, topic_data: &mut TopicData) {
     let active_pages = topic_data.get_active_pages();
 
     let pages = topic_data.pages.get_pages_info();

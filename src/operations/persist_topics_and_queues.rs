@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::{app::AppContext, topics::Topic};
+use crate::app::AppContext;
 
-pub async fn save(app: Arc<AppContext>) -> Vec<Arc<Topic>> {
+pub async fn persist_topics_and_queues(app: &Arc<AppContext>) {
     let topics = app.topic_list.get_all().await;
     let mut topics_snapshots = Vec::new();
 
@@ -22,5 +22,7 @@ pub async fn save(app: Arc<AppContext>) -> Vec<Arc<Topic>> {
         );
     }
 
-    topics
+    for topic in &topics {
+        crate::operations::save_messages_for_topic(&app, topic).await;
+    }
 }

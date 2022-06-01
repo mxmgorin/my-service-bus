@@ -2,7 +2,9 @@ use app::AppContext;
 
 use my_service_bus_tcp_shared::{ConnectionAttributes, MySbTcpSerializer};
 use my_tcp_sockets::TcpServer;
+use rust_extensions::MyTimer;
 use tcp::socket_loop::TcpServerEvents;
+use timers::{DeadSubscribersKickerTimer, GcTimer, MetricsTimer, PersistTopicsAndQueuesTimer};
 
 use std::time::Duration;
 use std::{net::SocketAddr, sync::Arc};
@@ -55,9 +57,30 @@ async fn main() {
         )
         .await;
 
-    tasks.push(tokio::task::spawn(crate::timers::start(app.clone())));
-
     crate::http::start_up::setup_server(app.clone());
+
+    let mut metrics_timer = MyTimer::new(Duration::from_secs(1));
+    metrics_timer.register_timer("Metrics", Arc::new(MetricsTimer::new(app.clone())));
+
+    let mut gc_timer = MyTimer::new(Duration::from_secs(10));
+    gc_timer.register_timer(
+        "KickDeadConnection",
+        Arc::new(DeadSubscribersKickerTimer::new(app.clone())),
+    );
+
+    gc_timer.register_timer("GC", Arc::new(GcTimer::new(app.clone())));
+
+    let mut persist_timer = MyTimer::new(Duration::from_secs(3));
+
+    persist_timer.register_timer(
+        "PersistTopicsAndQueues",
+        Arc::new(PersistTopicsAndQueuesTimer::new(app.clone())),
+    );
+
+    metrics_timer.start(app.clone(), app.clone());
+
+    gc_timer.start(app.clone(), app.clone());
+    persist_timer.start(app.clone(), app.clone());
 
     signal_hook::flag::register(
         signal_hook::consts::SIGTERM,

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 
@@ -7,7 +9,6 @@ use crate::{settings::SettingsModel, topics::TopicSnapshot};
 use crate::persistence_grpc::my_service_bus_queue_persistence_grpc_service_client::MyServiceBusQueuePersistenceGrpcServiceClient;
 use crate::persistence_grpc::*;
 
-use super::errors::GrpcClientError;
 use super::PersistenceError;
 
 pub struct TopcsAndQueuesSnapshotRepo {
@@ -27,13 +28,12 @@ impl TopcsAndQueuesSnapshotRepo {
         &'s self,
     ) -> Result<
         LazyObjectAccess<'s, MyServiceBusQueuePersistenceGrpcServiceClient<Channel>>,
-        GrpcClientError,
+        PersistenceError,
     > {
         if !self.grpc_client.has_instance().await {
             let grpc_addess = self.grpc_address.to_string();
-            let result =
-                MyServiceBusQueuePersistenceGrpcServiceClient::connect(grpc_addess).await?;
-            self.grpc_client.init(result).await;
+            let instance = init_grpc_client(&grpc_addess).await?;
+            self.grpc_client.init(instance).await;
         }
 
         let result = self.grpc_client.get();
@@ -41,8 +41,6 @@ impl TopcsAndQueuesSnapshotRepo {
     }
 
     pub async fn save(&self, snapshot: Vec<TopicSnapshot>) -> Result<(), PersistenceError> {
-        let grpc_request: SaveQueueSnapshotGrpcRequest = snapshot.into();
-
         let grpc_client_lazy_object = self.get_grpc_client().await?;
 
         let mut grpc_client = grpc_client_lazy_object.get_mut().await;
@@ -55,7 +53,7 @@ impl TopcsAndQueuesSnapshotRepo {
             ));
         }
 
-        grpc_client.unwrap().save_snapshot(grpc_request).await?;
+        save_snapshot_with_timeout(grpc_client.unwrap(), snapshot).await;
 
         Ok(())
     }
@@ -73,17 +71,98 @@ impl TopcsAndQueuesSnapshotRepo {
             ));
         }
 
-        let grpc_client = grpc_client.unwrap();
-
-        let mut grpc_response = grpc_client.get_snapshot(()).await?.into_inner();
-
-        let mut result: Vec<TopicSnapshot> = Vec::new();
-
-        while let Some(item) = grpc_response.next().await {
-            let grpc_model = item?;
-            result.push(grpc_model.into());
-        }
+        let result = load_snapshot_with_timeout(grpc_client.unwrap()).await;
 
         Ok(result)
+    }
+}
+
+async fn init_grpc_client(
+    grpc_address: &str,
+) -> Result<MyServiceBusQueuePersistenceGrpcServiceClient<Channel>, PersistenceError> {
+    let duration = Duration::from_secs(3);
+    let mut attempt_no = 0;
+
+    loop {
+        let result = tokio::time::timeout(
+            duration,
+            MyServiceBusQueuePersistenceGrpcServiceClient::connect(grpc_address.to_string()),
+        )
+        .await;
+
+        if let Ok(result) = result {
+            match result {
+                Ok(result) => {
+                    return Ok(result);
+                }
+                Err(err) => {
+                    println!(
+                        "Can not get grpc client. Attempt: {},  Reason:{}",
+                        attempt_no, err
+                    );
+                }
+            }
+        } else {
+            println!("Initializinf grpc client timeout. Attempt: {}", attempt_no);
+        }
+
+        if attempt_no >= 5 {
+            return Err(PersistenceError::CanNotInitializeGrpcService);
+        }
+
+        attempt_no += 1;
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+}
+
+async fn save_snapshot_with_timeout(
+    grpc: &mut MyServiceBusQueuePersistenceGrpcServiceClient<Channel>,
+    snapshot: Vec<TopicSnapshot>,
+) {
+    let duration = Duration::from_secs(3);
+
+    let grpc_request: SaveQueueSnapshotGrpcRequest = snapshot.into();
+
+    match tokio::time::timeout(duration, grpc.save_snapshot(grpc_request)).await {
+        Ok(result) => {
+            result.unwrap();
+            return;
+        }
+        Err(_) => panic!("save_snapshot timeout"),
+    }
+}
+
+async fn load_snapshot_with_timeout(
+    grpc: &mut MyServiceBusQueuePersistenceGrpcServiceClient<Channel>,
+) -> Vec<TopicSnapshot> {
+    let duration = Duration::from_secs(3);
+
+    let mut attempt_no = 0;
+
+    loop {
+        match tokio::time::timeout(duration, grpc.get_snapshot(())).await {
+            Ok(response) => {
+                let response = response.unwrap();
+
+                let mut response = response.into_inner();
+
+                let mut result: Vec<TopicSnapshot> = Vec::new();
+
+                while let Some(item) = response.next().await {
+                    let grpc_model = item.unwrap();
+                    result.push(grpc_model.into());
+                }
+
+                return result;
+            }
+            Err(_) => {
+                if attempt_no >= 5 {
+                    panic!("save_snapshot timeout");
+                }
+
+                attempt_no += 1;
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        }
     }
 }

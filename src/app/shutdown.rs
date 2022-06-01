@@ -22,7 +22,7 @@ async fn empty_persistence_queues(app: Arc<AppContext>) {
                 topic.topic_id, msgs_to_persist
             );
 
-            crate::timers::persist::save_messages_for_topic(app.clone(), topic.clone()).await;
+            crate::operations::save_messages_for_topic(&app, &topic).await;
 
             tokio::time::sleep(duration).await;
         }
@@ -33,6 +33,6 @@ async fn empty_persistence_queues(app: Arc<AppContext>) {
 
 async fn make_last_topcis_and_queues_persist(app: Arc<AppContext>) {
     println!("Making final topics and queues snapshot save");
-    crate::timers::persist::persist_topics_and_queues::save(app).await;
+    crate::operations::persist_topics_and_queues(&app).await;
     println!("Final topics and queues snapshot save is done");
 }

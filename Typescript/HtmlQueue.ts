@@ -4,7 +4,7 @@ class HtmlQueue {
     static renderQueueSubscribersCountBadge(count: number): string {
 
         let badgeClass = count > 0 ? "primary" : "danger";
-        return '<span class="badge badge-' + badgeClass + '"><embed style="width: 10px; height:10px" src="/img/plug.svg"> ' + count.toString() + "</embed></span>";
+        return '<span class="badge badge-' + badgeClass + '">' + count.toString() + '<div style="width: 10px; height:10px"> ' + PlugIcon.getIcon() + "</div></span>";
     }
 
 

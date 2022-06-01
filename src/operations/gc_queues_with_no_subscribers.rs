@@ -3,7 +3,7 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{app::AppContext, topics::TopicData};
 
-pub fn execute(app: &AppContext, topic_data: &mut TopicData) {
+pub fn gc_queues_with_no_subscribers(app: &AppContext, topic_data: &mut TopicData) {
     let now = DateTimeAsMicroseconds::now();
 
     let queues_with_no_subscribers = topic_data.queues.get_queues_with_no_subscribers();

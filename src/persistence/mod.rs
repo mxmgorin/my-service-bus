@@ -1,4 +1,4 @@
-mod errors;
+mod error;
 mod messages_pages_grpc_repo;
 mod messages_pages_repo;
 
@@ -10,4 +10,4 @@ pub use messages_pages_repo::MessagesPagesRepo;
 
 pub use queue_snapshot_repo::TopcsAndQueuesSnapshotRepo;
 
-pub use errors::PersistenceError;
+pub use error::PersistenceError;
