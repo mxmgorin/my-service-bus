@@ -24,3 +24,4 @@ execute: **cargo run --release**
 ### 2.2.4
 * Grpc Client now have timeouts
 * Backgrounds are implemented using timers which means now they have one minute timeout in case of long running tasks;
+* Added Metric - topic size in memory
