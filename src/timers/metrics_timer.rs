@@ -59,6 +59,12 @@ impl MyTimerTick for MetricsTimer {
             if queues_count == 0 {
                 topics_without_queues += 1;
             }
+
+            let topic_data_size = topic.get_topic_data_size().await;
+
+            self.app
+                .prometheus
+                .update_topic_data_size(topic.topic_id.as_str(), topic_data_size);
         }
 
         self.app

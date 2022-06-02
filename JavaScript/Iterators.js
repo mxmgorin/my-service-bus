@@ -20,7 +20,7 @@ var Iterators = /** @class */ (function () {
         }
     };
     Iterators.queueSubscribersBySession = function (status, sessionId, callback) {
-        for (var _i = 0, _a = status.topics.items; _i < _a.length; _i++) {
+        for (var _i = 0, _a = status.topics.items.sort(function (a, b) { return a.id > b.id ? 1 : 0; }); _i < _a.length; _i++) {
             var topic = _a[_i];
             for (var _b = 0, _c = topic.subscribers; _b < _c.length; _b++) {
                 var subscriber = _c[_b];
