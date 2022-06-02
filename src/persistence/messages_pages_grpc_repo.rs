@@ -22,6 +22,7 @@ use async_trait::async_trait;
 pub struct MessagesPagesGrpcRepo {
     grpc_address: String,
     grpc_client: LazyObject<MyServiceBusMessagesPersistenceGrpcServiceClient<Channel>>,
+    time_out: Duration,
 }
 
 impl MessagesPagesGrpcRepo {
@@ -29,6 +30,7 @@ impl MessagesPagesGrpcRepo {
         Self {
             grpc_address: settings.persistence_grpc_url.to_string(),
             grpc_client: LazyObject::new(),
+            time_out: settings.grpc_timeout,
         }
     }
 
@@ -39,7 +41,7 @@ impl MessagesPagesGrpcRepo {
         PersistenceError,
     > {
         if !self.grpc_client.has_instance().await {
-            let instance = init_grpc_client(&self.grpc_address).await?;
+            let instance = init_grpc_client(&self.grpc_address, self.time_out).await?;
             self.grpc_client.init(instance).await;
         }
 
@@ -85,10 +87,8 @@ impl MessagesPagesGrpcRepo {
             grpc_chunks.push(CompressedMessageChunkModel { chunk });
         }
 
-        let time_out = Duration::from_secs(5);
-
         let result = tokio::time::timeout(
-            time_out,
+            self.time_out,
             grpc_client.save_messages(stream::iter(grpc_chunks)),
         )
         .await?;
@@ -124,10 +124,8 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
 
         let grpc_client = grpc_client.unwrap();
 
-        let time_out = Duration::from_secs(5);
-
         let mut grpc_stream = tokio::time::timeout(
-            time_out,
+            self.time_out,
             grpc_client.get_page(GetMessagesPageGrpcRequest {
                 topic_id: topic_id.to_string(),
                 page_no: page_id,
@@ -141,7 +139,9 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
 
         let mut messages: HashMap<MessageId, MySbMessageContent> = HashMap::new();
 
-        while let Some(stream_result) = tokio::time::timeout(time_out, grpc_stream.next()).await? {
+        while let Some(stream_result) =
+            tokio::time::timeout(self.time_out, grpc_stream.next()).await?
+        {
             let grpc_model = stream_result?;
             messages.insert(
                 grpc_model.message_id,
@@ -185,8 +185,8 @@ fn split(src: &[u8], max_payload_size: usize) -> Vec<Vec<u8>> {
 
 async fn init_grpc_client(
     grpc_address: &str,
+    time_out: Duration,
 ) -> Result<MyServiceBusMessagesPersistenceGrpcServiceClient<Channel>, PersistenceError> {
-    let time_out = Duration::from_secs(3);
     let mut attempt_no = 0;
 
     loop {
