@@ -41,10 +41,6 @@ impl PrometheusMetrics {
             .unwrap();
 
         registry
-            .register(Box::new(topics_without_queues.clone()))
-            .unwrap();
-
-        registry
             .register(Box::new(topic_data_size.clone()))
             .unwrap();
 
