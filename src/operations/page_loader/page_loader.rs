@@ -25,6 +25,11 @@ pub async fn load_page_to_cache<TMessagesPagesRepo: MessagesPagesRepo>(
     let (from_message_id, to_message_id) =
         super::utils::get_load_page_interval(min_message_id, topic_message_id, page_id);
 
+    println!(
+        "Loading pages {}-{} for page {} for topic:{}",
+        from_message_id, to_message_id, page_id, topic.topic_id
+    );
+
     let restore_snapshot = super::operations::load_page(
         topic.as_ref(),
         messages_page_repo,
