@@ -124,6 +124,16 @@ impl TopicData {
         self.queues.remove_subscribers_by_session_id(session_id)
     }
 
+    pub async fn get_topic_data_size(&self) -> usize {
+        let mut result = 0;
+
+        for page in self.pages.get_pages() {
+            result += page.size
+        }
+
+        result
+    }
+
     pub fn get_delivery_iterator<'s>(
         &'s mut self,
         max_size: usize,

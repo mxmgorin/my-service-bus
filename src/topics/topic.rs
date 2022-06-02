@@ -111,15 +111,4 @@ impl Topic {
 
         result
     }
-
-    pub async fn get_topic_data_size(&self) -> usize {
-        let mut result = 0;
-        let read_access = self.data.lock().await;
-
-        for page in read_access.pages.get_pages() {
-            result += page.size
-        }
-
-        result
-    }
 }
