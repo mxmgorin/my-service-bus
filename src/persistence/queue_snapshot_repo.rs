@@ -14,6 +14,7 @@ use super::PersistenceError;
 pub struct TopcsAndQueuesSnapshotRepo {
     grpc_address: String,
     grpc_client: LazyObject<MyServiceBusQueuePersistenceGrpcServiceClient<Channel>>,
+    timeout: Duration,
 }
 
 impl TopcsAndQueuesSnapshotRepo {
@@ -21,6 +22,7 @@ impl TopcsAndQueuesSnapshotRepo {
         TopcsAndQueuesSnapshotRepo {
             grpc_address: settings.persistence_grpc_url.to_string(),
             grpc_client: LazyObject::new(),
+            timeout: settings.grpc_timeout,
         }
     }
 
@@ -32,7 +34,7 @@ impl TopcsAndQueuesSnapshotRepo {
     > {
         if !self.grpc_client.has_instance().await {
             let grpc_addess = self.grpc_address.to_string();
-            let instance = init_grpc_client(&grpc_addess).await?;
+            let instance = init_grpc_client(&grpc_addess, self.timeout).await?;
             self.grpc_client.init(instance).await;
         }
 
@@ -53,7 +55,7 @@ impl TopcsAndQueuesSnapshotRepo {
             ));
         }
 
-        save_snapshot_with_timeout(grpc_client.unwrap(), snapshot).await;
+        save_snapshot_with_timeout(grpc_client.unwrap(), snapshot, self.timeout).await;
 
         Ok(())
     }
@@ -71,7 +73,7 @@ impl TopcsAndQueuesSnapshotRepo {
             ));
         }
 
-        let result = load_snapshot_with_timeout(grpc_client.unwrap()).await;
+        let result = load_snapshot_with_timeout(grpc_client.unwrap(), self.timeout).await;
 
         Ok(result)
     }
@@ -79,13 +81,13 @@ impl TopcsAndQueuesSnapshotRepo {
 
 async fn init_grpc_client(
     grpc_address: &str,
+    timeout: Duration,
 ) -> Result<MyServiceBusQueuePersistenceGrpcServiceClient<Channel>, PersistenceError> {
-    let duration = Duration::from_secs(3);
     let mut attempt_no = 0;
 
     loop {
         let result = tokio::time::timeout(
-            duration,
+            timeout,
             MyServiceBusQueuePersistenceGrpcServiceClient::connect(grpc_address.to_string()),
         )
         .await;
@@ -118,12 +120,11 @@ async fn init_grpc_client(
 async fn save_snapshot_with_timeout(
     grpc: &mut MyServiceBusQueuePersistenceGrpcServiceClient<Channel>,
     snapshot: Vec<TopicSnapshot>,
+    timeout: Duration,
 ) {
-    let duration = Duration::from_secs(3);
-
     let grpc_request: SaveQueueSnapshotGrpcRequest = snapshot.into();
 
-    match tokio::time::timeout(duration, grpc.save_snapshot(grpc_request)).await {
+    match tokio::time::timeout(timeout, grpc.save_snapshot(grpc_request)).await {
         Ok(result) => {
             result.unwrap();
             return;
@@ -134,13 +135,12 @@ async fn save_snapshot_with_timeout(
 
 async fn load_snapshot_with_timeout(
     grpc: &mut MyServiceBusQueuePersistenceGrpcServiceClient<Channel>,
+    timeout: Duration,
 ) -> Vec<TopicSnapshot> {
-    let duration = Duration::from_secs(3);
-
     let mut attempt_no = 0;
 
     loop {
-        match tokio::time::timeout(duration, grpc.get_snapshot(())).await {
+        match tokio::time::timeout(timeout, grpc.get_snapshot(())).await {
             Ok(response) => {
                 let response = response.unwrap();
 

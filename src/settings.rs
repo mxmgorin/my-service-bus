@@ -28,6 +28,9 @@ pub struct SettingsModelJson {
 
     #[serde(rename = "AutoCreateTopicOnSubscribe")]
     pub auto_create_topic_on_subscribe: Option<bool>,
+
+    #[serde(rename = "GrpcTimeoutSecs")]
+    pub grpc_timeout_secs: u64,
 }
 
 pub struct SettingsModel {
@@ -42,6 +45,7 @@ pub struct SettingsModel {
 
     pub auto_create_topic_on_publish: bool,
     pub auto_create_topic_on_subscribe: bool,
+    pub grpc_timeout: Duration,
 }
 
 pub async fn read() -> SettingsModel {
@@ -158,6 +162,7 @@ impl Into<SettingsModel> for SettingsModelJson {
             delivery_timeout,
             auto_create_topic_on_publish,
             auto_create_topic_on_subscribe,
+            grpc_timeout: Duration::from_secs(self.grpc_timeout_secs),
         }
     }
 }
