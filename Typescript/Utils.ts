@@ -82,6 +82,16 @@ class Utils {
     }
 
 
+    public static highlightPageOfMessageId(messageId: string): string {
+
+        if (messageId.length < 5) {
+            return messageId;
+        }
+
+        return '<span style="color:lightgray">' + messageId.substring(0, messageId.length - 5) + '</span>' + messageId.substring(messageId.length - 5, messageId.length);
+
+    }
+
 
 
 }
