@@ -10,11 +10,11 @@ use crate::{
 use super::OperationFailResult;
 
 pub async fn subscribe_to_queue(
-    app: Arc<AppContext>,
+    app: &Arc<AppContext>,
     topic_id: String,
     queue_id: String,
     queue_type: TopicQueueType,
-    session: Arc<MyServiceBusSession>,
+    session: &Arc<MyServiceBusSession>,
 ) -> Result<(), OperationFailResult> {
     let mut topic = app.topic_list.get(topic_id.as_str()).await;
 
@@ -28,7 +28,7 @@ pub async fn subscribe_to_queue(
 
     let topic = topic.unwrap();
 
-    let mut topic_data = topic.get_access("subscribe_to_queue").await;
+    let mut topic_data = topic.get_access().await;
 
     let topic_queue = topic_data.queues.add_queue_if_not_exists(
         topic.topic_id.to_string(),
@@ -63,7 +63,8 @@ pub async fn subscribe_to_queue(
     if let Some(kicked_subscriber) = kicked_subscriber_result {
         remove_subscriber(topic_queue, kicked_subscriber);
     }
-    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
+
+    super::delivery::start_new(&app, &topic, &mut topic_data);
 
     Ok(())
 }

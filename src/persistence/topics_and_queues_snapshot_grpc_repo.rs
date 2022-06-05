@@ -11,15 +11,15 @@ use crate::persistence_grpc::*;
 
 use super::PersistenceError;
 
-pub struct TopcsAndQueuesSnapshotRepo {
+pub struct TopcsAndQueuesSnapshotGrpcRepo {
     grpc_address: String,
     grpc_client: LazyObject<MyServiceBusQueuePersistenceGrpcServiceClient<Channel>>,
     timeout: Duration,
 }
 
-impl TopcsAndQueuesSnapshotRepo {
-    pub fn new(settings: &SettingsModel) -> TopcsAndQueuesSnapshotRepo {
-        TopcsAndQueuesSnapshotRepo {
+impl TopcsAndQueuesSnapshotGrpcRepo {
+    pub fn new(settings: &SettingsModel) -> Self {
+        Self {
             grpc_address: settings.persistence_grpc_url.to_string(),
             grpc_client: LazyObject::new(),
             timeout: settings.grpc_timeout,
@@ -42,24 +42,6 @@ impl TopcsAndQueuesSnapshotRepo {
         return Ok(result);
     }
 
-    pub async fn save(&self, snapshot: Vec<TopicSnapshot>) -> Result<(), PersistenceError> {
-        let grpc_client_lazy_object = self.get_grpc_client().await?;
-
-        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
-
-        let grpc_client = grpc_client.as_mut();
-
-        if grpc_client.is_none() {
-            return Err(PersistenceError::GrpcClientIsNotInitialized(
-                "queue_snapshot_repo::save".to_string(),
-            ));
-        }
-
-        save_snapshot_with_timeout(grpc_client.unwrap(), snapshot, self.timeout).await;
-
-        Ok(())
-    }
-
     pub async fn load(&self) -> Result<Vec<TopicSnapshot>, PersistenceError> {
         let grpc_client_lazy_object = self.get_grpc_client().await?;
 
@@ -76,6 +58,24 @@ impl TopcsAndQueuesSnapshotRepo {
         let result = load_snapshot_with_timeout(grpc_client.unwrap(), self.timeout).await;
 
         Ok(result)
+    }
+
+    pub async fn save(&self, snapshot: Vec<TopicSnapshot>) -> Result<(), PersistenceError> {
+        let grpc_client_lazy_object = self.get_grpc_client().await?;
+
+        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
+
+        let grpc_client = grpc_client.as_mut();
+
+        if grpc_client.is_none() {
+            return Err(PersistenceError::GrpcClientIsNotInitialized(
+                "queue_snapshot_repo::save".to_string(),
+            ));
+        }
+
+        save_snapshot_with_timeout(grpc_client.unwrap(), snapshot, self.timeout).await;
+
+        Ok(())
     }
 }
 

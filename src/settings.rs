@@ -3,6 +3,10 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use tokio::{fs::File, io::AsyncReadExt};
 
+use crate::persistence::{MessagesPagesRepo, TopicsAndQueuesSnapshotRepo};
+#[cfg(test)]
+const TEST_GRPC_URL: &str = "test";
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SettingsModelJson {
     #[serde(rename = "GrpcUrl")]
@@ -48,35 +52,70 @@ pub struct SettingsModel {
     pub grpc_timeout: Duration,
 }
 
-pub async fn read() -> SettingsModel {
-    let filename = get_settings_filename();
+impl SettingsModel {
+    pub async fn read() -> Self {
+        let filename = get_settings_filename();
 
-    println!("Reading settings file {}", filename);
+        println!("Reading settings file {}", filename);
 
-    let file = File::open(&filename).await;
+        let file = File::open(&filename).await;
 
-    if let Err(err) = file {
-        panic!(
-            "Can not open settings file: {}. The reason is: {:?}",
-            filename, err
-        );
+        if let Err(err) = file {
+            panic!(
+                "Can not open settings file: {}. The reason is: {:?}",
+                filename, err
+            );
+        }
+
+        let mut file = file.unwrap();
+
+        let mut file_content: Vec<u8> = Vec::new();
+
+        loop {
+            let res = file.read_buf(&mut file_content).await.unwrap();
+
+            if res == 0 {
+                break;
+            }
+        }
+
+        let result: SettingsModelJson = serde_yaml::from_slice(&file_content).unwrap();
+
+        result.into()
     }
 
-    let mut file = file.unwrap();
-
-    let mut file_content: Vec<u8> = Vec::new();
-
-    loop {
-        let res = file.read_buf(&mut file_content).await.unwrap();
-
-        if res == 0 {
-            break;
+    #[cfg(test)]
+    pub fn create_test_settings(max_delivery_size: usize) -> Self {
+        Self {
+            persistence_grpc_url: TEST_GRPC_URL.to_string(),
+            eventually_persistence_delay: Duration::from_secs(1),
+            queue_gc_timeout: Duration::from_secs(1),
+            debug_mode: true,
+            max_delivery_size,
+            delivery_timeout: None,
+            auto_create_topic_on_publish: true,
+            auto_create_topic_on_subscribe: true,
+            grpc_timeout: Duration::from_secs(1),
         }
     }
 
-    let result: SettingsModelJson = serde_yaml::from_slice(&file_content).unwrap();
+    pub fn create_topics_and_queues_snapshot_repo(&self) -> TopicsAndQueuesSnapshotRepo {
+        #[cfg(test)]
+        if self.persistence_grpc_url == TEST_GRPC_URL {
+            return TopicsAndQueuesSnapshotRepo::create_mock_instance();
+        }
 
-    result.into()
+        TopicsAndQueuesSnapshotRepo::create_production_instance(self)
+    }
+
+    pub fn create_messages_pages_repo(&self) -> MessagesPagesRepo {
+        #[cfg(test)]
+        if self.persistence_grpc_url == TEST_GRPC_URL {
+            return MessagesPagesRepo::create_mock_instance();
+        }
+
+        MessagesPagesRepo::create_production_instance(self)
+    }
 }
 
 #[cfg(target_os = "windows")]

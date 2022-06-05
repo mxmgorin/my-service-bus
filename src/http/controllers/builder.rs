@@ -32,9 +32,6 @@ pub fn build(app: Arc<AppContext>) -> ControllersMiddleware {
     controllers
         .register_delete_action(Arc::new(super::queues::DeleteQueueAction::new(app.clone())));
 
-    let locks_controller = super::debug::LocksController::new(app.clone());
-    controllers.register_get_action(Arc::new(locks_controller));
-
     let debug_mode_controller = Arc::new(super::debug::DebugModeController::new(app.clone()));
     controllers.register_post_action(debug_mode_controller.clone());
     controllers.register_delete_action(debug_mode_controller.clone());

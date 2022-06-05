@@ -7,7 +7,7 @@ use crate::{app::AppContext, queue_subscribers::SubscriberId};
 use super::OperationFailResult;
 
 pub async fn all_confirmed(
-    app: Arc<AppContext>,
+    app: &Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
     subscriber_id: SubscriberId,
@@ -20,7 +20,7 @@ pub async fn all_confirmed(
             topic_id: topic_id.to_string(),
         })?;
 
-    let mut topic_data = topic.get_access("all_confirmed").await;
+    let mut topic_data = topic.get_access().await;
 
     {
         let topic_queue =
@@ -40,13 +40,13 @@ pub async fn all_confirmed(
         }
     }
 
-    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
+    super::delivery::start_new(&app, &topic, &mut topic_data);
 
     Ok(())
 }
 
 pub async fn all_fail(
-    app: Arc<AppContext>,
+    app: &Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
     subscriber_id: SubscriberId,
@@ -59,7 +59,7 @@ pub async fn all_fail(
             topic_id: topic_id.to_string(),
         })?;
 
-    let mut topic_data = topic.get_access("all_fail").await;
+    let mut topic_data = topic.get_access().await;
 
     {
         let topic_queue =
@@ -79,13 +79,13 @@ pub async fn all_fail(
         }
     }
 
-    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
+    super::delivery::start_new(&app, &topic, &mut topic_data);
 
     Ok(())
 }
 
 pub async fn intermediary_confirm(
-    app: Arc<AppContext>,
+    app: &Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
     subscriber_id: SubscriberId,
@@ -99,7 +99,7 @@ pub async fn intermediary_confirm(
             topic_id: topic_id.to_string(),
         })?;
 
-    let mut topic_data = topic.get_access("intermediary_confirm").await;
+    let mut topic_data = topic.get_access().await;
 
     {
         let topic_queue =
@@ -119,13 +119,13 @@ pub async fn intermediary_confirm(
         }
     }
 
-    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
+    crate::operations::delivery::start_new(&app, &topic, &mut topic_data);
 
     Ok(())
 }
 
 pub async fn some_messages_are_confirmed(
-    app: Arc<AppContext>,
+    app: &Arc<AppContext>,
     topic_id: &str,
     queue_id: &str,
     subscriber_id: SubscriberId,
@@ -139,7 +139,7 @@ pub async fn some_messages_are_confirmed(
             topic_id: topic_id.to_string(),
         })?;
 
-    let mut topic_data = topic.get_access("some_messages_are_confirmed").await;
+    let mut topic_data = topic.get_access().await;
     {
         let topic_queue =
             topic_data
@@ -158,7 +158,7 @@ pub async fn some_messages_are_confirmed(
         }
     }
 
-    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
+    super::delivery::start_new(&app, &topic, &mut topic_data);
 
     Ok(())
 }

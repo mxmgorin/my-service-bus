@@ -14,6 +14,7 @@ mod app;
 mod errors;
 mod grpc;
 mod http;
+mod messages_page;
 mod metric_data;
 mod operations;
 mod persistence;
@@ -22,6 +23,7 @@ mod queues;
 mod sessions;
 mod settings;
 mod tcp;
+
 mod timers;
 mod topics;
 mod utils;
@@ -31,7 +33,7 @@ pub mod persistence_grpc {
 
 #[tokio::main]
 async fn main() {
-    let settings = crate::settings::read().await;
+    let settings = settings::SettingsModel::read().await;
 
     let app = Arc::new(AppContext::new(&settings));
 

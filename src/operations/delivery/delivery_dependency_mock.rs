@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use my_service_bus_shared::page_id::PageId;
+use my_service_bus_shared::{page_id::PageId, sub_page::SubPageId};
 use my_service_bus_tcp_shared::TcpContract;
 
 use crate::{
@@ -13,7 +13,7 @@ use super::DeliveryDependecies;
 #[cfg(test)]
 pub struct DeliveryDependeciesMock {
     sent_packets: Mutex<Option<Vec<(SessionId, TcpContract)>>>,
-    load_page_event_data: Mutex<Option<(Arc<Topic>, PageId)>>,
+    load_page_event_data: Mutex<Option<(Arc<Topic>, PageId, SubPageId)>>,
     max_packet_size: usize,
 }
 
@@ -37,7 +37,7 @@ impl DeliveryDependeciesMock {
         result.unwrap()
     }
 
-    pub fn get_load_page_event_data(&self) -> (Arc<Topic>, PageId) {
+    pub fn get_load_page_event_data(&self) -> (Arc<Topic>, PageId, SubPageId) {
         let mut write_access = self.load_page_event_data.lock().unwrap();
 
         let mut result = None;
@@ -62,13 +62,13 @@ impl DeliveryDependecies for DeliveryDependeciesMock {
             .push((session.id, tcp_packet));
     }
 
-    fn load_page(&self, topic: Arc<Topic>, page_id: PageId) {
+    fn load_page(&self, topic: Arc<Topic>, page_id: PageId, sub_page_id: SubPageId) {
         let mut write_access = self.load_page_event_data.lock().unwrap();
 
         if write_access.is_some() {
             panic!("We have already data");
         }
 
-        *write_access = Some((topic, page_id));
+        *write_access = Some((topic, page_id, sub_page_id));
     }
 }

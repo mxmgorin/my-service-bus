@@ -105,10 +105,10 @@ impl QueueSubscriber {
         }
     }
 
-    pub fn set_messages_on_delivery(&mut self, messages: &QueueWithIntervals) {
+    pub fn set_messages_on_delivery(&mut self, messages: QueueWithIntervals) {
         if let QueueSubscriberDeliveryState::Rented = &self.delivery_state {
             self.delivery_state = QueueSubscriberDeliveryState::OnDelivery(OnDeliveryStateData {
-                bucket: DeliveryBucket::new(messages.clone()),
+                bucket: DeliveryBucket::new(messages),
                 inserted: DateTimeAsMicroseconds::now(),
             });
             self.metrics.set_delivery_mode_as_on_delivery();

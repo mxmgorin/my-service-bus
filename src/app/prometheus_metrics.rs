@@ -1,5 +1,7 @@
 use prometheus::{Encoder, IntGauge, IntGaugeVec, Opts, Registry, TextEncoder};
 
+use crate::messages_page::PageSizeMetrics;
+
 pub struct PrometheusMetrics {
     registry: Registry,
     pub persist_queue_size: IntGaugeVec,
@@ -7,13 +9,13 @@ pub struct PrometheusMetrics {
     permanent_queues_without_subscribers: IntGauge,
     topics_without_queues: IntGauge,
     topic_data_size: IntGaugeVec,
+    topic_messages_amount: IntGaugeVec,
 }
 
 impl PrometheusMetrics {
     pub fn new() -> Self {
         let registry = Registry::new();
 
-        // This unwraps runs on application start. If it fails - applications is not started
         let persist_queue_size = create_topic_persist_queue_size();
 
         let permanent_queues_without_subscribers = create_permanent_queues_without_subscribers();
@@ -23,6 +25,8 @@ impl PrometheusMetrics {
         let topics_without_queues = create_topics_without_queues();
 
         let topic_data_size = create_topic_data_size();
+
+        let topic_messages_amount = create_topic_messages_amount();
 
         registry
             .register(Box::new(topic_queue_size.clone()))
@@ -44,6 +48,10 @@ impl PrometheusMetrics {
             .register(Box::new(topic_data_size.clone()))
             .unwrap();
 
+        registry
+            .register(Box::new(topic_messages_amount.clone()))
+            .unwrap();
+
         return Self {
             registry,
             persist_queue_size,
@@ -51,13 +59,8 @@ impl PrometheusMetrics {
             permanent_queues_without_subscribers,
             topics_without_queues,
             topic_data_size,
+            topic_messages_amount,
         };
-    }
-
-    pub fn update_persist_queue_size(&self, topic_id: &str, value: i64) {
-        self.persist_queue_size
-            .with_label_values(&[topic_id])
-            .set(value);
     }
 
     pub fn update_topic_queue_size(&self, topic_id: &str, queue_id: &str, value: i64) {
@@ -74,10 +77,18 @@ impl PrometheusMetrics {
         self.topics_without_queues.set(value);
     }
 
-    pub fn update_topic_data_size(&self, topic_id: &str, value: usize) {
+    pub fn update_topic_size_metrics(&self, topic_id: &str, metrics: &PageSizeMetrics) {
         self.topic_data_size
             .with_label_values(&[topic_id])
-            .set(value as i64);
+            .set(metrics.data_size as i64);
+
+        self.persist_queue_size
+            .with_label_values(&[topic_id])
+            .set(metrics.persist_size as i64);
+
+        self.topic_messages_amount
+            .with_label_values(&[topic_id])
+            .set(metrics.messages_amount as i64);
     }
 
     pub fn build(&self) -> Vec<u8> {
@@ -117,6 +128,14 @@ fn create_permanent_queues_without_subscribers() -> IntGauge {
 
 fn create_topic_data_size() -> IntGaugeVec {
     let gauge_opts = Opts::new("topic_data_size", "Topic data size");
+
+    let lables = &["topic"];
+
+    IntGaugeVec::new(gauge_opts, lables).unwrap()
+}
+
+fn create_topic_messages_amount() -> IntGaugeVec {
+    let gauge_opts = Opts::new("topic_messages_amount", "Messages amount in cache");
 
     let lables = &["topic"];
 

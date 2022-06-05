@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::time::Duration;
 
 use futures_util::stream;
@@ -17,8 +16,9 @@ use crate::persistence_grpc::my_service_bus_messages_persistence_grpc_service_cl
 use crate::persistence_grpc::*;
 
 use super::protobuf_models::NewMessagesProtobufContract;
-use super::{MessagesPagesRepo, PersistenceError};
-use async_trait::async_trait;
+use super::PersistenceError;
+
+const PAYLOAD_SIZE: usize = 1024 * 1024 * 4;
 pub struct MessagesPagesGrpcRepo {
     grpc_address: String,
     grpc_client: LazyObject<MyServiceBusMessagesPersistenceGrpcServiceClient<Channel>>,
@@ -53,7 +53,6 @@ impl MessagesPagesGrpcRepo {
         &self,
         topic_id: &str,
         messages: Vec<MessageProtobufModel>,
-        payload_size: usize,
     ) -> Result<(), PersistenceError> {
         let grpc_messages = NewMessagesProtobufContract {
             topic_id: topic_id.to_string(),
@@ -83,7 +82,7 @@ impl MessagesPagesGrpcRepo {
 
         let mut grpc_chunks = Vec::new();
 
-        for chunk in split(grpc_protobuf_compressed.as_slice(), payload_size) {
+        for chunk in split(grpc_protobuf_compressed.as_slice(), PAYLOAD_SIZE) {
             grpc_chunks.push(CompressedMessageChunkModel { chunk });
         }
 
@@ -99,17 +98,14 @@ impl MessagesPagesGrpcRepo {
 
         return Ok(());
     }
-}
 
-#[async_trait]
-impl MessagesPagesRepo for MessagesPagesGrpcRepo {
-    async fn load_page(
+    pub async fn load_page(
         &self,
         topic_id: &str,
         page_id: PageId,
         from_message_id: MessageId,
         to_message_id: MessageId,
-    ) -> Result<Option<HashMap<MessageId, MySbMessageContent>>, PersistenceError> {
+    ) -> Result<Option<Vec<MySbMessageContent>>, PersistenceError> {
         let grpc_client_lazy_object = self.get_grpc_client().await?;
 
         let mut grpc_client = grpc_client_lazy_object.get_mut().await;
@@ -137,21 +133,18 @@ impl MessagesPagesRepo for MessagesPagesGrpcRepo {
         .await??
         .into_inner();
 
-        let mut messages: HashMap<MessageId, MySbMessageContent> = HashMap::new();
+        let mut messages: Vec<MySbMessageContent> = Vec::new();
 
         while let Some(stream_result) =
             tokio::time::timeout(self.time_out, grpc_stream.next()).await?
         {
             let grpc_model = stream_result?;
-            messages.insert(
-                grpc_model.message_id,
-                MySbMessageContent {
-                    id: grpc_model.message_id,
-                    content: grpc_model.data,
-                    time: DateTimeAsMicroseconds::new(grpc_model.created),
-                    headers: None, //TODO - restore it
-                },
-            );
+            messages.push(MySbMessageContent {
+                id: grpc_model.message_id,
+                content: grpc_model.data,
+                time: DateTimeAsMicroseconds::new(grpc_model.created),
+                headers: None, //TODO - restore it
+            });
         }
 
         println!(

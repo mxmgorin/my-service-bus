@@ -11,7 +11,7 @@ pub struct SessionsListData {
     tcp_sessions: HashMap<ConnectionId, Arc<MyServiceBusSession>>,
     http_sessions: HashMap<String, Arc<MyServiceBusSession>>,
     #[cfg(test)]
-    test_sessions: HashMap<u8, Arc<MyServiceBusSession>>,
+    test_sessions: HashMap<SessionId, Arc<MyServiceBusSession>>,
     current_session_id: SessionId,
 }
 

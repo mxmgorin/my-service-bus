@@ -1,57 +1,47 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use my_service_bus_shared::{
-    messages_page::MessagesPageRestoreSnapshot, page_id::PageId, MessageId, MySbMessageContent,
+    page_id::PageId,
+    sub_page::{SubPage, SubPageId},
+    MessageId, MySbMessage, MySbMessageContent,
 };
 
 use crate::{app::logs::Logs, persistence::MessagesPagesRepo, topics::Topic};
 
-pub async fn load_page<TMessagesPagesRepo: MessagesPagesRepo>(
+pub async fn load_page(
     topic: &Topic,
-    messages_pages_repo: &TMessagesPagesRepo,
+    messages_pages_repo: &Arc<MessagesPagesRepo>,
     logs: Option<&Logs>,
     page_id: PageId,
-    from_message_id: MessageId,
-    to_message_id: MessageId,
-) -> MessagesPageRestoreSnapshot {
-    let messages = load_page_from_repo(
-        topic,
-        messages_pages_repo,
-        logs,
-        page_id,
-        from_message_id,
-        to_message_id,
-    )
-    .await;
+    sub_page_id: SubPageId,
+) -> SubPage {
+    let messages =
+        load_page_from_repo(topic, messages_pages_repo, logs, page_id, sub_page_id).await;
 
     match messages {
-        Some(messages) => MessagesPageRestoreSnapshot::new_with_messages(
-            page_id,
-            from_message_id,
-            to_message_id,
-            messages,
-        ),
-        None => MessagesPageRestoreSnapshot::new(page_id, from_message_id, to_message_id),
+        Some(messages) => {
+            SubPage::restored(sub_page_id, compile_message_with_missing_state(messages))
+        }
+        None => SubPage::create_with_all_missing(sub_page_id),
     }
 }
 
 #[inline]
-async fn load_page_from_repo<TMessagesPagesRepo: MessagesPagesRepo>(
+async fn load_page_from_repo(
     topic: &Topic,
-    messages_pages_repo: &TMessagesPagesRepo,
+    messages_pages_repo: &Arc<MessagesPagesRepo>,
     logs: Option<&Logs>,
     page_id: PageId,
-    from_message_id: MessageId,
-    to_message_id: MessageId,
-) -> Option<HashMap<MessageId, MySbMessageContent>> {
+    sub_page_id: SubPageId,
+) -> Option<Vec<MySbMessageContent>> {
     let mut attempt_no = 0;
     loop {
         let result = messages_pages_repo
             .load_page(
                 topic.topic_id.as_str(),
                 page_id,
-                from_message_id,
-                to_message_id,
+                sub_page_id.get_first_message_id(),
+                sub_page_id.get_first_message_id_of_next_sub_page() - 1,
             )
             .await;
 
@@ -101,4 +91,15 @@ async fn load_page_from_repo<TMessagesPagesRepo: MessagesPagesRepo>(
         }
         tokio::time::sleep(Duration::from_secs(1)).await
     }
+}
+
+fn compile_message_with_missing_state(
+    src: Vec<MySbMessageContent>,
+) -> BTreeMap<MessageId, MySbMessage> {
+    let mut result = BTreeMap::new();
+    for msg in src {
+        result.insert(msg.id, MySbMessage::Loaded(msg));
+    }
+
+    result
 }

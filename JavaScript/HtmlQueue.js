@@ -3,7 +3,7 @@ var HtmlQueue = /** @class */ (function () {
     }
     HtmlQueue.renderQueueSubscribersCountBadge = function (count) {
         var badgeClass = count > 0 ? "primary" : "danger";
-        return '<span class="badge badge-' + badgeClass + '">' + count.toString() + '<span style="width: 10px; height:10px"> ' + PlugIcon.getIcon() + "</span></span>";
+        return '<span class="badge badge-' + badgeClass + '">' + count.toString() + '<div style="width: 10px; height:10px;display: inline-block;margin-left: 3px;">' + PlugIcon.getIcon() + "</div></span>";
     };
     HtmlQueue.renderQueueTypeName = function (queue) {
         if (queue.queueType == 0)
