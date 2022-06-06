@@ -22,7 +22,7 @@ var HtmlTopics = /** @class */ (function () {
         var queuesizeColor = topic.persistSize < 1000 ? "lightgray" : "red";
         var msgPerSecColor = topic.messagesPerSec > 0 ? "white" : "gray";
         var packetsPerSecColor = topic.packetPerSec > 0 ? "white" : "gray";
-        return '<div>MsgId:' + Utils.highlightPageOfMessageId(topic.messageId.toString()) + '/' + topic.messageId.toString() + '</div>' +
+        return '<div>MsgId:' + Utils.highlightPageOfMessageId(topic.messageId.toString()) + '</div>' +
             '<div>Msg/sec: <span style="color:' + msgPerSecColor + '">' + topic.messagesPerSec + '</span></div>' +
             '<div>Req/sec: <span style="color:' + packetsPerSecColor + '">' + topic.packetPerSec + '</span></div>' +
             '<div>Persist queue:<span style="color:' + queuesizeColor + '">' + topic.persistSize + '</span></div>' +
