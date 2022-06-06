@@ -27,7 +27,7 @@ var HtmlQueue = /** @class */ (function () {
         var badgeType = queue.data.length == 1 ? "badge-success" : "badge-danger";
         for (var _i = 0, _a = queue.data; _i < _a.length; _i++) {
             var itm = _a[_i];
-            content += '<span class="badge ' + badgeType + '">' + Utils.highlightPageOfMessageId(itm.fromId.toString()) + "-" + Utils.highlightPageOfMessageId(itm.fromId.toString()) + "</span> ";
+            content += '<span class="badge ' + badgeType + '">' + Utils.highlightPageOfMessageId(itm.fromId.toString()) + "-" + Utils.highlightPageOfMessageId(itm.toId.toString()) + "</span> ";
         }
         return content;
     };

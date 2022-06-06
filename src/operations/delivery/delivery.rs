@@ -85,77 +85,83 @@ fn compile_and_deliver(
 
     if let Some(topic_queue) = topic_data.queues.get_mut(package_builder.queue_id.as_ref()) {
         while package_builder.data_size() < app.get_max_delivery_size() {
-            while let Some(message_id) = topic_queue.queue.peek() {
-                let page_id = get_page_id(message_id);
-                let sub_page_id = SubPageId::from_message_id(message_id);
+            let message_id = topic_queue.queue.peek();
 
-                let page = topic_data.pages.get_page(page_id);
+            if message_id.is_none() {
+                break;
+            }
 
-                if page.is_none() {
-                    if package_builder.data_size() > 0 {
-                        crate::operations::send_package::send_new_messages_to_deliver(
-                            package_builder,
-                            topic_data,
-                        );
-                        crate::operations::load_page_and_try_to_deliver_again(
-                            app,
-                            topic.clone(),
-                            page_id,
-                            sub_page_id,
-                            None,
-                        );
-                    } else {
-                        crate::operations::load_page_and_try_to_deliver_again(
-                            app,
-                            topic.clone(),
-                            page_id,
-                            sub_page_id,
-                            Some(package_builder),
-                        );
-                    }
+            let message_id = message_id.unwrap();
 
-                    return;
+            let page_id = get_page_id(message_id);
+            let sub_page_id = SubPageId::from_message_id(message_id);
+
+            let page = topic_data.pages.get_page(page_id);
+
+            if page.is_none() {
+                if package_builder.data_size() > 0 {
+                    crate::operations::send_package::send_new_messages_to_deliver(
+                        package_builder,
+                        topic_data,
+                    );
+                    crate::operations::load_page_and_try_to_deliver_again(
+                        app,
+                        topic.clone(),
+                        page_id,
+                        sub_page_id,
+                        None,
+                    );
+                } else {
+                    crate::operations::load_page_and_try_to_deliver_again(
+                        app,
+                        topic.clone(),
+                        page_id,
+                        sub_page_id,
+                        Some(package_builder),
+                    );
                 }
 
-                let page = page.unwrap();
+                return;
+            }
 
-                let sub_page = page.get_sub_page(&sub_page_id);
+            let page = page.unwrap();
 
-                if sub_page.is_none() {
-                    if package_builder.data_size() > 0 {
-                        crate::operations::send_package::send_new_messages_to_deliver(
-                            package_builder,
-                            topic_data,
-                        );
+            let sub_page = page.get_sub_page(&sub_page_id);
 
-                        crate::operations::load_page_and_try_to_deliver_again(
-                            app,
-                            topic.clone(),
-                            page_id,
-                            sub_page_id,
-                            None,
-                        );
-                    } else {
-                        crate::operations::load_page_and_try_to_deliver_again(
-                            app,
-                            topic.clone(),
-                            page_id,
-                            sub_page_id,
-                            Some(package_builder),
-                        );
-                    }
+            if sub_page.is_none() {
+                if package_builder.data_size() > 0 {
+                    crate::operations::send_package::send_new_messages_to_deliver(
+                        package_builder,
+                        topic_data,
+                    );
 
-                    return;
+                    crate::operations::load_page_and_try_to_deliver_again(
+                        app,
+                        topic.clone(),
+                        page_id,
+                        sub_page_id,
+                        None,
+                    );
+                } else {
+                    crate::operations::load_page_and_try_to_deliver_again(
+                        app,
+                        topic.clone(),
+                        page_id,
+                        sub_page_id,
+                        Some(package_builder),
+                    );
                 }
 
-                let sub_page = sub_page.unwrap();
+                return;
+            }
 
-                topic_queue.queue.dequeue();
+            let sub_page = sub_page.unwrap();
 
-                if let Some(message_content) = sub_page.sub_page.get_content(message_id) {
-                    let attempt_no = topic_queue.delivery_attempts.get(message_content.id);
-                    package_builder.add_message(message_content, attempt_no);
-                }
+            topic_queue.queue.dequeue();
+
+            if let Some(message_content) = sub_page.sub_page.get_content(message_id) {
+                let attempt_no = topic_queue.delivery_attempts.get(message_content.id);
+                package_builder.add_message(message_content, attempt_no);
             }
         }
     }
