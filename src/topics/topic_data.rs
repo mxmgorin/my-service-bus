@@ -10,6 +10,7 @@ use crate::messages_page::MessagesPageList;
 use crate::queue_subscribers::QueueSubscriber;
 use crate::queues::{TopicQueue, TopicQueuesList};
 use crate::sessions::SessionId;
+use crate::utils::MinMessageIdCalculator;
 
 use super::TopicMetrics;
 const BADGE_HIGHLIGHT_TIMOUT: u8 = 2;
@@ -90,5 +91,26 @@ impl TopicData {
         self.publishers.remove(&session_id);
 
         self.queues.remove_subscribers_by_session_id(session_id)
+    }
+
+    pub fn get_min_message_id(&self) -> Option<MessageId> {
+        let mut min_message_id = MinMessageIdCalculator::new();
+
+        if self.message_id > 1 {
+            min_message_id.add(Some(self.message_id - 1));
+        }
+
+        for topic_queue in self.queues.get_all() {
+            let min_id = topic_queue.queue.get_min_id();
+            min_message_id.add(min_id);
+            min_message_id.add(topic_queue.subscribers.get_min_message_id());
+            min_message_id.add(self.pages.get_persisted_min_message_id());
+        }
+
+        min_message_id.value
+    }
+
+    pub fn gc_messages(&mut self, min_message_id: MessageId) {
+        self.pages.gc_messages(min_message_id);
     }
 }

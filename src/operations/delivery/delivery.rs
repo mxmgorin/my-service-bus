@@ -99,27 +99,14 @@ fn compile_and_deliver(
             let page = topic_data.pages.get_page(page_id);
 
             if page.is_none() {
-                if package_builder.data_size() > 0 {
-                    crate::operations::send_package::send_new_messages_to_deliver(
-                        package_builder,
-                        topic_data,
-                    );
-                    crate::operations::load_page_and_try_to_deliver_again(
-                        app,
-                        topic.clone(),
-                        page_id,
-                        sub_page_id,
-                        None,
-                    );
-                } else {
-                    crate::operations::load_page_and_try_to_deliver_again(
-                        app,
-                        topic.clone(),
-                        page_id,
-                        sub_page_id,
-                        Some(package_builder),
-                    );
-                }
+                start_loading(
+                    app,
+                    topic,
+                    topic_data,
+                    page_id,
+                    sub_page_id,
+                    package_builder,
+                );
 
                 return;
             }
@@ -129,28 +116,14 @@ fn compile_and_deliver(
             let sub_page = page.get_sub_page(&sub_page_id);
 
             if sub_page.is_none() {
-                if package_builder.data_size() > 0 {
-                    crate::operations::send_package::send_new_messages_to_deliver(
-                        package_builder,
-                        topic_data,
-                    );
-
-                    crate::operations::load_page_and_try_to_deliver_again(
-                        app,
-                        topic.clone(),
-                        page_id,
-                        sub_page_id,
-                        None,
-                    );
-                } else {
-                    crate::operations::load_page_and_try_to_deliver_again(
-                        app,
-                        topic.clone(),
-                        page_id,
-                        sub_page_id,
-                        Some(package_builder),
-                    );
-                }
+                start_loading(
+                    app,
+                    topic,
+                    topic_data,
+                    page_id,
+                    sub_page_id,
+                    package_builder,
+                );
 
                 return;
             }
@@ -159,14 +132,55 @@ fn compile_and_deliver(
 
             topic_queue.queue.dequeue();
 
-            if let Some(message_content) = sub_page.sub_page.get_content(message_id) {
+            if let Some(message_content) = sub_page.sub_page.get_message(message_id) {
                 let attempt_no = topic_queue.delivery_attempts.get(message_content.id);
                 package_builder.add_message(message_content, attempt_no);
+            } else {
+                if sub_page.sub_page.has_gced_messages() {
+                    start_loading(
+                        app,
+                        topic,
+                        topic_data,
+                        page_id,
+                        sub_page_id,
+                        package_builder,
+                    );
+                    return;
+                }
             }
         }
     }
 
     crate::operations::send_package::send_new_messages_to_deliver(package_builder, topic_data);
+}
+
+fn start_loading(
+    app: &Arc<AppContext>,
+    topic: &Arc<Topic>,
+    topic_data: &mut TopicData,
+    page_id: i64,
+    sub_page_id: SubPageId,
+    package_builder: SubscriberPackageBuilder,
+) {
+    if package_builder.data_size() > 0 {
+        crate::operations::send_package::send_new_messages_to_deliver(package_builder, topic_data);
+
+        crate::operations::load_page_and_try_to_deliver_again(
+            app,
+            topic.clone(),
+            page_id,
+            sub_page_id,
+            None,
+        );
+    } else {
+        crate::operations::load_page_and_try_to_deliver_again(
+            app,
+            topic.clone(),
+            page_id,
+            sub_page_id,
+            Some(package_builder),
+        );
+    }
 }
 
 #[cfg(test)]

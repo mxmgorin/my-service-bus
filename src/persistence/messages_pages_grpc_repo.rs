@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 use futures_util::stream;
@@ -105,7 +106,7 @@ impl MessagesPagesGrpcRepo {
         page_id: PageId,
         from_message_id: MessageId,
         to_message_id: MessageId,
-    ) -> Result<Option<Vec<MySbMessageContent>>, PersistenceError> {
+    ) -> Result<Option<BTreeMap<MessageId, MySbMessageContent>>, PersistenceError> {
         let grpc_client_lazy_object = self.get_grpc_client().await?;
 
         let mut grpc_client = grpc_client_lazy_object.get_mut().await;
@@ -133,18 +134,21 @@ impl MessagesPagesGrpcRepo {
         .await??
         .into_inner();
 
-        let mut messages: Vec<MySbMessageContent> = Vec::new();
+        let mut messages: BTreeMap<MessageId, MySbMessageContent> = BTreeMap::new();
 
         while let Some(stream_result) =
             tokio::time::timeout(self.time_out, grpc_stream.next()).await?
         {
             let grpc_model = stream_result?;
-            messages.push(MySbMessageContent {
-                id: grpc_model.message_id,
-                content: grpc_model.data,
-                time: DateTimeAsMicroseconds::new(grpc_model.created),
-                headers: None, //TODO - restore it
-            });
+            messages.insert(
+                grpc_model.message_id,
+                MySbMessageContent {
+                    id: grpc_model.message_id,
+                    content: grpc_model.data,
+                    time: DateTimeAsMicroseconds::new(grpc_model.created),
+                    headers: None, //TODO - restore it
+                },
+            );
         }
 
         println!(

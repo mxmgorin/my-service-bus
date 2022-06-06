@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use my_service_bus_shared::{
     page_id::PageId,
     sub_page::{SubPage, SubPageId},
-    MessageId, MySbMessage, MySbMessageContent,
+    MessageId, MySbMessageContent,
 };
 
 use crate::{app::logs::Logs, persistence::MessagesPagesRepo, topics::Topic};
@@ -19,10 +19,8 @@ pub async fn load_page(
         load_page_from_repo(topic, messages_pages_repo, logs, page_id, sub_page_id).await;
 
     match messages {
-        Some(messages) => {
-            SubPage::restored(sub_page_id, compile_message_with_missing_state(messages))
-        }
-        None => SubPage::create_with_all_missing(sub_page_id),
+        Some(messages) => SubPage::restored(sub_page_id, messages),
+        None => SubPage::restored(sub_page_id, BTreeMap::new()),
     }
 }
 
@@ -33,7 +31,7 @@ async fn load_page_from_repo(
     logs: Option<&Logs>,
     page_id: PageId,
     sub_page_id: SubPageId,
-) -> Option<Vec<MySbMessageContent>> {
+) -> Option<BTreeMap<MessageId, MySbMessageContent>> {
     let mut attempt_no = 0;
     loop {
         let result = messages_pages_repo
@@ -91,15 +89,4 @@ async fn load_page_from_repo(
         }
         tokio::time::sleep(Duration::from_secs(1)).await
     }
-}
-
-fn compile_message_with_missing_state(
-    src: Vec<MySbMessageContent>,
-) -> BTreeMap<MessageId, MySbMessage> {
-    let mut result = BTreeMap::new();
-    for msg in src {
-        result.insert(msg.id, MySbMessage::Loaded(msg));
-    }
-
-    result
 }

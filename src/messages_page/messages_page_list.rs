@@ -6,6 +6,8 @@ use my_service_bus_shared::{
     MessageId,
 };
 
+use crate::utils::MinMessageIdCalculator;
+
 use super::{messages_page::MessagesPage, PageSizeMetrics};
 
 pub struct MessagesPageList {
@@ -74,6 +76,16 @@ impl MessagesPageList {
         }
     }
 
+    pub fn get_persisted_min_message_id(&self) -> Option<MessageId> {
+        let mut min_message_id_calculator = MinMessageIdCalculator::new();
+
+        for page in self.pages.values() {
+            min_message_id_calculator.add(page.get_persisted_min_message_id());
+        }
+
+        min_message_id_calculator.value
+    }
+
     pub fn gc_if_possible(
         &mut self,
         sub_page_id: SubPageId,
@@ -98,5 +110,11 @@ impl MessagesPageList {
         };
 
         (gced_sub_page, gced_page)
+    }
+
+    pub fn gc_messages(&mut self, min_message_id: MessageId) {
+        for page in self.pages.values_mut() {
+            page.gc_messages(min_message_id);
+        }
     }
 }

@@ -1,9 +1,12 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use my_service_bus_shared::queue::TopicQueueType;
+use my_service_bus_shared::{queue::TopicQueueType, MessageId};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::sessions::{MyServiceBusSession, SessionId};
+use crate::{
+    sessions::{MyServiceBusSession, SessionId},
+    utils::MinMessageIdCalculator,
+};
 
 use super::{QueueSubscriber, SubscriberId};
 
@@ -68,6 +71,24 @@ impl SubscribersList {
             SubscribersData::SingleSubscriber(single) => {
                 let subscriber = single.as_ref()?;
                 Some(vec![subscriber])
+            }
+        }
+    }
+
+    pub fn get_min_message_id(&self) -> Option<MessageId> {
+        match &self.data {
+            SubscribersData::MultiSubscribers(subscribers) => {
+                let mut min_message_id_calculator = MinMessageIdCalculator::new();
+
+                for subscriber in subscribers.values() {
+                    min_message_id_calculator.add(subscriber.get_min_message_id());
+                }
+
+                return min_message_id_calculator.value;
+            }
+            SubscribersData::SingleSubscriber(subscriber) => {
+                let subscriber = subscriber.as_ref()?;
+                return subscriber.get_min_message_id();
             }
         }
     }

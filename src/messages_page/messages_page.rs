@@ -3,8 +3,10 @@ use std::collections::BTreeMap;
 use my_service_bus_shared::{
     page_id::PageId,
     sub_page::{SubPage, SubPageId},
-    MySbMessageContent,
+    MessageId, MySbMessageContent,
 };
+
+use crate::utils::MinMessageIdCalculator;
 
 use super::{PageSizeMetrics, SubPageData};
 
@@ -101,5 +103,21 @@ impl MessagesPage {
             .keys()
             .map(|itm| *itm - sub_page_id.value)
             .collect()
+    }
+
+    pub fn get_persisted_min_message_id(&self) -> Option<MessageId> {
+        let mut min_message_id_calculator = MinMessageIdCalculator::new();
+
+        for page in self.sub_pages.values() {
+            min_message_id_calculator.add(page.messages_to_persist.get_min_id());
+        }
+
+        min_message_id_calculator.value
+    }
+
+    pub fn gc_messages(&mut self, min_message_id: MessageId) {
+        for page in self.sub_pages.values_mut() {
+            page.sub_page.gc_messages(min_message_id);
+        }
     }
 }

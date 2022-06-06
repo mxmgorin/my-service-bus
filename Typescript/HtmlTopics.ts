@@ -45,7 +45,7 @@ class HtmlTopics {
 
         for (let page of pages) {
             result +=
-                '<div><div>Page:' + page.id + '; Amount:' + page.amount + '; Size: ' + page.size + '</div>' +
+                '<div><div>Page:' + page.id + '; Amount:' + page.amount + '; Size: ' + Utils.formatNumber(page.size) + '</div>' +
                 SubPagesWidget.renderPagesWidget(page.subPages) +
                 '</div>';
         }

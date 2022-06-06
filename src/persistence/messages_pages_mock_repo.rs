@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use my_service_bus_shared::{protobuf_models::MessageProtobufModel, MessageId, MySbMessageContent};
 use tokio::sync::Mutex;
@@ -21,8 +21,8 @@ impl MessagesPagesMockRepo {
         topic_id: &str,
         from_message_id: MessageId,
         to_message_id: MessageId,
-    ) -> Result<Option<Vec<MySbMessageContent>>, PersistenceError> {
-        let mut result = Vec::new();
+    ) -> Result<Option<BTreeMap<MessageId, MySbMessageContent>>, PersistenceError> {
+        let mut result = BTreeMap::new();
 
         let mut write_access = self.messages.lock().await;
 
@@ -34,7 +34,7 @@ impl MessagesPagesMockRepo {
 
         for message_id in from_message_id..=to_message_id {
             if let Some(message) = messages.get(&message_id) {
-                result.push(message.clone());
+                result.insert(message_id, message.clone());
             }
         }
 

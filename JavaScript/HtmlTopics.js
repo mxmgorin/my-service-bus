@@ -34,7 +34,7 @@ var HtmlTopics = /** @class */ (function () {
         for (var _i = 0, pages_1 = pages; _i < pages_1.length; _i++) {
             var page = pages_1[_i];
             result +=
-                '<div><div>Page:' + page.id + '; Amount:' + page.amount + '; Size: ' + page.size + '</div>' +
+                '<div><div>Page:' + page.id + '; Amount:' + page.amount + '; Size: ' + Utils.formatNumber(page.size) + '</div>' +
                     SubPagesWidget.renderPagesWidget(page.subPages) +
                     '</div>';
         }
