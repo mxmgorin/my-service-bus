@@ -73,13 +73,6 @@ impl TopicData {
         }
     }
 
-    pub fn get_min_message_id(&self) -> MessageId {
-        match self.queues.get_min_message_id() {
-            Some(queue_min_message_id) => queue_min_message_id,
-            None => self.message_id,
-        }
-    }
-
     pub fn one_second_tick(&mut self) {
         for value in self.publishers.values_mut() {
             if *value > 0 {

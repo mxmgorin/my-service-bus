@@ -60,7 +60,7 @@ impl MyTimerTick for MetricsTimer {
                 .prometheus
                 .update_topic_size_metrics(topic.topic_id.as_str(), &metrics);
 
-            topic_data.metrics.update_size_metrics(&metrics);
+            topic_data.metrics.one_second_tick(&metrics);
         }
 
         self.app

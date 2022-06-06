@@ -73,4 +73,33 @@ impl MessagesPage {
 
         None
     }
+
+    pub fn gc_if_possible(&mut self, sub_page_id: &SubPageId) -> Option<SubPage> {
+        if let Some(sub_page) = self.sub_pages.get(&sub_page_id.value) {
+            if !sub_page.can_be_gced() {
+                return None;
+            }
+        } else {
+            return None;
+        }
+
+        let result = self.sub_pages.remove(&sub_page_id.value)?;
+
+        Some(result.sub_page)
+    }
+
+    pub fn sub_pages_amount(&self) -> usize {
+        self.sub_pages.len()
+    }
+
+    pub fn get_sub_pages(&self) -> Vec<usize> {
+        let sub_page_id = SubPageId::from_message_id(
+            self.page_id * my_service_bus_shared::page_id::MESSAGES_IN_PAGE,
+        );
+
+        self.sub_pages
+            .keys()
+            .map(|itm| *itm - sub_page_id.value)
+            .collect()
+    }
 }

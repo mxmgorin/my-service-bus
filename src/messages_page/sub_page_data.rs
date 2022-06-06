@@ -40,4 +40,8 @@ impl SubPageData {
             self.messages_to_persist.remove(*id);
         }
     }
+
+    pub fn can_be_gced(&self) -> bool {
+        self.messages_to_persist.len() == 0
+    }
 }

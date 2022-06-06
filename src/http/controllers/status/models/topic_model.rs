@@ -66,7 +66,7 @@ impl TopicJsonContract {
             packets_per_second: topic_data.metrics.packets_per_second,
             messages_per_second: topic_data.metrics.messages_per_second,
             publish_history: topic_data.metrics.publish_history.get(),
-            persist_size: topic_data.metrics.persist_queue_size,
+            persist_size: topic_data.metrics.size_metrics.persist_size,
             publishers,
             pages: topic_data
                 .pages
@@ -79,6 +79,7 @@ impl TopicJsonContract {
                         amount: metrics.messages_amount,
                         size: metrics.data_size,
                         persist_size: metrics.persist_size,
+                        sub_pages: page.get_sub_pages(),
                     }
                 })
                 .collect(),
@@ -93,4 +94,7 @@ pub struct TopicPageJsonContract {
     pub amount: usize,
     pub size: usize,
     pub persist_size: usize,
+
+    #[serde(rename = "subPages")]
+    pub sub_pages: Vec<usize>,
 }

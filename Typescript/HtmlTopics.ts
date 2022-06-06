@@ -46,9 +46,8 @@ class HtmlTopics {
         for (let page of pages) {
             result +=
                 '<div><div>Page:' + page.id + ' [' + page.amount + ']</div>' +
-                '<div class="progress">' +
-                '<div class="progress-bar" role="progressbar" style="text-shadow: 1px 1px 2px black; width: ' + (page.amount / 1000).toFixed(0) + '%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">' +
-                Utils.format_bytes(page.size) + '</div></div></div>';
+                SubPagesWidget.renderPagesWidget(page.subPages) +
+                '</div>';
         }
 
         return result;

@@ -148,7 +148,7 @@ impl MessagesPagesGrpcRepo {
         }
 
         println!(
-            "Read Page{} with messages amount: {}",
+            "Read Page {} with messages amount: {}",
             page_id,
             messages.len()
         );

@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use my_service_bus_shared::page_id::{get_page_id, PageId};
+use my_service_bus_shared::sub_page::SubPageId;
 use my_service_bus_shared::MessageId;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio::sync::Mutex;
@@ -36,10 +37,13 @@ impl Topic {
         read_access.message_id
     }
 
-    pub async fn get_current_page(&self) -> PageId {
+    pub async fn get_current_page(&self) -> (PageId, SubPageId) {
         let read_access = self.data.lock().await;
 
-        get_page_id(read_access.message_id)
+        let page_id = get_page_id(read_access.message_id);
+        let sub_page_id = SubPageId::from_message_id(read_access.message_id);
+
+        (page_id, sub_page_id)
     }
 
     pub async fn one_second_tick(&self) {

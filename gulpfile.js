@@ -6,6 +6,7 @@ var concat = require('gulp-concat');
 gulp.task('default', function () {
     return gulp
         .src([
+            './JavaScript/SubpagesWidget.js',
             './JavaScript/PlugIcon.js',
             './JavaScript/Utils.js',
             './JavaScript/Iterators.js',

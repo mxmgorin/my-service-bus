@@ -14,17 +14,12 @@ pub async fn load_page_to_cache(
 ) {
     let mut dt = topic.restore_page_lock.lock().await;
 
-    let (min_message_id, topic_message_id) = {
-        let topic_data = topic.get_access().await;
-        (topic_data.get_min_message_id(), topic_data.message_id)
-    };
-
-    let (from_message_id, to_message_id) =
-        super::utils::get_load_page_interval(min_message_id, topic_message_id, page_id);
+    let from_message_id = sub_page_id.get_first_message_id();
+    let to_message_id = sub_page_id.get_first_message_id_of_next_sub_page() - 1;
 
     println!(
-        "Loading messages {}-{} for page {} for topic:{}",
-        from_message_id, to_message_id, page_id, topic.topic_id
+        "Loading messages {}-{} for page {} with subpage {} for topic:{}",
+        from_message_id, to_message_id, page_id, sub_page_id.value, topic.topic_id
     );
 
     let sub_page = super::operations::load_page(

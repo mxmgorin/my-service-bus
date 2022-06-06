@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use my_service_bus_shared::{queue_with_intervals::QueueWithIntervals, MessageId};
+use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::{queues::DeliveryBucket, sessions::MyServiceBusSession};
@@ -141,16 +141,6 @@ impl QueueSubscriber {
                 }
 
                 return None;
-            }
-        }
-    }
-
-    pub fn get_min_message_id(&self) -> Option<MessageId> {
-        match &self.delivery_state {
-            QueueSubscriberDeliveryState::ReadyToDeliver => None,
-            QueueSubscriberDeliveryState::Rented => None,
-            QueueSubscriberDeliveryState::OnDelivery(on_delivery) => {
-                on_delivery.bucket.ids.get_min_id()
             }
         }
     }

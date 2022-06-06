@@ -170,9 +170,7 @@ mod tests {
         protobuf_models::MessageProtobufModel, queue::TopicQueueType,
         queue_with_intervals::QueueWithIntervals,
     };
-    use my_service_bus_tcp_shared::{
-        MessageToDeliverTcpContract, MessageToPublishTcpContract, TcpContract,
-    };
+    use my_service_bus_tcp_shared::{MessageToPublishTcpContract, TcpContract};
     use rust_extensions::date_time::DateTimeAsMicroseconds;
 
     use crate::{

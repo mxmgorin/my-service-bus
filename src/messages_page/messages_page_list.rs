@@ -73,4 +73,30 @@ impl MessagesPageList {
             }
         }
     }
+
+    pub fn gc_if_possible(
+        &mut self,
+        sub_page_id: SubPageId,
+    ) -> (Option<SubPage>, Option<MessagesPage>) {
+        let page_id = get_page_id(sub_page_id.get_first_message_id());
+
+        let (gced_sub_page, remove_page) = {
+            if let Some(page) = self.pages.get_mut(&page_id) {
+                let result = page.gc_if_possible(&sub_page_id);
+                let remove_page = page.sub_pages_amount() == 0;
+
+                (result, remove_page)
+            } else {
+                return (None, None);
+            }
+        };
+
+        let gced_page = if remove_page {
+            self.pages.remove(&page_id)
+        } else {
+            None
+        };
+
+        (gced_sub_page, gced_page)
+    }
 }
