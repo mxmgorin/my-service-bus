@@ -109,7 +109,7 @@ pub async fn handle(
             //This is a client packet
             Ok(())
         }
-        TcpContract::NewMessagesServerSide(_) => {
+        TcpContract::Raw(_) => {
             //This is a client packet
             Ok(())
         }

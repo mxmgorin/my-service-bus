@@ -52,22 +52,13 @@ impl SubscriberPackageBuilder {
         if self.payload.is_none() {
             let mut payload = Vec::new();
 
-            payload.push(my_service_bus_tcp_shared::tcp_message_id::NEW_MESSAGES);
-            my_service_bus_tcp_shared::tcp_serializers::pascal_string::serialize(
-                &mut payload,
-                self.topic.topic_id.as_str(),
-            );
-            my_service_bus_tcp_shared::tcp_serializers::pascal_string::serialize(
-                &mut payload,
-                self.queue_id.as_str(),
-            );
-            my_service_bus_tcp_shared::tcp_serializers::i64::serialize(
-                &mut payload,
-                self.subscriber_id,
-            );
-
-            self.messages_count_position = payload.len();
-            my_service_bus_tcp_shared::tcp_serializers::i32::serialize(&mut payload, 0);
+            self.messages_count_position =
+                my_service_bus_tcp_shared::delivery_package_builder::init_delivery_package(
+                    &mut payload,
+                    self.topic.topic_id.as_str(),
+                    self.queue_id.as_str(),
+                    self.subscriber_id,
+                );
 
             self.payload = Some(payload);
         }
@@ -99,14 +90,15 @@ impl SubscriberPackageBuilder {
 
     pub fn get_result(self) -> SendNewMessagesResult {
         if let Some(mut payload) = self.payload {
-            update_messages_count(
+            my_service_bus_tcp_shared::delivery_package_builder::update_amount_of_messages(
                 &mut payload,
                 self.messages_count_position,
                 self.messages_on_delivery.len() as i32,
             );
+
             return SendNewMessagesResult::Send {
                 session: self.session,
-                tcp_contract: TcpContract::NewMessagesServerSide(payload),
+                tcp_contract: TcpContract::Raw(payload),
                 queue_id: self.queue_id,
                 messages_on_delivery: self.messages_on_delivery,
             };
@@ -116,10 +108,4 @@ impl SubscriberPackageBuilder {
             queue_id: self.queue_id,
         }
     }
-}
-
-fn update_messages_count(payload: &mut Vec<u8>, messages_count_position: usize, amount: i32) {
-    let size = amount.to_le_bytes();
-    let dest = &mut payload[messages_count_position..messages_count_position + 4];
-    dest.copy_from_slice(size.as_slice());
 }

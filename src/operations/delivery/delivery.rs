@@ -170,7 +170,9 @@ mod tests {
         protobuf_models::MessageProtobufModel, queue::TopicQueueType,
         queue_with_intervals::QueueWithIntervals,
     };
-    use my_service_bus_tcp_shared::{MessageToPublishTcpContract, TcpContract};
+    use my_service_bus_tcp_shared::{
+        MessageToDeliverTcpContract, MessageToPublishTcpContract, TcpContract,
+    };
     use rust_extensions::date_time::DateTimeAsMicroseconds;
 
     use crate::{
@@ -239,7 +241,7 @@ mod tests {
 
         let packet = result_packets.remove(0);
 
-        if let TcpContract::NewMessagesServerSide(_) = packet {
+        if let TcpContract::Raw(_) = packet {
         } else {
             panic!("Should not be here")
         }
@@ -314,6 +316,8 @@ mod tests {
 
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
+        let version = session.get_message_to_delivery_protocol_version();
+
         let test_connection = session.connection.unwrap_as_test();
 
         let mut result_packets = test_connection.get_list_of_packets_and_clear_them().await;
@@ -321,7 +325,20 @@ mod tests {
 
         let packet = result_packets.remove(0);
 
-        if let TcpContract::NewMessagesServerSide(_) = packet {
+        let packet =
+            my_service_bus_tcp_shared::tcp_serializers::convert_from_raw(&packet, &version).await;
+
+        if let TcpContract::NewMessages {
+            topic_id,
+            queue_id,
+            confirmation_id,
+            messages,
+        } = packet
+        {
+            assert_eq!(TOPIC_NAME, topic_id);
+            assert_eq!(QUEUE_NAME, queue_id);
+            println!("ConfirmationId: {}", confirmation_id);
+            assert_eq!(2, messages.len());
         } else {
             panic!("Should not be here")
         }
