@@ -35,6 +35,9 @@ pub struct SettingsModelJson {
 
     #[serde(rename = "GrpcTimeoutSecs")]
     pub grpc_timeout_secs: u64,
+
+    #[serde(rename = "PersistTimerIntervalSecs")]
+    pub persist_timer_secs: u64,
 }
 
 pub struct SettingsModel {
@@ -50,6 +53,7 @@ pub struct SettingsModel {
     pub auto_create_topic_on_publish: bool,
     pub auto_create_topic_on_subscribe: bool,
     pub grpc_timeout: Duration,
+    pub persist_timer_interval: Duration,
 }
 
 impl SettingsModel {
@@ -96,6 +100,7 @@ impl SettingsModel {
             auto_create_topic_on_publish: true,
             auto_create_topic_on_subscribe: true,
             grpc_timeout: Duration::from_secs(1),
+            persist_timer_interval: Duration::from_secs(1),
         }
     }
 
@@ -202,6 +207,7 @@ impl Into<SettingsModel> for SettingsModelJson {
             auto_create_topic_on_publish,
             auto_create_topic_on_subscribe,
             grpc_timeout: Duration::from_secs(self.grpc_timeout_secs),
+            persist_timer_interval: Duration::from_secs(self.persist_timer_secs),
         }
     }
 }
