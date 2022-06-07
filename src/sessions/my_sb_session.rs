@@ -70,9 +70,7 @@ impl MyServiceBusSession {
                 (Some(data.name.to_string()), Some(data.version.to_string()))
             }
             #[cfg(test)]
-            SessionConnection::Test(_) => {
-                todo!("Not Implemented");
-            }
+            SessionConnection::Test(data) => (data.name.clone(), data.version.clone()),
         }
     }
 

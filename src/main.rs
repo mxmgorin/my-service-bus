@@ -64,25 +64,22 @@ async fn main() {
     let mut metrics_timer = MyTimer::new(Duration::from_secs(1));
     metrics_timer.register_timer("Metrics", Arc::new(MetricsTimer::new(app.clone())));
 
-    let mut gc_timer = MyTimer::new(Duration::from_secs(10));
-    gc_timer.register_timer(
-        "KickDeadConnection",
-        Arc::new(DeadSubscribersKickerTimer::new(app.clone())),
-    );
-
-    gc_timer.register_timer("GC", Arc::new(GcTimer::new(app.clone())));
-
-    let mut persist_timer = MyTimer::new(Duration::from_secs(3));
-
-    persist_timer.register_timer(
+    let mut persist_and_gc_timer = MyTimer::new(Duration::from_secs(2));
+    persist_and_gc_timer.register_timer(
         "PersistTopicsAndQueues",
         Arc::new(PersistTopicsAndQueuesTimer::new(app.clone())),
     );
+    persist_and_gc_timer.register_timer("GC", Arc::new(GcTimer::new(app.clone())));
+
+    let mut dead_subscribers = MyTimer::new(Duration::from_secs(10));
+    dead_subscribers.register_timer(
+        "DeadSubscrubers",
+        Arc::new(DeadSubscribersKickerTimer::new(app.clone())),
+    );
 
     metrics_timer.start(app.clone(), app.clone());
-
-    gc_timer.start(app.clone(), app.clone());
-    persist_timer.start(app.clone(), app.clone());
+    persist_and_gc_timer.start(app.clone(), app.clone());
+    dead_subscribers.start(app.clone(), app.clone());
 
     signal_hook::flag::register(
         signal_hook::consts::SIGTERM,

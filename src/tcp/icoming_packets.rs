@@ -27,7 +27,6 @@ pub async fn handle(
             name,
             protocol_version,
         } => {
-            //TODO - It Should be scan from the last to ;
             let splited: Vec<&str> = name.split(";").collect();
 
             if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {

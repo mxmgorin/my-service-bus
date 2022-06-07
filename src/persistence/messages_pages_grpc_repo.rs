@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 
 use futures_util::stream;
@@ -146,7 +146,7 @@ impl MessagesPagesGrpcRepo {
                     id: grpc_model.message_id,
                     content: grpc_model.data,
                     time: DateTimeAsMicroseconds::new(grpc_model.created),
-                    headers: None, //TODO - restore it
+                    headers: restore_headers(grpc_model.meta_data),
                 },
             );
         }
@@ -213,4 +213,19 @@ async fn init_grpc_client(
         attempt_no += 1;
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
+}
+
+fn restore_headers(
+    grpc_meta_data: Vec<MessageContentMetaDataItem>,
+) -> Option<HashMap<String, String>> {
+    if grpc_meta_data.is_empty() {
+        return None;
+    }
+
+    let mut result = HashMap::new();
+    for kv in grpc_meta_data {
+        result.insert(kv.key, kv.value);
+    }
+
+    Some(result)
 }

@@ -8,6 +8,8 @@ pub struct TestConnectionData {
     pub ip: String,
     pub connected: std::sync::atomic::AtomicBool,
     pub sent_packets: Mutex<Vec<TcpContract>>,
+    pub name: Option<String>,
+    pub version: Option<String>,
 }
 
 impl TestConnectionData {
@@ -17,6 +19,8 @@ impl TestConnectionData {
             ip: ip.to_string(),
             connected: std::sync::atomic::AtomicBool::new(true),
             sent_packets: Mutex::new(vec![]),
+            name: None,
+            version: None,
         }
     }
 
