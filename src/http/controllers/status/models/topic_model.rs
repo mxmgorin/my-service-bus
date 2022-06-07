@@ -25,7 +25,7 @@ pub struct TopicJsonContract {
     pub messages_per_second: usize,
     pub pages: Vec<TopicPageJsonContract>,
     #[serde(rename = "persistSize")]
-    pub persist_size: i64,
+    pub persist_size: usize,
     #[serde(rename = "publishHistory")]
     pub publish_history: Vec<i32>,
     pub publishers: Vec<TopicPublisherJsonModel>,
@@ -66,16 +66,21 @@ impl TopicJsonContract {
             packets_per_second: topic_data.metrics.packets_per_second,
             messages_per_second: topic_data.metrics.messages_per_second,
             publish_history: topic_data.metrics.publish_history.get(),
-            persist_size: topic_data.metrics.persist_queue_size,
+            persist_size: topic_data.metrics.size_metrics.persist_size,
             publishers,
             pages: topic_data
                 .pages
                 .pages
                 .iter()
-                .map(|(page_id, page)| TopicPageJsonContract {
-                    id: *page_id,
-                    amount: page.messages.len(),
-                    size: page.size,
+                .map(|(page_id, page)| {
+                    let metrics = page.get_page_size_metrics();
+                    TopicPageJsonContract {
+                        id: *page_id,
+                        amount: metrics.messages_amount,
+                        size: metrics.data_size,
+                        persist_size: metrics.persist_size,
+                        sub_pages: page.get_sub_pages(),
+                    }
                 })
                 .collect(),
             subscribers,
@@ -88,4 +93,8 @@ pub struct TopicPageJsonContract {
     pub id: i64,
     pub amount: usize,
     pub size: usize,
+    pub persist_size: usize,
+
+    #[serde(rename = "subPages")]
+    pub sub_pages: Vec<usize>,
 }

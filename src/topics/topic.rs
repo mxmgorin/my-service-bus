@@ -1,7 +1,7 @@
-use std::sync::Arc;
 use std::time::Duration;
 
 use my_service_bus_shared::page_id::{get_page_id, PageId};
+use my_service_bus_shared::sub_page::SubPageId;
 use my_service_bus_shared::MessageId;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio::sync::Mutex;
@@ -16,8 +16,6 @@ pub struct Topic {
     pub topic_id: String,
     data: Mutex<TopicData>,
     pub restore_page_lock: Mutex<DateTimeAsMicroseconds>,
-
-    topic_data_access: Arc<Mutex<Vec<String>>>,
 }
 
 impl Topic {
@@ -26,29 +24,12 @@ impl Topic {
             topic_id: topic_id.to_string(),
             data: Mutex::new(TopicData::new(topic_id, message_id)),
             restore_page_lock: Mutex::new(DateTimeAsMicroseconds::now()),
-            topic_data_access: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
-    async fn add_to_topic_data_access(&self, process: &str) {
-        let mut write_access = self.topic_data_access.lock().await;
-        write_access.push(process.to_string());
-    }
-
-    pub async fn get_locks(&self) -> Option<Vec<String>> {
-        let read_access = self.topic_data_access.lock().await;
-
-        if read_access.len() == 0 {
-            return None;
-        }
-
-        return Some(read_access.clone());
-    }
-
-    pub async fn get_access<'s>(&'s self, process: &str) -> TopicDataAccess<'s> {
-        self.add_to_topic_data_access(process).await;
+    pub async fn get_access<'s>(&'s self) -> TopicDataAccess<'s> {
         let access = self.data.lock().await;
-        TopicDataAccess::new(access, self.topic_data_access.clone(), process.to_string())
+        TopicDataAccess::new(access)
     }
 
     pub async fn get_message_id(&self) -> MessageId {
@@ -56,10 +37,13 @@ impl Topic {
         read_access.message_id
     }
 
-    pub async fn get_current_page(&self) -> PageId {
+    pub async fn get_current_page(&self) -> (PageId, SubPageId) {
         let read_access = self.data.lock().await;
 
-        get_page_id(read_access.message_id)
+        let page_id = get_page_id(read_access.message_id);
+        let sub_page_id = SubPageId::from_message_id(read_access.message_id);
+
+        (page_id, sub_page_id)
     }
 
     pub async fn one_second_tick(&self) {

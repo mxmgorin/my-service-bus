@@ -1,33 +1,28 @@
-use std::collections::HashMap;
-
-use my_service_bus_shared::{page_id::PageId, protobuf_models::MessageProtobufModel};
+use my_service_bus_shared::{protobuf_models::MessageProtobufModel, sub_page::SubPageId};
 
 use crate::topics::{Topic, TopicData};
 
-pub async fn get_messages_to_persist_by_page(
+pub async fn get_next_messages_to_persist(
     topic: &Topic,
-) -> Option<HashMap<PageId, Vec<MessageProtobufModel>>> {
-    let mut topic_data = topic.get_access("get_messages_to_persist_by_page").await;
-    return get_messages_to_persist(&mut topic_data);
+) -> Option<(SubPageId, Vec<MessageProtobufModel>)> {
+    let topic_data = topic.get_access().await;
+    return get_messages_to_persist(&topic_data);
 }
 
 fn get_messages_to_persist(
-    topic_data: &mut TopicData,
-) -> Option<HashMap<PageId, Vec<MessageProtobufModel>>> {
-    let mut messages_to_persist_by_page = None;
+    topic_data: &TopicData,
+) -> Option<(SubPageId, Vec<MessageProtobufModel>)> {
+    for page in topic_data.pages.get_pages() {
+        if let Some(sub_page_data) = page.get_sub_page_with_messages_to_persist() {
+            let messages_to_persist = sub_page_data.compile_messages_to_persist();
 
-    while let Some((page_id, messages)) = topic_data.pages.get_messages_to_persist() {
-        if messages_to_persist_by_page.is_none() {
-            messages_to_persist_by_page = Some(HashMap::new());
+            if messages_to_persist.len() > 0 {
+                return Some((sub_page_data.sub_page.sub_page_id, messages_to_persist));
+            }
         }
-
-        messages_to_persist_by_page
-            .as_mut()
-            .unwrap()
-            .insert(page_id, messages);
     }
 
-    messages_to_persist_by_page
+    return None;
 }
 
 #[cfg(test)]
@@ -62,7 +57,7 @@ mod tests {
 
         let result = get_messages_to_persist(&mut topic_data);
 
-        if let Some(messages) = result {
+        if let Some((_, messages)) = result {
             assert_eq!(1, messages.len());
         } else {
             assert_eq!(true, result.is_none());

@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use super::AppContext;
 
@@ -9,22 +9,19 @@ pub async fn execute(app: Arc<AppContext>) {
 }
 
 async fn empty_persistence_queues(app: Arc<AppContext>) {
-    let duration = Duration::from_millis(500);
     for topic in app.topic_list.get_all().await {
-        let msgs_to_persist = {
-            let topic_data = topic.get_access("empty_persistence_queues").await;
-            topic_data.pages.get_persist_queue_size()
+        let metrics = {
+            let topic_data = topic.get_access().await;
+            topic_data.pages.get_page_size_metrics()
         };
 
-        while msgs_to_persist > 0 {
+        while metrics.persist_size > 0 {
             println!(
-                "Topic {} has {} messages to persist. Waiting 0.5 sec",
-                topic.topic_id, msgs_to_persist
+                "Topic {} has {} messages to persist. Doing Force Persist",
+                topic.topic_id, metrics.persist_size
             );
 
             crate::operations::save_messages_for_topic(&app, &topic).await;
-
-            tokio::time::sleep(duration).await;
         }
 
         println!("Topic {} has no messages to persist.", topic.topic_id);

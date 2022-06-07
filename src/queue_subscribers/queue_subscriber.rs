@@ -105,10 +105,10 @@ impl QueueSubscriber {
         }
     }
 
-    pub fn set_messages_on_delivery(&mut self, messages: &QueueWithIntervals) {
+    pub fn set_messages_on_delivery(&mut self, messages: QueueWithIntervals) {
         if let QueueSubscriberDeliveryState::Rented = &self.delivery_state {
             self.delivery_state = QueueSubscriberDeliveryState::OnDelivery(OnDeliveryStateData {
-                bucket: DeliveryBucket::new(messages.clone()),
+                bucket: DeliveryBucket::new(messages),
                 inserted: DateTimeAsMicroseconds::now(),
             });
             self.metrics.set_delivery_mode_as_on_delivery();
@@ -146,12 +146,7 @@ impl QueueSubscriber {
     }
 
     pub fn get_min_message_id(&self) -> Option<MessageId> {
-        match &self.delivery_state {
-            QueueSubscriberDeliveryState::ReadyToDeliver => None,
-            QueueSubscriberDeliveryState::Rented => None,
-            QueueSubscriberDeliveryState::OnDelivery(on_delivery) => {
-                on_delivery.bucket.ids.get_min_id()
-            }
-        }
+        let messages_on_delivery = self.get_messages_on_delivery()?;
+        return messages_on_delivery.get_min_id();
     }
 }

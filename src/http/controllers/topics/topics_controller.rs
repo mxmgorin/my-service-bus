@@ -83,7 +83,7 @@ impl PostAction for TopicsController {
         let input_data = CreateTopicRequestContract::parse_http_input(ctx).await?;
 
         crate::operations::publisher::create_topic_if_not_exists(
-            self.app.clone(),
+            &self.app,
             None,
             input_data.topic_id.as_ref(),
         )

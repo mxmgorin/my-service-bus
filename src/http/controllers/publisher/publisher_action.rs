@@ -56,7 +56,7 @@ async fn handle_request(
     }
 
     crate::operations::publisher::publish(
-        action.app.clone(),
+        &action.app,
         http_input.topic_id.as_str(),
         messages_to_publish,
         false,

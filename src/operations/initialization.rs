@@ -26,7 +26,7 @@ pub async fn init(app: Arc<AppContext>) {
         for queue in topic_and_queues.queues {
             let queue_with_intervals = QueueWithIntervals::restore(queue.ranges);
 
-            let mut topic_data = topic.get_access("initialization").await;
+            let mut topic_data = topic.get_access().await;
             topic_data.queues.restore(
                 topic.topic_id.to_string(),
                 queue.queue_id.to_string(),
@@ -57,12 +57,14 @@ pub async fn init(app: Arc<AppContext>) {
 }
 
 async fn restore_topic_pages(app: Arc<AppContext>, topic: Arc<Topic>) {
-    let page_id = topic.get_current_page().await;
+    let (page_id, sub_page_id) = topic.get_current_page().await;
+
     crate::operations::page_loader::load_page_to_cache(
         topic,
-        &app.messages_pages_repo,
+        app.messages_pages_repo.clone(),
         Some(app.logs.as_ref()),
         page_id,
+        sub_page_id,
     )
     .await
 }

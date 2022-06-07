@@ -24,13 +24,7 @@ impl MyTimerTick for MetricsTimer {
         let mut topics_without_queues = 0;
 
         for topic in self.app.topic_list.get_all().await {
-            let topic_data = topic.get_access("tick_topics").await;
-
-            let persist_queue_size = topic_data.pages.get_persist_queue_size();
-
-            self.app
-                .prometheus
-                .update_persist_queue_size(topic.topic_id.as_str(), persist_queue_size);
+            let mut topic_data = topic.get_access().await;
 
             let mut queues_count = 0;
 
@@ -60,11 +54,13 @@ impl MyTimerTick for MetricsTimer {
                 topics_without_queues += 1;
             }
 
-            let topic_data_size = topic_data.get_topic_data_size().await;
+            let metrics = topic_data.pages.get_page_size_metrics();
 
             self.app
                 .prometheus
-                .update_topic_data_size(topic.topic_id.as_str(), topic_data_size);
+                .update_topic_size_metrics(topic.topic_id.as_str(), &metrics);
+
+            topic_data.metrics.one_second_tick(&metrics);
         }
 
         self.app

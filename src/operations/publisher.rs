@@ -2,17 +2,13 @@ use std::sync::Arc;
 
 use my_service_bus_tcp_shared::MessageToPublishTcpContract;
 
-use crate::{
-    app::AppContext,
-    sessions::{MyServiceBusSession, SessionId},
-    topics::Topic,
-};
+use crate::{app::AppContext, sessions::SessionId, topics::Topic};
 
 use super::OperationFailResult;
 
 pub async fn create_topic_if_not_exists(
-    app: Arc<AppContext>,
-    session: Option<&MyServiceBusSession>,
+    app: &Arc<AppContext>,
+    session_id: Option<SessionId>,
     topic_id: &str,
 ) -> Result<Arc<Topic>, OperationFailResult> {
     let topic = app.topic_list.add_if_not_exists(topic_id).await?;
@@ -20,10 +16,9 @@ pub async fn create_topic_if_not_exists(
     crate::operations::persist_topics_and_queues(&app).await;
 
     {
-        let mut topic_data = topic.get_access("create_topic_if_not_exists").await;
-
-        if let Some(session) = session {
-            topic_data.set_publisher_as_active(session.id);
+        if let Some(session_id) = session_id {
+            let mut topic_data = topic.get_access().await;
+            topic_data.set_publisher_as_active(session_id);
         }
     }
 
@@ -31,7 +26,7 @@ pub async fn create_topic_if_not_exists(
 }
 
 pub async fn publish(
-    app: Arc<AppContext>,
+    app: &Arc<AppContext>,
     topic_id: &str,
     messages: Vec<MessageToPublishTcpContract>,
     persist_immediately: bool,
@@ -55,7 +50,7 @@ pub async fn publish(
 
     let topic = topic.unwrap();
 
-    let mut topic_data = topic.get_access("publish").await;
+    let mut topic_data = topic.get_access().await;
 
     let messages_count = messages.len();
 
@@ -67,7 +62,7 @@ pub async fn publish(
         tokio::task::spawn(persist_after_publish(app.clone(), topic.clone()));
     }
 
-    super::delivery::try_to_deliver(&app, &topic, &mut topic_data);
+    super::delivery::start_new(&app, &topic, &mut topic_data);
     Ok(())
 }
 

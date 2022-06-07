@@ -18,7 +18,7 @@ pub struct NewMessagesProtobufContract {
 impl NewMessagesProtobufContract {
     pub fn into_protobuf_vec(&self) -> Vec<u8> {
         let mut payload: Vec<u8> = Vec::new();
-        prost::Message::encode(self, &mut payload).unwrap(); //TODO - Remove Unwrap
+        prost::Message::encode(self, &mut payload).unwrap();
         payload
     }
 }

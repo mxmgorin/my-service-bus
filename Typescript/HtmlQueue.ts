@@ -4,7 +4,7 @@ class HtmlQueue {
     static renderQueueSubscribersCountBadge(count: number): string {
 
         let badgeClass = count > 0 ? "primary" : "danger";
-        return '<span class="badge badge-' + badgeClass + '">' + count.toString() + '<span style="width: 10px; height:10px"> ' + PlugIcon.getIcon() + "</span></span>";
+        return '<span class="badge badge-' + badgeClass + '">' + count.toString() + '<div style="width: 10px; height:10px;display: inline-block;margin-left: 3px;">' + PlugIcon.getIcon() + "</div></span>";
     }
 
 
@@ -45,7 +45,7 @@ class HtmlQueue {
         let badgeType = queue.data.length == 1 ? "badge-success" : "badge-danger";
 
         for (let itm of queue.data) {
-            content += '<span class="badge ' + badgeType + '">' + Utils.highlightPageOfMessageId(itm.fromId.toString()) + "-" + Utils.highlightPageOfMessageId(itm.fromId.toString()) + "</span> ";
+            content += '<span class="badge ' + badgeType + '">' + Utils.highlightPageOfMessageId(itm.fromId.toString()) + "-" + Utils.highlightPageOfMessageId(itm.toId.toString()) + "</span> ";
         }
 
         return content;

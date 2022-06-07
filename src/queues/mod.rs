@@ -3,7 +3,6 @@ mod queue;
 mod queue_data;
 
 mod delivery_attempts;
-pub mod delivery_iterator;
 mod queue_metrics;
 mod queues_list;
 

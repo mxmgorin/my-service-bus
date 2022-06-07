@@ -3,9 +3,7 @@ use std::collections::{
     HashMap,
 };
 
-use my_service_bus_shared::{
-    queue::TopicQueueType, queue_with_intervals::QueueWithIntervals, MessageId,
-};
+use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWithIntervals};
 
 use crate::{queue_subscribers::QueueSubscriber, sessions::SessionId, topics::TopicQueueSnapshot};
 
@@ -146,33 +144,6 @@ impl TopicQueuesList {
                 }
 
                 result.as_mut().unwrap().push((queue, sub));
-            }
-        }
-
-        result
-    }
-
-    pub fn get_min_message_id(&self) -> Option<MessageId> {
-        let mut result = None;
-
-        for queue in self.queues.values() {
-            let queue_min_message_id = queue.get_min_message_id();
-
-            if queue_min_message_id.is_none() {
-                continue;
-            }
-
-            let queue_min_message_id = queue_min_message_id.unwrap();
-
-            result = match result {
-                Some(result_min_message_id) => {
-                    if queue_min_message_id < result_min_message_id {
-                        Some(queue_min_message_id)
-                    } else {
-                        Some(result_min_message_id)
-                    }
-                }
-                None => Some(queue_min_message_id),
             }
         }
 

@@ -267,29 +267,6 @@ impl TopicQueue {
         return subscriber.get_messages_on_delivery();
     }
 
-    pub fn get_min_message_id(&self) -> Option<MessageId> {
-        let min_queue_message_id_result = self.queue.get_min_id();
-
-        let min_message_id_from_subscribers = self.subscribers.get_min_message_id();
-
-        match min_queue_message_id_result {
-            Some(min_queue_message_id) => {
-                if let Some(min_message_id_from_subscribers) = min_message_id_from_subscribers {
-                    if min_message_id_from_subscribers < min_queue_message_id {
-                        return Some(min_message_id_from_subscribers);
-                    } else {
-                        return Some(min_queue_message_id);
-                    }
-                } else {
-                    return Some(min_queue_message_id);
-                }
-            }
-            None => {
-                return min_message_id_from_subscribers;
-            }
-        }
-    }
-
     pub fn queue_type_is_about_to_change(&self, new_queue_type: TopicQueueType) -> bool {
         match self.queue_type {
             TopicQueueType::Permanent => match new_queue_type {

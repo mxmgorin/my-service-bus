@@ -4,10 +4,9 @@ use rust_extensions::{ApplicationStates, MyTimerLogger};
 use tokio::sync::RwLock;
 
 use crate::{
-    operations::delivery::DeliveryDependecies,
-    persistence::{MessagesPagesGrpcRepo, TopcsAndQueuesSnapshotRepo},
+    persistence::{MessagesPagesRepo, TopicsAndQueuesSnapshotRepo},
     queue_subscribers::SubscriberIdGenerator,
-    sessions::{MyServiceBusSession, SessionsList},
+    sessions::SessionsList,
     settings::SettingsModel,
     topics::TopicsList,
 };
@@ -30,8 +29,8 @@ pub struct AppContext {
     pub states: GlobalStates,
     pub topic_list: TopicsList,
     pub max_delivery_size: usize,
-    pub topics_and_queues_repo: TopcsAndQueuesSnapshotRepo,
-    pub messages_pages_repo: MessagesPagesGrpcRepo,
+    pub topics_and_queues_repo: Arc<TopicsAndQueuesSnapshotRepo>,
+    pub messages_pages_repo: Arc<MessagesPagesRepo>,
     pub logs: Arc<Logs>,
     pub sessions: SessionsList,
     pub process_id: String,
@@ -51,12 +50,15 @@ pub struct AppContext {
 impl AppContext {
     pub fn new(settings: &SettingsModel) -> Self {
         let logs = Arc::new(Logs::new());
+
+        let topics_and_queues_repo = settings.create_topics_and_queues_snapshot_repo();
+        let messages_pages_repo = settings.create_messages_pages_repo();
         Self {
             states: GlobalStates::new(),
             topic_list: TopicsList::new(),
             max_delivery_size: settings.max_delivery_size,
-            topics_and_queues_repo: TopcsAndQueuesSnapshotRepo::new(settings),
-            messages_pages_repo: MessagesPagesGrpcRepo::new(settings),
+            topics_and_queues_repo: Arc::new(topics_and_queues_repo),
+            messages_pages_repo: Arc::new(messages_pages_repo),
             logs,
             sessions: SessionsList::new(),
             process_id: uuid::Uuid::new_v4().to_string(),
@@ -89,52 +91,9 @@ impl AppContext {
 
         *write_access = None;
     }
-}
 
-impl DeliveryDependecies for Arc<AppContext> {
-    fn get_max_delivery_size(&self) -> usize {
-        return self.max_delivery_size;
-    }
-
-    fn send_package(
-        &self,
-        session: Arc<MyServiceBusSession>,
-        tcp_packet: my_service_bus_tcp_shared::TcpContract,
-    ) {
-        tokio::spawn(async move {
-            match &session.connection {
-                crate::sessions::SessionConnection::Tcp(data) => {
-                    crate::tcp::send_with_timeout(&data.connection, tcp_packet).await;
-                }
-                #[cfg(test)]
-                crate::sessions::SessionConnection::Test(_) => {
-                    panic!("Test connection is not supported")
-                }
-                crate::sessions::SessionConnection::Http(_) => todo!("Not suppored yet"),
-            }
-        });
-    }
-
-    fn load_page(
-        &self,
-        topic: Arc<crate::topics::Topic>,
-        page_id: my_service_bus_shared::page_id::PageId,
-    ) {
-        let app = self.clone();
-
-        tokio::spawn(async move {
-            let message_id = topic.get_message_id().await;
-            crate::operations::page_loader::load_full_page_to_cache(
-                topic.clone(),
-                &app.messages_pages_repo,
-                Some(app.logs.as_ref()),
-                page_id,
-                message_id,
-            )
-            .await;
-            let mut topic_data = topic.get_access("app.load_page").await;
-            crate::operations::delivery::try_to_deliver(&app, &topic, &mut topic_data);
-        });
+    pub fn get_max_delivery_size(&self) -> usize {
+        self.max_delivery_size
     }
 }
 

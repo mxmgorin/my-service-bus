@@ -49,7 +49,8 @@ interface ITopic {
 interface IPage {
     id: number,
     amount: number,
-    size: number
+    size: number,
+    subPages: number[]
 }
 
 
@@ -83,3 +84,4 @@ interface ISystemStatus {
     usedmem: number,
     totalmem: number
 }
+

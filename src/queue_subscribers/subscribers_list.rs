@@ -3,7 +3,10 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 use my_service_bus_shared::{queue::TopicQueueType, MessageId};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use crate::sessions::{MyServiceBusSession, SessionId};
+use crate::{
+    sessions::{MyServiceBusSession, SessionId},
+    utils::MinMessageIdCalculator,
+};
 
 use super::{QueueSubscriber, SubscriberId};
 
@@ -68,6 +71,24 @@ impl SubscribersList {
             SubscribersData::SingleSubscriber(single) => {
                 let subscriber = single.as_ref()?;
                 Some(vec![subscriber])
+            }
+        }
+    }
+
+    pub fn get_min_message_id(&self) -> Option<MessageId> {
+        match &self.data {
+            SubscribersData::MultiSubscribers(subscribers) => {
+                let mut min_message_id_calculator = MinMessageIdCalculator::new();
+
+                for subscriber in subscribers.values() {
+                    min_message_id_calculator.add(subscriber.get_min_message_id());
+                }
+
+                return min_message_id_calculator.value;
+            }
+            SubscribersData::SingleSubscriber(subscriber) => {
+                let subscriber = subscriber.as_ref()?;
+                return subscriber.get_min_message_id();
             }
         }
     }
@@ -312,35 +333,6 @@ impl SubscribersList {
                 }
                 None => return None,
             },
-        }
-    }
-
-    pub fn get_min_message_id(&self) -> Option<MessageId> {
-        match &self.data {
-            SubscribersData::MultiSubscribers(hash_map) => {
-                let mut result = None;
-                for subscriber in hash_map.values() {
-                    let subscriber_min_id = subscriber.get_min_message_id();
-
-                    if let Some(result_min_id) = result {
-                        if let Some(subscriber_min_id) = subscriber_min_id {
-                            if subscriber_min_id < result_min_id {
-                                result = Some(subscriber_min_id)
-                            }
-                        }
-                    } else {
-                        result = subscriber_min_id;
-                    }
-                }
-
-                return result;
-            }
-            SubscribersData::SingleSubscriber(single_subscriber) => {
-                if let Some(single_subscriber) = single_subscriber {
-                    return single_subscriber.get_min_message_id();
-                }
-                return None;
-            }
         }
     }
 }

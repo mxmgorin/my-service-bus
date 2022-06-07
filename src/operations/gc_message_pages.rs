@@ -1,27 +1,54 @@
+use std::collections::HashMap;
+
+use my_service_bus_shared::sub_page::SubPageId;
+use rust_extensions::lazy::LazyVec;
+
 use crate::app::AppContext;
 use crate::topics::TopicData;
 
-pub fn gc_message_pages(app: &AppContext, topic_data: &mut TopicData) {
-    let active_pages = topic_data.get_active_pages();
+pub fn gc_message_pages(_app: &AppContext, topic_data: &mut TopicData) {
+    let active_pages = super::get_active_sub_pages(topic_data);
 
-    let pages = topic_data.pages.get_pages_info();
+    let sub_pages_to_gc = get_subpages_to_gc(topic_data, &active_pages);
 
-    for page in pages {
-        if !active_pages.contains_key(&page.page_no) {
-            if page.persist_size == 0 {
-                topic_data.pages.remove_page(&page.page_no);
-            } else {
-                app.logs
-                    .add_info(
-                        Some(topic_data.topic_id.to_string()),
-                        crate::app::logs::SystemProcess::Timer,
-                        format!("Gc Page: {}", page.page_no),
-                        format!(
-                            "Page can not gced since it has {} messages to persist. Skipping this iteration...",
-                            page.persist_size
-                        ),
-                    );
+    if let Some(sub_pages_to_gc) = sub_pages_to_gc {
+        for sub_page_to_gc in sub_pages_to_gc {
+            let (sub_page, page) = topic_data.pages.gc_if_possible(sub_page_to_gc);
+
+            if let Some(sub_page) = sub_page {
+                println!(
+                    "SubPage {} is GCed for topic: {}",
+                    sub_page.sub_page_id.value,
+                    topic_data.topic_id.as_str()
+                );
+            }
+
+            if let Some(page) = page {
+                println!(
+                    "Page {} is GCed for topic: {}",
+                    page.page_id,
+                    topic_data.topic_id.as_str()
+                );
             }
         }
     }
+}
+
+fn get_subpages_to_gc(
+    topic_data: &TopicData,
+    active_pages: &HashMap<usize, SubPageId>,
+) -> Option<Vec<SubPageId>> {
+    let mut result = LazyVec::new();
+
+    for page in topic_data.pages.get_pages() {
+        for sub_page in page.sub_pages.values() {
+            if !active_pages.contains_key(&sub_page.sub_page.sub_page_id.value) {
+                if sub_page.messages_to_persist.len() == 0 {
+                    result.add(sub_page.sub_page.sub_page_id);
+                }
+            }
+        }
+    }
+
+    result.get_result()
 }

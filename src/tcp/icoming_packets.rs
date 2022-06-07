@@ -9,7 +9,7 @@ use crate::{app::AppContext, operations};
 use super::error::MySbSocketError;
 
 pub async fn handle(
-    app: Arc<AppContext>,
+    app: &Arc<AppContext>,
     tcp_contract: TcpContract,
     connection: Arc<SocketConnection<TcpContract, MySbTcpSerializer>>,
 ) -> Result<(), MySbSocketError> {
@@ -27,7 +27,6 @@ pub async fn handle(
             name,
             protocol_version,
         } => {
-            //TODO - It Should be scan from the last to ;
             let splited: Vec<&str> = name.split(";").collect();
 
             if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {
@@ -56,7 +55,7 @@ pub async fn handle(
                 .await
             {
                 let result = operations::publisher::publish(
-                    app.clone(),
+                    app,
                     topic_id.as_str(),
                     data_to_publish,
                     persist_immediately,
@@ -95,7 +94,7 @@ pub async fn handle(
         } => {
             if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {
                 operations::subscriber::subscribe_to_queue(
-                    app, topic_id, queue_id, queue_type, session,
+                    app, topic_id, queue_id, queue_type, &session,
                 )
                 .await?;
             }
@@ -109,7 +108,7 @@ pub async fn handle(
             //This is a client packet
             Ok(())
         }
-        TcpContract::NewMessagesServerSide(_) => {
+        TcpContract::Raw(_) => {
             //This is a client packet
             Ok(())
         }
@@ -131,7 +130,7 @@ pub async fn handle(
             if let Some(session) = app.sessions.get_by_tcp_connection_id(connection.id).await {
                 operations::publisher::create_topic_if_not_exists(
                     app,
-                    Some(session.as_ref()),
+                    Some(session.id),
                     topic_id.as_str(),
                 )
                 .await?;

@@ -30,7 +30,7 @@ class HtmlTopics {
         let msgPerSecColor = topic.messagesPerSec > 0 ? "white" : "gray";
         let packetsPerSecColor = topic.packetPerSec > 0 ? "white" : "gray";
 
-        return '<div>MsgId:' + Utils.highlightPageOfMessageId(topic.messageId.toString()) + '/' + topic.messageId.toString() + '</div>' +
+        return '<div>MsgId:' + Utils.highlightPageOfMessageId(topic.messageId.toString()) + '</div>' +
             '<div>Msg/sec: <span style="color:' + msgPerSecColor + '">' + topic.messagesPerSec + '</span></div>' +
             '<div>Req/sec: <span style="color:' + packetsPerSecColor + '">' + topic.packetPerSec + '</span></div>' +
             '<div>Persist queue:<span style="color:' + queuesizeColor + '">' + topic.persistSize + '</span></div>' +
@@ -45,10 +45,9 @@ class HtmlTopics {
 
         for (let page of pages) {
             result +=
-                '<div><div>Page:' + page.id + ' [' + page.amount + ']</div>' +
-                '<div class="progress">' +
-                '<div class="progress-bar" role="progressbar" style="text-shadow: 1px 1px 2px black; width: ' + (page.amount / 1000).toFixed(0) + '%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">' +
-                Utils.format_bytes(page.size) + '</div></div></div>';
+                '<div><div>Page:' + page.id + '; Amount:' + page.amount + '; Size: ' + Utils.formatNumber(page.size) + '</div>' +
+                SubPagesWidget.renderPagesWidget(page.subPages) +
+                '</div>';
         }
 
         return result;
