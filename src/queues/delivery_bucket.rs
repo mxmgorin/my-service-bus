@@ -14,7 +14,12 @@ impl DeliveryBucket {
         self.confirmed += confirmed.len() as usize;
 
         for id in confirmed {
-            self.ids.remove(id);
+            if let Err(err) = self.ids.remove(id) {
+                println!(
+                    "We are trying to confirm message {} - but something went wrong. Reason: {:?}",
+                    id, err
+                )
+            }
         }
     }
 

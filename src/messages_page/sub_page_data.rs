@@ -29,10 +29,14 @@ impl SubPageData {
         result
     }
 
-    //TODO - Unit Test It
     pub fn commit_persisted_messages(&mut self, ids: &[MessageId]) {
         for id in ids {
-            self.messages_to_persist.remove(*id);
+            if let Err(err) = self.messages_to_persist.remove(*id) {
+                println!(
+                    "We are trying to confirm persisted message {} - but something went wrong. Reason: {:?}",
+                    id, err
+                )
+            }
         }
     }
 
