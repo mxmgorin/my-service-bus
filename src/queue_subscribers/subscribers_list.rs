@@ -59,6 +59,26 @@ impl SubscribersList {
         }
     }
 
+    pub fn get_on_delivery_amount(&self) -> i64 {
+        match &self.data {
+            SubscribersData::MultiSubscribers(subscribers) => {
+                let mut result = 0;
+                for subscriber in subscribers.values() {
+                    result += subscriber.get_on_delivery_amount();
+                }
+
+                result
+            }
+            SubscribersData::SingleSubscriber(subscriber) => {
+                if let Some(subscriber) = subscriber {
+                    subscriber.get_on_delivery_amount()
+                } else {
+                    0
+                }
+            }
+        }
+    }
+
     pub fn get_all(&self) -> Option<Vec<&QueueSubscriber>> {
         match &self.data {
             SubscribersData::MultiSubscribers(hash_map) => {

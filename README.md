@@ -26,3 +26,8 @@ execute: **cargo run --release**
 * Backgrounds are implemented using timers which means now they have one minute timeout in case of long running tasks;
 * Added Metric - topic size in memory
 * Highlited PageId within MessageID on UI
+
+### 2.2.5
+* Pages Support
+* GC works as fast as it can
+* Added Visualisation - how many messages are on delivery

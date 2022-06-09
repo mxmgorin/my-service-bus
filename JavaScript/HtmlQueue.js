@@ -18,9 +18,18 @@ var HtmlQueue = /** @class */ (function () {
         var badgeType = queue.queueType == 1 ? "badge-success" : "badge-warning";
         return '<span class="badge ' + badgeType + '">' + this.renderQueueTypeName(queue) + "</span>";
     };
+    HtmlQueue.getQueueSizeBadgeType = function (queue) {
+        if (queue.size > 100) {
+            return "badge-danger";
+        }
+        if (queue.onDelivery > 0) {
+            return "badge-warning";
+        }
+        return "badge-success";
+    };
     HtmlQueue.renderQueueSizeBadge = function (queue) {
-        var badgeType = queue.size > 100 ? "badge-danger" : "badge-success";
-        return '<span class="badge ' + badgeType + '">Size:' + queue.size + "</span>";
+        var badgeType = this.getQueueSizeBadgeType(queue);
+        return '<span class="badge ' + badgeType + '">Size:' + queue.size + "/" + queue.onDelivery + "</span>";
     };
     HtmlQueue.renderQueueRanges = function (queue) {
         var content = "";

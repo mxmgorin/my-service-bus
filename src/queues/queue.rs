@@ -100,6 +100,10 @@ impl TopicQueue {
         return self.queue.len();
     }
 
+    pub fn get_on_delivery(&self) -> i64 {
+        self.subscribers.get_on_delivery_amount()
+    }
+
     pub fn one_second_tick(&mut self) {
         self.subscribers.one_second_tick();
     }

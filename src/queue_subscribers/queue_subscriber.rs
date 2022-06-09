@@ -74,6 +74,14 @@ impl QueueSubscriber {
         return false;
     }
 
+    pub fn get_on_delivery_amount(&self) -> i64 {
+        match &self.delivery_state {
+            QueueSubscriberDeliveryState::ReadyToDeliver => 0,
+            QueueSubscriberDeliveryState::Rented => 0,
+            QueueSubscriberDeliveryState::OnDelivery(on_delivery) => on_delivery.bucket.ids.len(),
+        }
+    }
+
     pub fn cancel_the_rent(&mut self) {
         if let QueueSubscriberDeliveryState::Rented = &self.delivery_state {
             self.metrics.set_delivery_mode_as_ready_to_deliver();

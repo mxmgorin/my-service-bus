@@ -63,6 +63,7 @@ interface ITopicQueue {
     id: string,
     queueType: number,
     size: number,
+    onDelivery: number,
     data: IQueueIndexRange[]
 }
 

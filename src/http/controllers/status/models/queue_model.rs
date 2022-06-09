@@ -33,6 +33,8 @@ pub struct QueueJsonContract {
     #[serde(rename = "queueType")]
     queue_type: u8,
     size: i64,
+    #[serde(rename = "onDelivery")]
+    on_delivery: i64,
     data: Vec<QueueIndex>,
 }
 
@@ -42,6 +44,7 @@ impl QueueJsonContract {
             id: topic_queue.queue_id.to_string(),
             queue_type: topic_queue.queue_type.into_u8(),
             size: topic_queue.get_queue_size(),
+            on_delivery: topic_queue.get_on_delivery(),
             data: QueueIndex::get_queue_snapshot(topic_queue),
         }
     }

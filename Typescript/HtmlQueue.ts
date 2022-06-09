@@ -31,12 +31,21 @@ class HtmlQueue {
 
     }
 
+    static getQueueSizeBadgeType(queue: ITopicQueue): string {
+        if (queue.size > 100) {
+            return "badge-danger";
+        }
+
+        if (queue.onDelivery > 0) {
+            return "badge-warning";
+        }
+
+        return "badge-success";
+    }
+
     static renderQueueSizeBadge(queue: ITopicQueue): string {
-
-        let badgeType = queue.size > 100 ? "badge-danger" : "badge-success";
-
-        return '<span class="badge ' + badgeType + '">Size:' + queue.size + "</span>";
-
+        let badgeType = this.getQueueSizeBadgeType(queue);
+        return '<span class="badge ' + badgeType + '">Size:' + queue.size + "/" + queue.onDelivery + "</span>";
     }
 
 
@@ -82,6 +91,8 @@ class HtmlQueue {
         return html
 
     }
+
+
 
 
 
