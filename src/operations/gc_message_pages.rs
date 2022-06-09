@@ -13,22 +13,25 @@ pub fn gc_message_pages(_app: &AppContext, topic_data: &mut TopicData) {
 
     if let Some(sub_pages_to_gc) = sub_pages_to_gc {
         for sub_page_to_gc in sub_pages_to_gc {
-            let (sub_page, page) = topic_data.pages.gc_if_possible(sub_page_to_gc);
+            let (_sub_page, _page) = topic_data.pages.gc_if_possible(sub_page_to_gc);
 
-            if let Some(sub_page) = sub_page {
-                println!(
-                    "SubPage {} is GCed for topic: {}",
-                    sub_page.sub_page_id.value,
-                    topic_data.topic_id.as_str()
-                );
-            }
+            #[cfg(test)]
+            {
+                if let Some(sub_page) = _sub_page {
+                    println!(
+                        "SubPage {} is GCed for topic: {}",
+                        sub_page.sub_page_id.value,
+                        topic_data.topic_id.as_str()
+                    );
+                }
 
-            if let Some(page) = page {
-                println!(
-                    "Page {} is GCed for topic: {}",
-                    page.page_id,
-                    topic_data.topic_id.as_str()
-                );
+                if let Some(page) = _page {
+                    println!(
+                        "Page {} is GCed for topic: {}",
+                        page.page_id,
+                        topic_data.topic_id.as_str()
+                    );
+                }
             }
         }
     }
