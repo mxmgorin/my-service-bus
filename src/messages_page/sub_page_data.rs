@@ -32,9 +32,11 @@ impl SubPageData {
     pub fn commit_persisted_messages(&mut self, topic_id: &str, ids: &[MessageId]) {
         for id in ids {
             if let Err(err) = self.messages_to_persist.remove(*id) {
+                let first = ids.first();
+                let last = ids.last();
                 println!(
-                    "Topic: {}, We are trying to confirm persisted message {} - but something went wrong. Reason: {:?}",
-                   topic_id, id, err
+                    "Topic: {}. SubPage: {}. First:{:?}. Last:{:?}. We are trying to confirm persisted message {} - but something went wrong. Reason: {:?}",
+                   topic_id,  self.sub_page.sub_page_id.value, first, last, id, err
                 )
             }
         }
