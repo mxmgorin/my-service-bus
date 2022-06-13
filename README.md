@@ -30,4 +30,4 @@ execute: **cargo run --release**
 ### 2.2.5
 * Pages Support
 * GC works as fast as it can
-* Added Visualisation - how many messages are on delivery
+* Added Visualisation - how many messages are on the delivery

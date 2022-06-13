@@ -37,5 +37,5 @@ async fn commit_persisted(topic: &Topic, sub_page_id: SubPageId, messages: &[Mes
     let mut topic_data = topic.get_access().await;
     topic_data
         .pages
-        .commit_persisted_messages(sub_page_id, messages);
+        .commit_persisted_messages(topic.topic_id.as_str(), sub_page_id, messages);
 }
