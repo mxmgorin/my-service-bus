@@ -10,7 +10,6 @@ use super::MessagesToPersistBucket;
 pub struct SubPageData {
     pub sub_page: SubPage,
     pub messages_to_persist: QueueWithIntervals,
-    being_persisted: QueueWithIntervals,
     pub persist_id: usize,
     on_persistence: HashMap<usize, QueueWithIntervals>,
 }
@@ -22,7 +21,6 @@ impl SubPageData {
             messages_to_persist: QueueWithIntervals::new(),
             persist_id: 0,
             on_persistence: HashMap::new(),
-            being_persisted: QueueWithIntervals::new(),
         }
     }
 
@@ -35,7 +33,6 @@ impl SubPageData {
                 let model: MessageProtobufModel = msg.into();
                 messages_to_persist.push(model);
                 ids.enqueue(message_id);
-                self.being_persisted.enqueue(message_id);
             } else {
                 println!(
                     "Topic:{}. Somehow we can not find message {} to persist",
@@ -53,19 +50,11 @@ impl SubPageData {
 
     pub fn commit_persisted_messages(
         &mut self,
-        topic_id: &str,
         messages_ot_persist: &MessagesToPersistBucket,
         persisted: bool,
     ) {
         if let Some(ids) = self.on_persistence.remove(&messages_ot_persist.id) {
             for id in &ids {
-                if let Err(err) = self.being_persisted.remove(id) {
-                    println!(
-                        "Topic: {}. SubPage: {}. We are trying to confirm persisted message {} - but something went wrong. Reason: {:?}",
-                       topic_id,  self.sub_page.sub_page_id.value, id, err
-                    )
-                }
-
                 if !persisted {
                     self.messages_to_persist.enqueue(id);
                 }
@@ -74,6 +63,6 @@ impl SubPageData {
     }
 
     pub fn can_be_gced(&self) -> bool {
-        self.messages_to_persist.len() == 0
+        self.messages_to_persist.len() == 0 && self.on_persistence.len() == 0
     }
 }

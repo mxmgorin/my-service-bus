@@ -41,10 +41,7 @@ async fn commit_persisted(
     persisted: bool,
 ) {
     let mut topic_data = topic.get_access().await;
-    topic_data.pages.commit_persisted_messages(
-        topic.topic_id.as_str(),
-        sub_page_id,
-        messages_to_persist,
-        persisted,
-    );
+    topic_data
+        .pages
+        .commit_persisted_messages(sub_page_id, messages_to_persist, persisted);
 }
