@@ -1,4 +1,7 @@
-use std::collections::{btree_map::Values, BTreeMap};
+use std::collections::{
+    btree_map::{Values, ValuesMut},
+    BTreeMap,
+};
 
 use my_service_bus_shared::{
     page_id::{get_page_id, PageId},
@@ -8,7 +11,7 @@ use my_service_bus_shared::{
 
 use crate::utils::MinMessageIdCalculator;
 
-use super::{messages_page::MessagesPage, PageSizeMetrics};
+use super::{messages_page::MessagesPage, MessagesToPersistBucket, PageSizeMetrics};
 
 pub struct MessagesPageList {
     pub pages: BTreeMap<PageId, MessagesPage>,
@@ -49,6 +52,10 @@ impl MessagesPageList {
         self.pages.values()
     }
 
+    pub fn get_pages_mut(&mut self) -> ValuesMut<PageId, MessagesPage> {
+        self.pages.values_mut()
+    }
+
     pub fn restore_subpage(&mut self, sub_page: SubPage) {
         let first_message_id = sub_page.sub_page_id.get_first_message_id();
         let page_id = get_page_id(first_message_id);
@@ -66,13 +73,13 @@ impl MessagesPageList {
         &mut self,
         topic_id: &str,
         sub_page_id: SubPageId,
-        messages_ids: &[MessageId],
+        messages_to_persist: &MessagesToPersistBucket,
     ) {
         let page_id = get_page_id(sub_page_id.get_first_message_id());
 
         if let Some(page) = self.pages.get_mut(&page_id) {
             if let Some(sub_page_data) = page.get_sub_page_mut(&sub_page_id) {
-                sub_page_data.commit_persisted_messages(topic_id, messages_ids);
+                sub_page_data.commit_persisted_messages(topic_id, messages_to_persist);
             }
         }
     }

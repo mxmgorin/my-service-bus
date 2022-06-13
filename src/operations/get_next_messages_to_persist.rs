@@ -1,24 +1,24 @@
-use my_service_bus_shared::{protobuf_models::MessageProtobufModel, sub_page::SubPageId};
+use my_service_bus_shared::sub_page::SubPageId;
 
-use crate::topics::{Topic, TopicData};
+use crate::{
+    messages_page::MessagesToPersistBucket,
+    topics::{Topic, TopicData},
+};
 
 pub async fn get_next_messages_to_persist(
     topic: &Topic,
-) -> Option<(SubPageId, Vec<MessageProtobufModel>)> {
-    let topic_data = topic.get_access().await;
-    return get_messages_to_persist(&topic_data);
+) -> Option<(SubPageId, MessagesToPersistBucket)> {
+    let mut topic_data = topic.get_access().await;
+    return get_messages_to_persist(&mut topic_data);
 }
 
 fn get_messages_to_persist(
-    topic_data: &TopicData,
-) -> Option<(SubPageId, Vec<MessageProtobufModel>)> {
-    for page in topic_data.pages.get_pages() {
+    topic_data: &mut TopicData,
+) -> Option<(SubPageId, MessagesToPersistBucket)> {
+    for page in topic_data.pages.get_pages_mut() {
         if let Some(sub_page_data) = page.get_sub_page_with_messages_to_persist() {
             let messages_to_persist = sub_page_data.compile_messages_to_persist();
-
-            if messages_to_persist.len() > 0 {
-                return Some((sub_page_data.sub_page.sub_page_id, messages_to_persist));
-            }
+            return Some((sub_page_data.sub_page.sub_page_id, messages_to_persist));
         }
     }
 
@@ -57,8 +57,8 @@ mod tests {
 
         let result = get_messages_to_persist(&mut topic_data);
 
-        if let Some((_, messages)) = result {
-            assert_eq!(1, messages.len());
+        if let Some((_, mut messages)) = result {
+            assert_eq!(1, messages.get().len());
         } else {
             assert_eq!(true, result.is_none());
         }

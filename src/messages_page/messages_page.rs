@@ -66,8 +66,8 @@ impl MessagesPage {
         result
     }
 
-    pub fn get_sub_page_with_messages_to_persist(&self) -> Option<&SubPageData> {
-        for sub_page in self.sub_pages.values() {
+    pub fn get_sub_page_with_messages_to_persist(&mut self) -> Option<&mut SubPageData> {
+        for sub_page in self.sub_pages.values_mut() {
             if sub_page.messages_to_persist.len() > 0 {
                 return Some(sub_page);
             }
