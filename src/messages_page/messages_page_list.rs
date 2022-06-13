@@ -74,12 +74,13 @@ impl MessagesPageList {
         topic_id: &str,
         sub_page_id: SubPageId,
         messages_to_persist: &MessagesToPersistBucket,
+        persisted: bool,
     ) {
         let page_id = get_page_id(sub_page_id.get_first_message_id());
 
         if let Some(page) = self.pages.get_mut(&page_id) {
             if let Some(sub_page_data) = page.get_sub_page_mut(&sub_page_id) {
-                sub_page_data.commit_persisted_messages(topic_id, messages_to_persist);
+                sub_page_data.commit_persisted_messages(topic_id, messages_to_persist, persisted);
             }
         }
     }

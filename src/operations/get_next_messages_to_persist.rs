@@ -17,7 +17,8 @@ fn get_messages_to_persist(
 ) -> Option<(SubPageId, MessagesToPersistBucket)> {
     for page in topic_data.pages.get_pages_mut() {
         if let Some(sub_page_data) = page.get_sub_page_with_messages_to_persist() {
-            let messages_to_persist = sub_page_data.compile_messages_to_persist();
+            let messages_to_persist =
+                sub_page_data.compile_messages_to_persist(topic_data.topic_id.as_str());
             return Some((sub_page_data.sub_page.sub_page_id, messages_to_persist));
         }
     }

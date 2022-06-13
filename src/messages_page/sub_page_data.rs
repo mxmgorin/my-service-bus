@@ -10,6 +10,7 @@ use super::MessagesToPersistBucket;
 pub struct SubPageData {
     pub sub_page: SubPage,
     pub messages_to_persist: QueueWithIntervals,
+    being_persisted: QueueWithIntervals,
     pub persist_id: usize,
     on_persistence: HashMap<usize, QueueWithIntervals>,
 }
@@ -21,20 +22,26 @@ impl SubPageData {
             messages_to_persist: QueueWithIntervals::new(),
             persist_id: 0,
             on_persistence: HashMap::new(),
+            being_persisted: QueueWithIntervals::new(),
         }
     }
 
-    pub fn compile_messages_to_persist(&mut self) -> MessagesToPersistBucket {
+    pub fn compile_messages_to_persist(&mut self, topic_id: &str) -> MessagesToPersistBucket {
         let mut messages_to_persist = Vec::new();
         let mut ids = QueueWithIntervals::new();
 
-        for message_id in &self.messages_to_persist {
+        while let Some(message_id) = self.messages_to_persist.dequeue() {
             if let Some(msg) = self.sub_page.get_message(message_id) {
                 let model: MessageProtobufModel = msg.into();
                 messages_to_persist.push(model);
+                ids.enqueue(message_id);
+                self.being_persisted.enqueue(message_id);
+            } else {
+                println!(
+                    "Topic:{}. Somehow we can not find message {} to persist",
+                    topic_id, message_id
+                );
             }
-
-            ids.enqueue(message_id);
         }
 
         let persist_id = self.persist_id;
@@ -48,14 +55,19 @@ impl SubPageData {
         &mut self,
         topic_id: &str,
         messages_ot_persist: &MessagesToPersistBucket,
+        persisted: bool,
     ) {
         if let Some(ids) = self.on_persistence.remove(&messages_ot_persist.id) {
             for id in &ids {
-                if let Err(err) = self.messages_to_persist.remove(id) {
+                if let Err(err) = self.being_persisted.remove(id) {
                     println!(
                         "Topic: {}. SubPage: {}. We are trying to confirm persisted message {} - but something went wrong. Reason: {:?}",
                        topic_id,  self.sub_page.sub_page_id.value, id, err
                     )
+                }
+
+                if !persisted {
+                    self.messages_to_persist.enqueue(id);
                 }
             }
         }

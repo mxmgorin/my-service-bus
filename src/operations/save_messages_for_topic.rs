@@ -16,6 +16,8 @@ pub async fn save_messages_for_topic(app: &Arc<AppContext>, topic: &Arc<Topic>) 
             .await;
 
         if let Err(err) = result {
+            commit_persisted(topic.as_ref(), sub_page_id, &messages_to_persist, false).await;
+
             app.logs.add_error(
                 Some(topic.topic_id.to_string()),
                 crate::app::logs::SystemProcess::Timer,
@@ -27,7 +29,7 @@ pub async fn save_messages_for_topic(app: &Arc<AppContext>, topic: &Arc<Topic>) 
                 Some(format!("{:?}", err)),
             );
         } else {
-            commit_persisted(topic.as_ref(), sub_page_id, &messages_to_persist).await;
+            commit_persisted(topic.as_ref(), sub_page_id, &messages_to_persist, true).await;
         }
     }
 }
@@ -36,11 +38,13 @@ async fn commit_persisted(
     topic: &Topic,
     sub_page_id: SubPageId,
     messages_to_persist: &MessagesToPersistBucket,
+    persisted: bool,
 ) {
     let mut topic_data = topic.get_access().await;
     topic_data.pages.commit_persisted_messages(
         topic.topic_id.as_str(),
         sub_page_id,
         messages_to_persist,
+        persisted,
     );
 }
