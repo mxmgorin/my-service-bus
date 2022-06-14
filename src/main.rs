@@ -1,7 +1,7 @@
 use app::AppContext;
 
 use background::{
-    DeadSubscribersKickerTimer, GcTimer, ImmediatlyPersistTimer, MetricsTimer,
+    DeadSubscribersKickerTimer, GcTimer, ImmediatlyPersistEventLoop, MetricsTimer,
     PersistTopicsAndQueuesTimer,
 };
 use my_service_bus_tcp_shared::{ConnectionAttributes, MySbTcpSerializer};
@@ -39,6 +39,10 @@ async fn main() {
     let settings = settings::SettingsModel::read().await;
 
     let app = Arc::new(AppContext::new(&settings));
+
+    app.immediatly_persist_event_loop
+        .register_event_loop(Arc::new(ImmediatlyPersistEventLoop::new(app.clone())))
+        .await;
 
     let mut tasks = Vec::new();
 
@@ -80,18 +84,12 @@ async fn main() {
         Arc::new(DeadSubscribersKickerTimer::new(app.clone())),
     );
 
-    let mut immediate_persist_timer = MyTimer::new(Duration::from_millis(100));
-
-    immediate_persist_timer.register_timer(
-        "ImmediatelyPersist",
-        Arc::new(ImmediatlyPersistTimer::new(app.clone())),
-    );
-
     metrics_timer.start(app.clone(), app.clone());
     persist_and_gc_timer.start(app.clone(), app.clone());
     dead_subscribers.start(app.clone(), app.clone());
-
-    immediate_persist_timer.start(app.clone(), app.clone());
+    app.immediatly_persist_event_loop
+        .start(app.clone(), app.clone())
+        .await;
 
     signal_hook::flag::register(
         signal_hook::consts::SIGTERM,

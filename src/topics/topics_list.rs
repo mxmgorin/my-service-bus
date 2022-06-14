@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
 use my_service_bus_shared::{validators::InvalidTopicName, MessageId};
-use rust_extensions::lazy::LazyVec;
 use tokio::sync::RwLock;
 
 use super::topic::Topic;
@@ -49,22 +48,6 @@ impl TopicsList {
         }
 
         result
-    }
-
-    pub async fn get_topics_to_immediatly_persist(&self) -> Option<Vec<Arc<Topic>>> {
-        let mut result = LazyVec::new();
-        let read_access = self.data.read().await;
-
-        for topic in read_access.topics.values() {
-            let persist = topic
-                .immediatelly_persist_is_charged
-                .swap(false, std::sync::atomic::Ordering::SeqCst);
-            if persist {
-                result.add(Arc::clone(topic))
-            }
-        }
-
-        result.get_result()
     }
 
     pub async fn get_all_with_snapshot_id(&self) -> (usize, Vec<Arc<Topic>>) {
