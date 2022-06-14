@@ -1,10 +1,13 @@
 use app::AppContext;
 
+use background::{
+    DeadSubscribersKickerTimer, GcTimer, ImmediatlyPersistEventLoop, MetricsTimer,
+    PersistTopicsAndQueuesTimer,
+};
 use my_service_bus_tcp_shared::{ConnectionAttributes, MySbTcpSerializer};
 use my_tcp_sockets::TcpServer;
 use rust_extensions::MyTimer;
 use tcp::socket_loop::TcpServerEvents;
-use timers::{DeadSubscribersKickerTimer, GcTimer, MetricsTimer, PersistTopicsAndQueuesTimer};
 
 use std::time::Duration;
 use std::{net::SocketAddr, sync::Arc};
@@ -24,7 +27,7 @@ mod sessions;
 mod settings;
 mod tcp;
 
-mod timers;
+mod background;
 mod topics;
 mod utils;
 pub mod persistence_grpc {
@@ -36,6 +39,10 @@ async fn main() {
     let settings = settings::SettingsModel::read().await;
 
     let app = Arc::new(AppContext::new(&settings));
+
+    app.immediatly_persist_event_loop
+        .register_event_loop(Arc::new(ImmediatlyPersistEventLoop::new(app.clone())))
+        .await;
 
     let mut tasks = Vec::new();
 
@@ -80,6 +87,9 @@ async fn main() {
     metrics_timer.start(app.clone(), app.clone());
     persist_and_gc_timer.start(app.clone(), app.clone());
     dead_subscribers.start(app.clone(), app.clone());
+    app.immediatly_persist_event_loop
+        .start(app.clone(), app.clone())
+        .await;
 
     signal_hook::flag::register(
         signal_hook::consts::SIGTERM,

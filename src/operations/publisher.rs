@@ -59,13 +59,9 @@ pub async fn publish(
     topic_data.metrics.update_topic_metrics(messages_count);
 
     if persist_immediately {
-        tokio::task::spawn(persist_after_publish(app.clone(), topic.clone()));
+        app.immediatly_persist_event_loop.send(topic.clone());
     }
 
     super::delivery::start_new(&app, &topic, &mut topic_data);
     Ok(())
-}
-
-async fn persist_after_publish(app: Arc<AppContext>, topic: Arc<Topic>) {
-    crate::operations::save_messages_for_topic(&app, &topic).await;
 }
