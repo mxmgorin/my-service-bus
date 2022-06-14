@@ -33,3 +33,6 @@ execute: **cargo run --release**
 * Added Visualisation - how many messages are on the delivery
 * UI Shows amount of Sessions
 * Bug Fixed - immediate persistence made to send a lot of data to console.
+
+### 2.2.6
+* Immediately persist case is signlethreaded
