@@ -115,6 +115,8 @@ class main {
 
                 HtmlStatusBar.updateStatusbar(result);
 
+                HtmlStatusBar.updateSessionsAmount(result.sessions.items.length);
+
                 this.filterLines(filterPhrase);
 
 

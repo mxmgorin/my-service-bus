@@ -6,6 +6,8 @@ var HtmlStatusBar = /** @class */ (function () {
             '<table><tr>' +
             '<td style="padding-left: 5px">Connected: <b id="connected" style="text-shadow: 0 0 2px white;"></b></td>' +
             '<td><div class="statusbar-separator"></div></td>' +
+            '<td style="min-width:170px">Sessions: <b id="sessions" style="text-shadow: 0 0 2px white"></b></td>' +
+            '<td><div class="statusbar-separator"></div></td>' +
             '<td style="min-width:170px">Persist Queue: <b id="persist-queue" style="text-shadow: 0 0 2px white"></b></td>' +
             '<td><div class="statusbar-separator"></div></td>' +
             '<td style="min-width:130px">Msgs/sec: <span id="msg-per-sec" style="text-shadow: 0 0 2px white"></span></td>' +
@@ -16,6 +18,15 @@ var HtmlStatusBar = /** @class */ (function () {
             '<td><div class="statusbar-separator"></div></td>' +
             '<td style="padding-left: 5px; min-width:270px">Total pages size:<span id="total-pages-size" style="text-shadow: 0 0 2px white;"></span></td>' +
             '</tr></table></div>';
+    };
+    HtmlStatusBar.updateSessionsAmount = function (amount) {
+        if (!this.sessions) {
+            this.sessions = document.getElementById('sessions');
+        }
+        if (this.currentSessionsAmout != amount) {
+            this.sessions.innerHTML = amount.toFixed(0);
+            this.currentSessionsAmout = amount;
+        }
     };
     HtmlStatusBar.updateStatusbar = function (data) {
         if (!this.connected) {
@@ -72,6 +83,7 @@ var HtmlStatusBar = /** @class */ (function () {
             document.getElementById('connected').innerHTML = '<span style="color: red">offline</span>';
         }
     };
+    HtmlStatusBar.currentSessionsAmout = -1;
     return HtmlStatusBar;
 }());
 //# sourceMappingURL=HtmlStatusBar.js.map

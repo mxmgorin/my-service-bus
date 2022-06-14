@@ -71,6 +71,7 @@ var main = /** @class */ (function () {
             HtmlTopics.updateTopicSessions(result);
             HtmlTopics.updateTopicQueues(result);
             HtmlStatusBar.updateStatusbar(result);
+            HtmlStatusBar.updateSessionsAmount(result.sessions.items.length);
             _this.filterLines(filterPhrase);
         }).fail(function () {
             _this.requested = false;

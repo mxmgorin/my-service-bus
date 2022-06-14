@@ -6,6 +6,9 @@ class HtmlStatusBar {
     private static totalPagesSize: HTMLElement;
     private static msgsPerSec: HTMLElement;
     private static bytesRwPerSec: HTMLElement;
+    private static sessions: HTMLElement;
+
+    private static currentSessionsAmout: number = -1;
 
 
     public static layout(): string {
@@ -14,6 +17,9 @@ class HtmlStatusBar {
 
 
             '<td style="padding-left: 5px">Connected: <b id="connected" style="text-shadow: 0 0 2px white;"></b></td>' +
+            '<td><div class="statusbar-separator"></div></td>' +
+
+            '<td style="min-width:170px">Sessions: <b id="sessions" style="text-shadow: 0 0 2px white"></b></td>' +
             '<td><div class="statusbar-separator"></div></td>' +
 
             '<td style="min-width:170px">Persist Queue: <b id="persist-queue" style="text-shadow: 0 0 2px white"></b></td>' +
@@ -35,6 +41,18 @@ class HtmlStatusBar {
 
 
             '</tr></table></div>';
+    }
+
+    public static updateSessionsAmount(amount: number) {
+        if (!this.sessions) {
+            this.sessions = document.getElementById('sessions');
+        }
+
+        if (this.currentSessionsAmout != amount) {
+            this.sessions.innerHTML = amount.toFixed(0);
+            this.currentSessionsAmout = amount;
+        }
+
     }
 
     public static updateStatusbar(data: IStatusApiContract) {
