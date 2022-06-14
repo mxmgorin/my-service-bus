@@ -1,9 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use rust_extensions::{
-    events_loop::{EventsLoop, EventsLoopLogger},
-    ApplicationStates, MyTimerLogger,
-};
+use rust_extensions::{ApplicationStates, MyTimerLogger};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -11,7 +8,7 @@ use crate::{
     queue_subscribers::SubscriberIdGenerator,
     sessions::SessionsList,
     settings::SettingsModel,
-    topics::{Topic, TopicsList},
+    topics::TopicsList,
 };
 
 use super::{
@@ -48,8 +45,6 @@ pub struct AppContext {
 
     pub auto_create_topic_on_publish: bool,
     pub auto_create_topic_on_subscribe: bool,
-
-    pub immediatly_persist_event_loop: EventsLoop<Arc<Topic>>,
 }
 
 impl AppContext {
@@ -79,7 +74,6 @@ impl AppContext {
             debug_topic_and_queue: RwLock::new(None),
             auto_create_topic_on_publish: settings.auto_create_topic_on_publish,
             auto_create_topic_on_subscribe: settings.auto_create_topic_on_subscribe,
-            immediatly_persist_event_loop: EventsLoop::new("ImmediatelyPersist".to_string()),
         }
     }
 
@@ -114,17 +108,6 @@ impl ApplicationStates for AppContext {
 }
 
 impl MyTimerLogger for AppContext {
-    fn write_info(&self, timer_id: String, message: String) {
-        self.logs
-            .add_info(None, SystemProcess::Timer, timer_id, message);
-    }
-    fn write_error(&self, timer_id: String, message: String) {
-        self.logs
-            .add_fatal_error(SystemProcess::Timer, timer_id, message);
-    }
-}
-
-impl EventsLoopLogger for AppContext {
     fn write_info(&self, timer_id: String, message: String) {
         self.logs
             .add_info(None, SystemProcess::Timer, timer_id, message);
