@@ -31,3 +31,5 @@ execute: **cargo run --release**
 * Pages Support
 * GC works as fast as it can
 * Added Visualisation - how many messages are on the delivery
+* UI Shows amount of Sessions
+* Bug Fixed - immediate persistence made to send a lot of data to console.
