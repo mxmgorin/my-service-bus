@@ -35,4 +35,4 @@ execute: **cargo run --release**
 * Bug Fixed - immediate persistence made to send a lot of data to console.
 
 ### 2.2.6
-* Immediately persist case is signlethreaded
+* Immediately persist case is signle threaded

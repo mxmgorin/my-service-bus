@@ -16,7 +16,10 @@ impl ImmediatlyPersistEventLoop {
 
 #[async_trait::async_trait]
 impl EventsLoopTick<Arc<Topic>> for ImmediatlyPersistEventLoop {
-    async fn tick(&self, model: Arc<Topic>) {
-        crate::operations::save_messages_for_topic(&self.app, &model).await;
+    async fn tick(&self, topic: Arc<Topic>) {
+        crate::operations::save_messages_for_topic(&self.app, &topic).await;
+        topic
+            .immediatelly_persist_is_charged
+            .store(false, std::sync::atomic::Ordering::SeqCst);
     }
 }

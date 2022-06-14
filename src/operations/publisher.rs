@@ -59,7 +59,13 @@ pub async fn publish(
     topic_data.metrics.update_topic_metrics(messages_count);
 
     if persist_immediately {
-        app.immediatly_persist_event_loop.send(topic.clone());
+        let prev = topic
+            .immediatelly_persist_is_charged
+            .swap(true, std::sync::atomic::Ordering::SeqCst);
+
+        if !prev {
+            app.immediatly_persist_event_loop.send(topic.clone());
+        }
     }
 
     super::delivery::start_new(&app, &topic, &mut topic_data);

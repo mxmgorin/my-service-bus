@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 use my_service_bus_shared::page_id::{get_page_id, PageId};
@@ -16,6 +17,7 @@ pub struct Topic {
     pub topic_id: String,
     data: Mutex<TopicData>,
     pub restore_page_lock: Mutex<DateTimeAsMicroseconds>,
+    pub immediatelly_persist_is_charged: AtomicBool,
 }
 
 impl Topic {
@@ -24,6 +26,7 @@ impl Topic {
             topic_id: topic_id.to_string(),
             data: Mutex::new(TopicData::new(topic_id, message_id)),
             restore_page_lock: Mutex::new(DateTimeAsMicroseconds::now()),
+            immediatelly_persist_is_charged: AtomicBool::new(false),
         }
     }
 
