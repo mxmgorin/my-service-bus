@@ -100,6 +100,67 @@ impl MessagesPagesGrpcRepo {
         return Ok(());
     }
 
+    pub async fn get_persistence_version(&self) -> Result<String, PersistenceError> {
+        let grpc_client_lazy_object = self.get_grpc_client().await?;
+
+        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
+
+        let grpc_client_result = grpc_client.as_mut();
+
+        if let Some(grpc_client) = grpc_client_result {
+            let response = grpc_client.get_version(()).await?.into_inner();
+            return Ok(response.version);
+        }
+
+        Err(PersistenceError::Other(
+            "Can not get grpc client".to_string(),
+        ))
+    }
+    pub async fn save_messages_uncompressed(
+        &self,
+        topic_id: &str,
+        messages: Vec<MessageProtobufModel>,
+    ) -> Result<(), PersistenceError> {
+        let grpc_messages = NewMessagesProtobufContract {
+            topic_id: topic_id.to_string(),
+            messages,
+        };
+
+        let grpc_protobuf = grpc_messages.into_protobuf_vec();
+
+        let grpc_client_lazy_object = self.get_grpc_client().await?;
+
+        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
+
+        let grpc_client_result = grpc_client.as_mut();
+
+        if grpc_client_result.is_none() {
+            return Err(PersistenceError::GrpcClientIsNotInitialized(
+                "messages_pages_repo::load_page".to_string(),
+            ));
+        }
+
+        let grpc_client = grpc_client_result.unwrap();
+
+        let mut grpc_chunks = Vec::new();
+
+        for chunk in split(grpc_protobuf.as_slice(), PAYLOAD_SIZE) {
+            grpc_chunks.push(UnCompressedMessageChunkModel { chunk });
+        }
+
+        let result = tokio::time::timeout(
+            self.time_out,
+            grpc_client.save_messages_uncompressed(stream::iter(grpc_chunks)),
+        )
+        .await?;
+
+        if let Err(status) = result {
+            return Err(PersistenceError::TonicError(status));
+        }
+
+        return Ok(());
+    }
+
     pub async fn load_page(
         &self,
         topic_id: &str,

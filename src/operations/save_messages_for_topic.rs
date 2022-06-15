@@ -10,10 +10,15 @@ pub async fn save_messages_for_topic(app: &Arc<AppContext>, topic: &Arc<Topic>) 
     {
         let messages = messages_to_persist.get();
 
-        let result = app
-            .messages_pages_repo
-            .save_messages(topic.topic_id.as_str(), messages)
-            .await;
+        let result = if app.persist_compressed {
+            app.messages_pages_repo
+                .save_messages(topic.topic_id.as_str(), messages)
+                .await
+        } else {
+            app.messages_pages_repo
+                .save_messages_uncompressed(topic.topic_id.as_str(), messages)
+                .await
+        };
 
         if let Err(err) = result {
             commit_persisted(topic.as_ref(), sub_page_id, &messages_to_persist, false).await;

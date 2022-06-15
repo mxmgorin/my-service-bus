@@ -23,6 +23,8 @@ pub struct StatusJsonResult {
     pub queues: HashMap<String, QueuesJsonResult>,
     pub sessions: SessionsJsonResult,
     pub system: SystemStatusModel,
+    #[serde(rename = "persistenceVersion")]
+    pub persistence_version: String,
 }
 
 impl StatusJsonResult {
@@ -52,6 +54,11 @@ impl StatusJsonResult {
             topics.items.push(TopicJsonContract::new(&topic_data));
         }
 
+        let persistence_version = {
+            let read_access = app.persistence_version.lock().await;
+            read_access.to_string()
+        };
+
         Self {
             topics,
             queues,
@@ -60,6 +67,7 @@ impl StatusJsonResult {
                 totalmem: sys_info.total_memory(),
                 usedmem: sys_info.used_memory(),
             },
+            persistence_version,
         }
     }
 }

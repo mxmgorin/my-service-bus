@@ -57,4 +57,31 @@ impl MessagesPagesRepo {
             MessagesPagesRepo::Mock(repo) => repo.save_messages(topic_id, messages).await,
         }
     }
+
+    pub async fn save_messages_uncompressed(
+        &self,
+        topic_id: &str,
+        messages: Vec<MessageProtobufModel>,
+    ) -> Result<(), PersistenceError> {
+        match self {
+            MessagesPagesRepo::Grpc(repo) => {
+                repo.save_messages_uncompressed(topic_id, messages).await
+            }
+            #[cfg(test)]
+            MessagesPagesRepo::Mock(repo) => repo.save_messages(topic_id, messages).await,
+        }
+    }
+
+    pub async fn get_persistence_version(&self) -> Option<String> {
+        let result = match self {
+            MessagesPagesRepo::Grpc(repo) => repo.get_persistence_version().await,
+            #[cfg(test)]
+            MessagesPagesRepo::Mock(_) => Ok("Mock".to_string()),
+        };
+
+        match result {
+            Ok(result) => Some(result),
+            Err(_) => None,
+        }
+    }
 }

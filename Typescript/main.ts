@@ -117,6 +117,8 @@ class main {
 
                 HtmlStatusBar.updateSessionsAmount(result.sessions.items.length);
 
+                HtmlStatusBar.updatePersistenceVersion(result.persistenceVersion);
+
                 this.filterLines(filterPhrase);
 
 

@@ -4,6 +4,7 @@ interface IStatusApiContract {
     queues: object,
     sessions: ISessions
     system: ISystemStatus,
+    persistenceVersion: string
 }
 
 interface ISession {

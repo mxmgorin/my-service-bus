@@ -58,11 +58,13 @@ service MyServiceBusHistoryReaderGrpcService {
    rpc GetByDate(persistence.GetHistoryByDateGrpcRequest) returns (stream persistence.MessageContentGrpcModel);
 }
 
-
 //////////////
 
-
 message CompressedMessageChunkModel {
+  bytes Chunk = 1;
+}
+
+message UnCompressedMessageChunkModel {
   bytes Chunk = 1;
 }
 
@@ -79,10 +81,16 @@ message GetMessagesPageGrpcRequest {
   int32 Version = 5;
 }
 
+message MyServerBusPersistenceVersion{
+  string Version = 1;
+}
+
 service MyServiceBusMessagesPersistenceGrpcService {
+   rpc GetVersion(google.protobuf.Empty) returns (persistence.MyServerBusPersistenceVersion);
    rpc GetMessage(persistence.GetMessageGrpcRequest) returns (persistence.MessageContentGrpcModel);
    rpc GetPageCompressed(persistence.GetMessagesPageGrpcRequest) returns (stream persistence.CompressedMessageChunkModel);
    rpc GetPage(persistence.GetMessagesPageGrpcRequest) returns (stream persistence.MessageContentGrpcModel);
    rpc SaveMessages(stream persistence.CompressedMessageChunkModel) returns (google.protobuf.Empty);
+   rpc SaveMessagesUncompressed(stream persistence.UnCompressedMessageChunkModel) returns (google.protobuf.Empty);
 }
 

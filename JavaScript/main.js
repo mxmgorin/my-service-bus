@@ -72,6 +72,7 @@ var main = /** @class */ (function () {
             HtmlTopics.updateTopicQueues(result);
             HtmlStatusBar.updateStatusbar(result);
             HtmlStatusBar.updateSessionsAmount(result.sessions.items.length);
+            HtmlStatusBar.updatePersistenceVersion(result.persistenceVersion);
             _this.filterLines(filterPhrase);
         }).fail(function () {
             _this.requested = false;

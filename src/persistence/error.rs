@@ -10,6 +10,7 @@ pub enum PersistenceError {
     CompressedPageReaderError(CompressedPageReaderError),
     CanNotInitializeGrpcService,
     Timeout(Option<tokio::time::error::Elapsed>),
+    Other(String),
 }
 
 impl From<tokio::time::error::Elapsed> for PersistenceError {

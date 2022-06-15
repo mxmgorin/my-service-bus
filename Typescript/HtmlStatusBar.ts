@@ -7,8 +7,10 @@ class HtmlStatusBar {
     private static msgsPerSec: HTMLElement;
     private static bytesRwPerSec: HTMLElement;
     private static sessions: HTMLElement;
+    private static persistenceVersion: HTMLElement;
 
     private static currentSessionsAmout: number = -1;
+    private static currentPersistenceVersion: string = "";
 
 
     public static layout(): string {
@@ -19,7 +21,7 @@ class HtmlStatusBar {
             '<td style="padding-left: 5px">Connected: <b id="connected" style="text-shadow: 0 0 2px white;"></b></td>' +
             '<td><div class="statusbar-separator"></div></td>' +
 
-            '<td style="min-width:170px">Sessions: <b id="sessions" style="text-shadow: 0 0 2px white"></b></td>' +
+            '<td style="min-width:120px">Sessions: <b id="sessions" style="text-shadow: 0 0 2px white"></b></td>' +
             '<td><div class="statusbar-separator"></div></td>' +
 
             '<td style="min-width:170px">Persist Queue: <b id="persist-queue" style="text-shadow: 0 0 2px white"></b></td>' +
@@ -38,6 +40,8 @@ class HtmlStatusBar {
 
 
             '<td style="padding-left: 5px; min-width:270px">Total pages size:<span id="total-pages-size" style="text-shadow: 0 0 2px white;"></span></td>' +
+
+            '<td style="padding-left: 5px; min-width:270px">Persistence ver: <span id="persistence-ver" style="text-shadow: 0 0 2px white;"></span></td>' +
 
 
             '</tr></table></div>';
@@ -132,6 +136,19 @@ class HtmlStatusBar {
 
     }
 
+
+    public static updatePersistenceVersion(ver: string) {
+
+        if (!this.persistenceVersion) {
+            this.persistenceVersion = document.getElementById('persistence-ver');
+        }
+
+        if (this.currentPersistenceVersion != ver) {
+            this.persistenceVersion.innerHTML = ver;
+            this.currentPersistenceVersion = ver;
+        }
+
+    }
 
 
     public static updateOffline() {

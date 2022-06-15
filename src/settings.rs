@@ -38,6 +38,9 @@ pub struct SettingsModelJson {
 
     #[serde(rename = "PersistTimerIntervalSecs")]
     pub persist_timer_secs: u64,
+
+    #[serde(rename = "PersistCompressed")]
+    pub persist_compressed: bool,
 }
 
 pub struct SettingsModel {
@@ -54,6 +57,7 @@ pub struct SettingsModel {
     pub auto_create_topic_on_subscribe: bool,
     pub grpc_timeout: Duration,
     pub persist_timer_interval: Duration,
+    pub persist_compressed: bool,
 }
 
 impl SettingsModel {
@@ -101,6 +105,7 @@ impl SettingsModel {
             auto_create_topic_on_subscribe: true,
             grpc_timeout: Duration::from_secs(1),
             persist_timer_interval: Duration::from_secs(1),
+            persist_compressed: false,
         }
     }
 
@@ -208,6 +213,7 @@ impl Into<SettingsModel> for SettingsModelJson {
             auto_create_topic_on_subscribe,
             grpc_timeout: Duration::from_secs(self.grpc_timeout_secs),
             persist_timer_interval: Duration::from_secs(self.persist_timer_secs),
+            persist_compressed: self.persist_compressed,
         }
     }
 }

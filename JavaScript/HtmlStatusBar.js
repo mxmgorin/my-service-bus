@@ -6,7 +6,7 @@ var HtmlStatusBar = /** @class */ (function () {
             '<table><tr>' +
             '<td style="padding-left: 5px">Connected: <b id="connected" style="text-shadow: 0 0 2px white;"></b></td>' +
             '<td><div class="statusbar-separator"></div></td>' +
-            '<td style="min-width:170px">Sessions: <b id="sessions" style="text-shadow: 0 0 2px white"></b></td>' +
+            '<td style="min-width:120px">Sessions: <b id="sessions" style="text-shadow: 0 0 2px white"></b></td>' +
             '<td><div class="statusbar-separator"></div></td>' +
             '<td style="min-width:170px">Persist Queue: <b id="persist-queue" style="text-shadow: 0 0 2px white"></b></td>' +
             '<td><div class="statusbar-separator"></div></td>' +
@@ -17,6 +17,7 @@ var HtmlStatusBar = /** @class */ (function () {
             '<td style="padding-left: 5px; min-width:270px"><span id="cpu-mem" style="text-shadow: 0 0 2px white;"></span></td>' +
             '<td><div class="statusbar-separator"></div></td>' +
             '<td style="padding-left: 5px; min-width:270px">Total pages size:<span id="total-pages-size" style="text-shadow: 0 0 2px white;"></span></td>' +
+            '<td style="padding-left: 5px; min-width:270px">Persistence ver: <span id="persistence-ver" style="text-shadow: 0 0 2px white;"></span></td>' +
             '</tr></table></div>';
     };
     HtmlStatusBar.updateSessionsAmount = function (amount) {
@@ -77,6 +78,15 @@ var HtmlStatusBar = /** @class */ (function () {
         }
         return { persist_size: persist_size, pages_size: pages_size, msgs_per_sec: msgs_per_sec, bytesReadPerSec: bytesReadPerSec, bytesWrittenPerSec: bytesWrittenPerSec };
     };
+    HtmlStatusBar.updatePersistenceVersion = function (ver) {
+        if (!this.persistenceVersion) {
+            this.persistenceVersion = document.getElementById('persistence-ver');
+        }
+        if (this.currentPersistenceVersion != ver) {
+            this.persistenceVersion.innerHTML = ver;
+            this.currentPersistenceVersion = ver;
+        }
+    };
     HtmlStatusBar.updateOffline = function () {
         if (this.connected) {
             this.connected = false;
@@ -84,6 +94,7 @@ var HtmlStatusBar = /** @class */ (function () {
         }
     };
     HtmlStatusBar.currentSessionsAmout = -1;
+    HtmlStatusBar.currentPersistenceVersion = "";
     return HtmlStatusBar;
 }());
 //# sourceMappingURL=HtmlStatusBar.js.map

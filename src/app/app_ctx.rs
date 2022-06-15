@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
+use futures_util::lock::Mutex;
 use rust_extensions::{
     events_loop::{EventsLoop, EventsLoopLogger},
     ApplicationStates, MyTimerLogger,
@@ -50,6 +51,10 @@ pub struct AppContext {
     pub auto_create_topic_on_subscribe: bool,
 
     pub immediatly_persist_event_loop: EventsLoop<Arc<Topic>>,
+
+    pub persist_compressed: bool,
+
+    pub persistence_version: Mutex<String>,
 }
 
 impl AppContext {
@@ -70,6 +75,7 @@ impl AppContext {
             empty_queue_gc_timeout: settings.queue_gc_timeout,
             subscriber_id_generator: SubscriberIdGenerator::new(),
             prometheus: PrometheusMetrics::new(),
+            persist_compressed: settings.persist_compressed,
 
             delivery_timeout: if let Some(delivery_timeout) = settings.delivery_timeout {
                 delivery_timeout
@@ -80,6 +86,7 @@ impl AppContext {
             auto_create_topic_on_publish: settings.auto_create_topic_on_publish,
             auto_create_topic_on_subscribe: settings.auto_create_topic_on_subscribe,
             immediatly_persist_event_loop: EventsLoop::new("ImmediatelyPersist".to_string()),
+            persistence_version: Mutex::new(String::new()),
         }
     }
 
