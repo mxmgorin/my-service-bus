@@ -52,5 +52,7 @@ pub async fn delete_queue(
 
     topic_data.queues.delete_queue(queue_id);
 
+    app.prometheus.queue_is_deleted(topic_id, queue_id);
+
     Ok(())
 }

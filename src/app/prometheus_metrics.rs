@@ -99,6 +99,17 @@ impl PrometheusMetrics {
 
         buffer
     }
+
+    pub fn queue_is_deleted(&self, topic_id: &str, queue_id: &str) {
+        let result = self
+            .topic_queue_size
+            .remove_label_values(&[topic_id, queue_id]);
+
+        println!(
+            "Error during removing topic_queue_size from metrics for Topic:{}, Queue:{}: {:?}",
+            topic_id, queue_id, result
+        );
+    }
 }
 
 fn create_topic_persist_queue_size() -> IntGaugeVec {
