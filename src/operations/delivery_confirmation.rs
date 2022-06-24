@@ -36,6 +36,7 @@ pub async fn all_confirmed(
                 crate::app::logs::SystemProcess::DeliveryOperation,
                 "confirm_delivery".to_string(),
                 format!("{:?}", err),
+                None,
             );
         }
     }
@@ -75,6 +76,7 @@ pub async fn all_fail(
                 crate::app::logs::SystemProcess::DeliveryOperation,
                 "confirm_non_delivery".to_string(),
                 format!("{:?}", err),
+                None,
             );
         }
     }
@@ -115,6 +117,7 @@ pub async fn intermediary_confirm(
                 crate::app::logs::SystemProcess::DeliveryOperation,
                 "some_messages_are_not_confirmed".to_string(),
                 format!("{:?}", err),
+                None,
             );
         }
     }
@@ -154,6 +157,7 @@ pub async fn some_messages_are_confirmed(
                 crate::app::logs::SystemProcess::DeliveryOperation,
                 "some_messages_are_confirmed".to_string(),
                 format!("{:?}", err),
+                None,
             );
         }
     }

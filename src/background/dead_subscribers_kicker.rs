@@ -33,6 +33,7 @@ impl MyTimerTick for DeadSubscribersKickerTimer {
                             "Kicking Connection {} with dead subscriber {}",
                             dead_subscriber.session.id, dead_subscriber.subscriber_id
                         ),
+                        None,
                     );
 
                     dead_subscriber.session.disconnect().await;

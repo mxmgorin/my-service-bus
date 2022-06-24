@@ -1,5 +1,3 @@
 mod error;
-mod icoming_packets;
-mod send_to_socket_with_timeout;
+mod incoming_packets;
 pub mod socket_loop;
-pub use send_to_socket_with_timeout::send_with_timeout;

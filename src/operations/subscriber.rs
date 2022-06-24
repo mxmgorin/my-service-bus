@@ -58,6 +58,7 @@ pub async fn subscribe_to_queue(
             "Session {} is subscribing to the {}/{} ",
             session.id, topic.topic_id, topic_queue.queue_id
         ),
+        None,
     );
 
     if let Some(kicked_subscriber) = kicked_subscriber_result {

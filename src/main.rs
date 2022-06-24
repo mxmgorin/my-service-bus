@@ -57,12 +57,13 @@ async fn main() {
 
     tcp_server
         .start(
-            app.clone(),
             Arc::new(|| -> MySbTcpSerializer {
                 let attrs = ConnectionAttributes::new(0);
                 MySbTcpSerializer::new(attrs)
             }),
             Arc::new(TcpServerEvents::new(app.clone())),
+            app.clone(),
+            app.clone(),
         )
         .await;
 

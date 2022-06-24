@@ -1,10 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use futures_util::lock::Mutex;
-use rust_extensions::{
-    events_loop::{EventsLoop, EventsLoopLogger},
-    ApplicationStates, MyTimerLogger,
-};
+use rust_extensions::{events_loop::EventsLoop, ApplicationStates, Logger};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -120,24 +117,17 @@ impl ApplicationStates for AppContext {
     }
 }
 
-impl MyTimerLogger for AppContext {
-    fn write_info(&self, timer_id: String, message: String) {
+impl Logger for AppContext {
+    fn write_info(&self, timer_id: String, message: String, context: Option<String>) {
         self.logs
-            .add_info(None, SystemProcess::Timer, timer_id, message);
+            .add_info(None, SystemProcess::System, timer_id, message, context);
     }
-    fn write_error(&self, timer_id: String, message: String) {
+    fn write_error(&self, process_name: String, message: String, context: Option<String>) {
         self.logs
-            .add_fatal_error(SystemProcess::Timer, timer_id, message);
+            .add_error(None, SystemProcess::System, process_name, message, context);
     }
-}
-
-impl EventsLoopLogger for AppContext {
-    fn write_info(&self, timer_id: String, message: String) {
+    fn write_fatal_error(&self, timer_id: String, message: String, context: Option<String>) {
         self.logs
-            .add_info(None, SystemProcess::Timer, timer_id, message);
-    }
-    fn write_error(&self, timer_id: String, message: String) {
-        self.logs
-            .add_fatal_error(SystemProcess::Timer, timer_id, message);
+            .add_fatal_error(SystemProcess::Timer, timer_id, message, context);
     }
 }

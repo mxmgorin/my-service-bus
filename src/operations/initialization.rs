@@ -51,6 +51,7 @@ pub async fn init(app: Arc<AppContext>) {
             "Application is initialized. Topics amount is: {}",
             topics_count
         ),
+        None,
     );
 
     println!("Application is initialized in {:?}", sw.duration());
@@ -81,6 +82,7 @@ async fn restore_topics_and_queues(app: &AppContext) -> Vec<TopicSnapshot> {
             crate::app::logs::SystemProcess::Init,
             "restore_topics_and_queues".to_string(),
             format!("Restoring topics and queues. Attempt {}", attempt),
+            None,
         );
 
         if let Ok(result) = topics_and_queues {

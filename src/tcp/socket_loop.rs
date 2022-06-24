@@ -44,7 +44,7 @@ impl SocketEventCallback<TcpContract, MySbTcpSerializer> for TcpServerEvents {
             } => {
                 let connection_id = connection.id;
                 if let Err(err) =
-                    super::icoming_packets::handle(&self.app, payload, connection).await
+                    super::incoming_packets::handle(&self.app, payload, connection).await
                 {
                     self.app.logs.add_error(
                         None,

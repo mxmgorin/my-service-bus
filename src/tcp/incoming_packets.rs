@@ -15,11 +15,7 @@ pub async fn handle(
 ) -> Result<(), MySbSocketError> {
     match tcp_contract {
         TcpContract::Ping {} => {
-            super::send_to_socket_with_timeout::send_with_timeout(
-                connection.as_ref(),
-                TcpContract::Pong,
-            )
-            .await;
+            connection.send(TcpContract::Pong).await;
             Ok(())
         }
         TcpContract::Pong {} => Ok(()),
@@ -64,19 +60,15 @@ pub async fn handle(
                 .await;
 
                 if let Err(err) = result {
-                    super::send_to_socket_with_timeout::send_with_timeout(
-                        connection.as_ref(),
-                        TcpContract::Reject {
+                    connection
+                        .send(TcpContract::Reject {
                             message: format!("{:?}", err),
-                        },
-                    )
-                    .await;
+                        })
+                        .await;
                 } else {
-                    super::send_to_socket_with_timeout::send_with_timeout(
-                        connection.as_ref(),
-                        TcpContract::PublishResponse { request_id },
-                    )
-                    .await;
+                    connection
+                        .send(TcpContract::PublishResponse { request_id })
+                        .await;
                 }
             }
 

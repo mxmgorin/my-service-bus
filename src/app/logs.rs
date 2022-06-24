@@ -152,6 +152,7 @@ impl Logs {
         process: SystemProcess,
         process_name: String,
         message: String,
+        context: Option<String>,
     ) {
         let item = LogItem {
             date: DateTimeAsMicroseconds::now(),
@@ -160,7 +161,7 @@ impl Logs {
             process_name,
             process,
             message: message,
-            err_ctx: None,
+            err_ctx: context,
         };
 
         self.add_item(item);
@@ -206,7 +207,13 @@ impl Logs {
         self.add_item(item);
     }
 
-    pub fn add_fatal_error(&self, process: SystemProcess, process_name: String, message: String) {
+    pub fn add_fatal_error(
+        &self,
+        process: SystemProcess,
+        process_name: String,
+        message: String,
+        context: Option<String>,
+    ) {
         let item = LogItem {
             date: DateTimeAsMicroseconds::now(),
             level: LogLevel::FatalError,
@@ -214,7 +221,7 @@ impl Logs {
             process_name,
             process,
             message,
-            err_ctx: None,
+            err_ctx: context,
         };
 
         println!(
