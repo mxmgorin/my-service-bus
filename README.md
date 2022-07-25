@@ -38,3 +38,6 @@ execute: **cargo run --release**
 * Immediately persist case is signle threaded
 * Added ability to send messages to persist uncompressed way (Settings Parameter PersistCompressed)
 * BugFIX: When we delete a queue - we remove topic_queue_size from prometheus
+
+### 2.2.7-rc01
+* Updated Library versions
