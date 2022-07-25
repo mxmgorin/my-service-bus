@@ -41,3 +41,7 @@ execute: **cargo run --release**
 
 ### 2.2.7-rc01
 * Updated Library versions
+
+
+### 2.2.7
+* TCP ReadLoop now has timeout as well as write loop
