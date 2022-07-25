@@ -1,6 +1,6 @@
 [package]
 name = "my-service-bus"
-version = "2.2.7-rc01"
+version = "2.2.7-rc02"
 authors = ["amigin <amigin@gmail.com>"]
 edition = "2021"
 
@@ -8,8 +8,8 @@ edition = "2021"
 
 [dependencies]
 my-service-bus-shared = { branch = "0.2.2", git = "https://github.com/MyJetTools/my-service-bus-shared.git" }
-my-service-bus-tcp-shared = { branch = "0.2.3", git = "https://github.com/MyJetTools/my-service-bus-tcp-shared.git" }
-my-tcp-sockets = { branch = "0.1.3", git = "https://github.com/MyJetTools/my-tcp-sockets.git" }
+my-service-bus-tcp-shared = { branch = "0.2.4", git = "https://github.com/MyJetTools/my-service-bus-tcp-shared.git" }
+my-tcp-sockets = { branch = "0.1.4", git = "https://github.com/MyJetTools/my-tcp-sockets.git" }
 rust-extensions = { branch = "0.1.0", git = "https://github.com/MyJetTools/rust-extensions.git" }
 my-http-server = { branch = "0.2.4", git = "https://github.com/MyJetTools/my-http-server.git" }
 my-http-server-swagger = { branch = "0.2.4", git = "https://github.com/MyJetTools/my-http-server-swagger.git" }
