@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use rust_extensions::date_time::DateTimeAsMicroseconds;
+use rust_extensions::{date_time::DateTimeAsMicroseconds, Logger};
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
     RwLock,
@@ -284,5 +284,29 @@ async fn log_writer_thread(mut recv: UnboundedReceiver<LogItem>, logs_data: Arc<
     while let Some(next_item) = recv.recv().await {
         let mut write_access = logs_data.as_ref().write().await;
         write_access.add(next_item).await;
+    }
+}
+
+impl Logger for Logs {
+    fn write_info(&self, process: String, message: String, ctx: Option<String>) {
+        self.add_info(None, SystemProcess::System, process, message, ctx);
+    }
+
+    fn write_warning(&self, process: String, message: String, ctx: Option<String>) {
+        self.add_info(
+            None,
+            SystemProcess::System,
+            process,
+            format!("Warning: {message}"),
+            ctx,
+        );
+    }
+
+    fn write_error(&self, process: String, message: String, ctx: Option<String>) {
+        self.add_error(None, SystemProcess::System, process, message, ctx);
+    }
+
+    fn write_fatal_error(&self, process: String, message: String, ctx: Option<String>) {
+        self.add_fatal_error(SystemProcess::System, process, message, ctx);
     }
 }

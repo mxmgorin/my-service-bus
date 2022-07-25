@@ -62,8 +62,8 @@ async fn main() {
                 MySbTcpSerializer::new(attrs)
             }),
             Arc::new(TcpServerEvents::new(app.clone())),
-            app.clone(),
-            app.clone(),
+            app.states.clone(),
+            app.logs.clone(),
         )
         .await;
 
@@ -85,11 +85,11 @@ async fn main() {
         Arc::new(DeadSubscribersKickerTimer::new(app.clone())),
     );
 
-    metrics_timer.start(app.clone(), app.clone());
-    persist_and_gc_timer.start(app.clone(), app.clone());
-    dead_subscribers.start(app.clone(), app.clone());
+    metrics_timer.start(app.clone(), app.logs.clone());
+    persist_and_gc_timer.start(app.clone(), app.logs.clone());
+    dead_subscribers.start(app.clone(), app.logs.clone());
     app.immediatly_persist_event_loop
-        .start(app.clone(), app.clone())
+        .start(app.clone(), app.logs.clone())
         .await;
 
     signal_hook::flag::register(
@@ -106,13 +106,10 @@ async fn main() {
 }
 
 async fn shut_down_task(app: Arc<AppContext>) {
-    let duration = Duration::from_secs(1);
-
-    while !app.states.is_shutting_down() {
-        tokio::time::sleep(duration).await;
-    }
+    app.states.wait_until_shutdown().await;
 
     println!("Shut down detected. Waiting for 1 second to deliver all messages");
+    let duration = Duration::from_secs(1);
     tokio::time::sleep(duration).await;
 
     crate::app::shutdown::execute(app).await;

@@ -5,7 +5,6 @@ use super::AppContext;
 pub async fn execute(app: Arc<AppContext>) {
     empty_persistence_queues(app.clone()).await;
     make_last_topcis_and_queues_persist(app.clone()).await;
-    app.states.set_shutted_down();
 }
 
 async fn empty_persistence_queues(app: Arc<AppContext>) {

@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use futures_util::lock::Mutex;
-use rust_extensions::{events_loop::EventsLoop, ApplicationStates, Logger};
+use rust_extensions::{events_loop::EventsLoop, AppStates, ApplicationStates};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -12,11 +12,7 @@ use crate::{
     topics::{Topic, TopicsList},
 };
 
-use super::{
-    logs::{Logs, SystemProcess},
-    prometheus_metrics::PrometheusMetrics,
-    GlobalStates,
-};
+use super::{logs::Logs, prometheus_metrics::PrometheusMetrics};
 
 pub const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -27,7 +23,7 @@ pub struct DebugTopicAndQueue {
 }
 
 pub struct AppContext {
-    pub states: GlobalStates,
+    pub states: Arc<AppStates>,
     pub topic_list: TopicsList,
     pub max_delivery_size: usize,
     pub topics_and_queues_repo: Arc<TopicsAndQueuesSnapshotRepo>,
@@ -61,7 +57,7 @@ impl AppContext {
         let topics_and_queues_repo = settings.create_topics_and_queues_snapshot_repo();
         let messages_pages_repo = settings.create_messages_pages_repo();
         Self {
-            states: GlobalStates::new(),
+            states: Arc::new(AppStates::create_un_initialized()),
             topic_list: TopicsList::new(),
             max_delivery_size: settings.max_delivery_size,
             topics_and_queues_repo: Arc::new(topics_and_queues_repo),
@@ -114,20 +110,5 @@ impl ApplicationStates for AppContext {
 
     fn is_shutting_down(&self) -> bool {
         self.states.is_shutting_down()
-    }
-}
-
-impl Logger for AppContext {
-    fn write_info(&self, timer_id: String, message: String, context: Option<String>) {
-        self.logs
-            .add_info(None, SystemProcess::System, timer_id, message, context);
-    }
-    fn write_error(&self, process_name: String, message: String, context: Option<String>) {
-        self.logs
-            .add_error(None, SystemProcess::System, process_name, message, context);
-    }
-    fn write_fatal_error(&self, timer_id: String, message: String, context: Option<String>) {
-        self.logs
-            .add_fatal_error(SystemProcess::Timer, timer_id, message, context);
     }
 }
