@@ -14,8 +14,9 @@ pub enum TopicsAndQueuesSnapshotRepo {
 }
 
 impl TopicsAndQueuesSnapshotRepo {
-    pub fn create_production_instance(settings: &SettingsModel) -> Self {
-        let grpc_repo = TopcsAndQueuesSnapshotGrpcRepo::new(settings);
+    pub async fn create_production_instance(settings: &SettingsModel) -> Self {
+        let grpc_repo =
+            TopcsAndQueuesSnapshotGrpcRepo::new(settings.persistence_grpc_url.to_string()).await;
         Self::Grpc(grpc_repo)
     }
 

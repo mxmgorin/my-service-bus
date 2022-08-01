@@ -51,11 +51,11 @@ pub struct AppContext {
 }
 
 impl AppContext {
-    pub fn new(settings: &SettingsModel) -> Self {
+    pub async fn new(settings: &SettingsModel) -> Self {
         let logs = Arc::new(Logs::new());
 
-        let topics_and_queues_repo = settings.create_topics_and_queues_snapshot_repo();
-        let messages_pages_repo = settings.create_messages_pages_repo();
+        let topics_and_queues_repo = settings.create_topics_and_queues_snapshot_repo().await;
+        let messages_pages_repo = settings.create_messages_pages_repo().await;
         Self {
             states: Arc::new(AppStates::create_un_initialized()),
             topic_list: TopicsList::new(),

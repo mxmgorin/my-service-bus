@@ -10,9 +10,6 @@ use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 
-use crate::settings::SettingsModel;
-use crate::utils::{LazyObject, LazyObjectAccess};
-
 use crate::persistence_grpc::my_service_bus_messages_persistence_grpc_service_client::MyServiceBusMessagesPersistenceGrpcServiceClient;
 use crate::persistence_grpc::*;
 
@@ -21,33 +18,25 @@ use super::PersistenceError;
 
 const PAYLOAD_SIZE: usize = 1024 * 1024 * 4;
 pub struct MessagesPagesGrpcRepo {
-    grpc_address: String,
-    grpc_client: LazyObject<MyServiceBusMessagesPersistenceGrpcServiceClient<Channel>>,
+    channel: Channel,
     time_out: Duration,
 }
 
 impl MessagesPagesGrpcRepo {
-    pub fn new(settings: &SettingsModel) -> Self {
+    pub async fn new(grpc_address: String) -> Self {
+        let channel = Channel::from_shared(grpc_address)
+            .unwrap()
+            .connect()
+            .await
+            .unwrap();
         Self {
-            grpc_address: settings.persistence_grpc_url.to_string(),
-            grpc_client: LazyObject::new(),
-            time_out: settings.grpc_timeout,
+            time_out: Duration::from_secs(5),
+            channel,
         }
     }
 
-    async fn get_grpc_client<'s>(
-        &'s self,
-    ) -> Result<
-        LazyObjectAccess<'s, MyServiceBusMessagesPersistenceGrpcServiceClient<Channel>>,
-        PersistenceError,
-    > {
-        if !self.grpc_client.has_instance().await {
-            let instance = init_grpc_client(&self.grpc_address, self.time_out).await?;
-            self.grpc_client.init(instance).await;
-        }
-
-        let instance = self.grpc_client.get();
-        return Ok(instance);
+    fn create_grpc_service(&self) -> MyServiceBusMessagesPersistenceGrpcServiceClient<Channel> {
+        MyServiceBusMessagesPersistenceGrpcServiceClient::new(self.channel.clone())
     }
 
     pub async fn save_messages(
@@ -67,19 +56,7 @@ impl MessagesPagesGrpcRepo {
                 grpc_protobuf.as_slice(),
             )?;
 
-        let grpc_client_lazy_object = self.get_grpc_client().await?;
-
-        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
-
-        let grpc_client_result = grpc_client.as_mut();
-
-        if grpc_client_result.is_none() {
-            return Err(PersistenceError::GrpcClientIsNotInitialized(
-                "messages_pages_repo::load_page".to_string(),
-            ));
-        }
-
-        let grpc_client = grpc_client_result.unwrap();
+        let mut grpc_client = self.create_grpc_service();
 
         let mut grpc_chunks = Vec::new();
 
@@ -101,20 +78,10 @@ impl MessagesPagesGrpcRepo {
     }
 
     pub async fn get_persistence_version(&self) -> Result<String, PersistenceError> {
-        let grpc_client_lazy_object = self.get_grpc_client().await?;
+        let mut grpc_client = self.create_grpc_service();
 
-        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
-
-        let grpc_client_result = grpc_client.as_mut();
-
-        if let Some(grpc_client) = grpc_client_result {
-            let response = grpc_client.get_version(()).await?.into_inner();
-            return Ok(response.version);
-        }
-
-        Err(PersistenceError::Other(
-            "Can not get grpc client".to_string(),
-        ))
+        let response = grpc_client.get_version(()).await?.into_inner();
+        return Ok(response.version);
     }
     pub async fn save_messages_uncompressed(
         &self,
@@ -128,19 +95,7 @@ impl MessagesPagesGrpcRepo {
 
         let grpc_protobuf = grpc_messages.into_protobuf_vec();
 
-        let grpc_client_lazy_object = self.get_grpc_client().await?;
-
-        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
-
-        let grpc_client_result = grpc_client.as_mut();
-
-        if grpc_client_result.is_none() {
-            return Err(PersistenceError::GrpcClientIsNotInitialized(
-                "messages_pages_repo::load_page".to_string(),
-            ));
-        }
-
-        let grpc_client = grpc_client_result.unwrap();
+        let mut grpc_client = self.create_grpc_service();
 
         let mut grpc_chunks = Vec::new();
 
@@ -168,19 +123,7 @@ impl MessagesPagesGrpcRepo {
         from_message_id: MessageId,
         to_message_id: MessageId,
     ) -> Result<Option<BTreeMap<MessageId, MySbMessageContent>>, PersistenceError> {
-        let grpc_client_lazy_object = self.get_grpc_client().await?;
-
-        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
-
-        let grpc_client = grpc_client.as_mut();
-
-        if grpc_client.is_none() {
-            return Err(PersistenceError::GrpcClientIsNotInitialized(
-                "messages_pages_repo::load_page".to_string(),
-            ));
-        }
-
-        let grpc_client = grpc_client.unwrap();
+        let mut grpc_client = self.create_grpc_service();
 
         let mut grpc_stream = tokio::time::timeout(
             self.time_out,
@@ -239,41 +182,6 @@ fn split(src: &[u8], max_payload_size: usize) -> Vec<Vec<u8>> {
     }
 
     result
-}
-
-async fn init_grpc_client(
-    grpc_address: &str,
-    time_out: Duration,
-) -> Result<MyServiceBusMessagesPersistenceGrpcServiceClient<Channel>, PersistenceError> {
-    let mut attempt_no = 0;
-
-    loop {
-        let init_result = tokio::time::timeout(
-            time_out,
-            MyServiceBusMessagesPersistenceGrpcServiceClient::connect(grpc_address.to_string()),
-        )
-        .await;
-
-        if let Ok(init_result) = init_result {
-            match init_result {
-                Ok(result) => {
-                    return Ok(result);
-                }
-                Err(err) => {
-                    println!("Can no initilize Messages Pages GRPC Repo. Err:{:?}", err);
-                }
-            }
-        } else {
-            println!("Initializing Messages Pages GRPC Repo timeout");
-        }
-
-        if attempt_no >= 5 {
-            return Err(PersistenceError::CanNotInitializeGrpcService);
-        }
-
-        attempt_no += 1;
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
 }
 
 fn restore_headers(

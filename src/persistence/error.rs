@@ -6,11 +6,8 @@ pub enum PersistenceError {
     ZipOperationError(ZipError),
     TonicError(tonic::Status),
     InvalidProtobufPayload(String),
-    GrpcClientIsNotInitialized(String),
     CompressedPageReaderError(CompressedPageReaderError),
-    CanNotInitializeGrpcService,
     Timeout(Option<tokio::time::error::Elapsed>),
-    Other(String),
 }
 
 impl From<tokio::time::error::Elapsed> for PersistenceError {

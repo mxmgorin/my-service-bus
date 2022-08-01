@@ -38,7 +38,7 @@ pub mod persistence_grpc {
 async fn main() {
     let settings = settings::SettingsModel::read().await;
 
-    let app = Arc::new(AppContext::new(&settings));
+    let app = Arc::new(AppContext::new(&settings).await);
 
     app.immediatly_persist_event_loop
         .register_event_loop(Arc::new(ImmediatlyPersistEventLoop::new(app.clone())))

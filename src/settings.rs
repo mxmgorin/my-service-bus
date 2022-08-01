@@ -109,22 +109,22 @@ impl SettingsModel {
         }
     }
 
-    pub fn create_topics_and_queues_snapshot_repo(&self) -> TopicsAndQueuesSnapshotRepo {
+    pub async fn create_topics_and_queues_snapshot_repo(&self) -> TopicsAndQueuesSnapshotRepo {
         #[cfg(test)]
         if self.persistence_grpc_url == TEST_GRPC_URL {
             return TopicsAndQueuesSnapshotRepo::create_mock_instance();
         }
 
-        TopicsAndQueuesSnapshotRepo::create_production_instance(self)
+        TopicsAndQueuesSnapshotRepo::create_production_instance(self).await
     }
 
-    pub fn create_messages_pages_repo(&self) -> MessagesPagesRepo {
+    pub async fn create_messages_pages_repo(&self) -> MessagesPagesRepo {
         #[cfg(test)]
         if self.persistence_grpc_url == TEST_GRPC_URL {
             return MessagesPagesRepo::create_mock_instance();
         }
 
-        MessagesPagesRepo::create_production_instance(self)
+        MessagesPagesRepo::create_production_instance(self).await
     }
 }
 

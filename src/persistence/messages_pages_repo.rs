@@ -17,8 +17,8 @@ pub enum MessagesPagesRepo {
 }
 
 impl MessagesPagesRepo {
-    pub fn create_production_instance(settings: &SettingsModel) -> Self {
-        Self::Grpc(MessagesPagesGrpcRepo::new(settings))
+    pub async fn create_production_instance(settings: &SettingsModel) -> Self {
+        Self::Grpc(MessagesPagesGrpcRepo::new(settings.persistence_grpc_url.to_string()).await)
     }
 
     #[cfg(test)]

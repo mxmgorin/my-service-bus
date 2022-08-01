@@ -209,7 +209,7 @@ mod tests {
 
         let settings = SettingsModel::create_test_settings(DELIVERY_SIZE);
 
-        let app = Arc::new(AppContext::new(&settings));
+        let app = Arc::new(AppContext::new(&settings).await);
 
         let session = app
             .sessions
@@ -274,7 +274,7 @@ mod tests {
 
         let settings = SettingsModel::create_test_settings(DELIVERY_SIZE);
 
-        let app = Arc::new(AppContext::new(&settings));
+        let app = Arc::new(AppContext::new(&settings).await);
 
         let session = app
             .sessions

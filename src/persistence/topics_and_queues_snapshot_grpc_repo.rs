@@ -3,8 +3,7 @@ use std::time::Duration;
 use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 
-use crate::utils::{LazyObject, LazyObjectAccess};
-use crate::{settings::SettingsModel, topics::TopicSnapshot};
+use crate::topics::TopicSnapshot;
 
 use crate::persistence_grpc::my_service_bus_queue_persistence_grpc_service_client::MyServiceBusQueuePersistenceGrpcServiceClient;
 use crate::persistence_grpc::*;
@@ -12,108 +11,41 @@ use crate::persistence_grpc::*;
 use super::PersistenceError;
 
 pub struct TopcsAndQueuesSnapshotGrpcRepo {
-    grpc_address: String,
-    grpc_client: LazyObject<MyServiceBusQueuePersistenceGrpcServiceClient<Channel>>,
+    channel: Channel,
     timeout: Duration,
 }
 
 impl TopcsAndQueuesSnapshotGrpcRepo {
-    pub fn new(settings: &SettingsModel) -> Self {
+    pub async fn new(grpc_address: String) -> Self {
+        let channel = Channel::from_shared(grpc_address)
+            .unwrap()
+            .connect()
+            .await
+            .unwrap();
         Self {
-            grpc_address: settings.persistence_grpc_url.to_string(),
-            grpc_client: LazyObject::new(),
-            timeout: settings.grpc_timeout,
+            timeout: Duration::from_secs(5),
+            channel,
         }
     }
 
-    async fn get_grpc_client<'s>(
-        &'s self,
-    ) -> Result<
-        LazyObjectAccess<'s, MyServiceBusQueuePersistenceGrpcServiceClient<Channel>>,
-        PersistenceError,
-    > {
-        if !self.grpc_client.has_instance().await {
-            let grpc_addess = self.grpc_address.to_string();
-            let instance = init_grpc_client(&grpc_addess, self.timeout).await?;
-            self.grpc_client.init(instance).await;
-        }
-
-        let result = self.grpc_client.get();
-        return Ok(result);
+    fn create_grpc_service(&self) -> MyServiceBusQueuePersistenceGrpcServiceClient<Channel> {
+        MyServiceBusQueuePersistenceGrpcServiceClient::new(self.channel.clone())
     }
 
     pub async fn load(&self) -> Result<Vec<TopicSnapshot>, PersistenceError> {
-        let grpc_client_lazy_object = self.get_grpc_client().await?;
+        let mut grpc_client = self.create_grpc_service();
 
-        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
-
-        let grpc_client = grpc_client.as_mut();
-
-        if grpc_client.is_none() {
-            return Err(PersistenceError::GrpcClientIsNotInitialized(
-                "queue_snapshot_repo::load".to_string(),
-            ));
-        }
-
-        let result = load_snapshot_with_timeout(grpc_client.unwrap(), self.timeout).await;
+        let result = load_snapshot_with_timeout(&mut grpc_client, self.timeout).await;
 
         Ok(result)
     }
 
     pub async fn save(&self, snapshot: Vec<TopicSnapshot>) -> Result<(), PersistenceError> {
-        let grpc_client_lazy_object = self.get_grpc_client().await?;
+        let mut grpc_client = self.create_grpc_service();
 
-        let mut grpc_client = grpc_client_lazy_object.get_mut().await;
-
-        let grpc_client = grpc_client.as_mut();
-
-        if grpc_client.is_none() {
-            return Err(PersistenceError::GrpcClientIsNotInitialized(
-                "queue_snapshot_repo::save".to_string(),
-            ));
-        }
-
-        save_snapshot_with_timeout(grpc_client.unwrap(), snapshot, self.timeout).await;
+        save_snapshot_with_timeout(&mut grpc_client, snapshot, self.timeout).await;
 
         Ok(())
-    }
-}
-
-async fn init_grpc_client(
-    grpc_address: &str,
-    timeout: Duration,
-) -> Result<MyServiceBusQueuePersistenceGrpcServiceClient<Channel>, PersistenceError> {
-    let mut attempt_no = 0;
-
-    loop {
-        let result = tokio::time::timeout(
-            timeout,
-            MyServiceBusQueuePersistenceGrpcServiceClient::connect(grpc_address.to_string()),
-        )
-        .await;
-
-        if let Ok(result) = result {
-            match result {
-                Ok(result) => {
-                    return Ok(result);
-                }
-                Err(err) => {
-                    println!(
-                        "Can not get grpc client. Attempt: {},  Reason:{}",
-                        attempt_no, err
-                    );
-                }
-            }
-        } else {
-            println!("Initializinf grpc client timeout. Attempt: {}", attempt_no);
-        }
-
-        if attempt_no >= 5 {
-            return Err(PersistenceError::CanNotInitializeGrpcService);
-        }
-
-        attempt_no += 1;
-        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
