@@ -344,7 +344,7 @@ mod tests {
         let packet = result_packets.remove(0);
 
         let packet =
-            my_service_bus_tcp_shared::tcp_serializers::convert_from_raw(&packet, &version).await;
+            my_service_bus_tcp_shared::tcp_serializers::convert_from_raw(packet, &version).await;
 
         if let TcpContract::NewMessages {
             topic_id,

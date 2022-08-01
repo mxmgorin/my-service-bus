@@ -43,10 +43,11 @@ impl SessionJsonResult {
             name: format!("{}[{}]", name, session_metrics_data.protocol_version),
             version: session_metrics_data.version,
             connected: rust_extensions::duration_utils::duration_to_string(
-                now.duration_since(session.connected),
+                now.duration_since(session.connected).as_positive_or_zero(),
             ),
             last_incoming: rust_extensions::duration_utils::duration_to_string(
-                now.duration_since(session_metrics_data.connection_metrics.last_incoming_moment),
+                now.duration_since(session_metrics_data.connection_metrics.last_incoming_moment)
+                    .as_positive_or_zero(),
             ),
             read_size: session_metrics_data.connection_metrics.read,
             written_size: session_metrics_data.connection_metrics.written,

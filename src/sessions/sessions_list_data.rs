@@ -140,7 +140,7 @@ impl SessionsListData {
             if let SessionConnection::Http(connection) = &session.connection {
                 let last_incoming = connection.get_last_incoming_moment();
 
-                if now.duration_since(last_incoming) > inactive_timeout {
+                if now.duration_since(last_incoming).as_positive_or_zero() > inactive_timeout {
                     if sessions_result.is_none() {
                         sessions_result = Some(Vec::new());
                     }

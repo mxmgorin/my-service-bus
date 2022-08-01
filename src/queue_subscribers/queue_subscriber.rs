@@ -143,7 +143,7 @@ impl QueueSubscriber {
             QueueSubscriberDeliveryState::Rented => None,
             QueueSubscriberDeliveryState::OnDelivery(state) => {
                 let now = DateTimeAsMicroseconds::now();
-                let duration = now.duration_since(state.inserted);
+                let duration = now.duration_since(state.inserted).as_positive_or_zero();
                 if duration > max_delivery_duration {
                     return Some(duration);
                 }

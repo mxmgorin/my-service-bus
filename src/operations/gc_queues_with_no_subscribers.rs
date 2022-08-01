@@ -16,7 +16,9 @@ pub fn gc_queues_with_no_subscribers(app: &AppContext, topic_data: &mut TopicDat
 
     for topic_queue in queues_with_no_subscribers.unwrap() {
         if let TopicQueueType::DeleteOnDisconnect = topic_queue.queue_type {
-            if now.duration_since(topic_queue.subscribers.last_unsubscribe)
+            if now
+                .duration_since(topic_queue.subscribers.last_unsubscribe)
+                .as_positive_or_zero()
                 > app.empty_queue_gc_timeout
             {
                 println!("Detected DeleteOnDisconnect queue {}/{} with 0 subscribers. Last disconnect since {:?}", topic_data.topic_id, topic_queue.queue_id, topic_queue.subscribers.last_unsubscribe);

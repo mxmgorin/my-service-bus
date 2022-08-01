@@ -293,8 +293,9 @@ impl TopicQueue {
 }
 
 fn update_delivery_time(subscriber: &mut QueueSubscriber, amount: usize, positive: bool) {
-    let delivery_duration =
-        DateTimeAsMicroseconds::now().duration_since(subscriber.metrics.start_delivery_time);
+    let delivery_duration = DateTimeAsMicroseconds::now()
+        .duration_since(subscriber.metrics.start_delivery_time)
+        .as_positive_or_zero();
 
     if positive {
         subscriber
