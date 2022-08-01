@@ -45,3 +45,7 @@ execute: **cargo run --release**
 
 ### 2.2.7
 * TCP ReadLoop now has timeout as well as write loop
+
+### 2.2.8
+* GRPC Optimization
+* Libraries Updates
