@@ -15,5 +15,6 @@ pub fn compile(title: String, body: String) -> HttpOkResult {
         content: content.into_bytes(),
         headers: None,
     }
-    .into_ok_result(false)
+        .into_ok_result(false)
+        .unwrap()
 }

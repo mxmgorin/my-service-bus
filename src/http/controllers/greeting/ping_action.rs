@@ -1,10 +1,7 @@
 use std::sync::Arc;
-
 use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
 use my_http_server_swagger::http_route;
-
 use crate::{app::AppContext, http::controllers::extensions::HttpContextExtensions};
-
 use super::models::PingInputModel;
 
 #[http_route(
@@ -14,6 +11,7 @@ use super::models::PingInputModel;
     description: "Ping Http Session",
     input_data: "PingInputModel",
     ok_result_description: "Session is alive",
+    summary: "",
     result: [
         {status_code: 202, description: "Session description"},
         {status_code: 400, description: "Bad request"}, 

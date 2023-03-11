@@ -309,4 +309,8 @@ impl Logger for Logs {
     fn write_fatal_error(&self, process: String, message: String, ctx: Option<String>) {
         self.add_fatal_error(SystemProcess::System, process, message, ctx);
     }
+
+    fn write_debug_info(&self, process: String, message: String, ctx: Option<HashMap<String, String>>) {
+        // todo
+    }
 }

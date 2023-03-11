@@ -1,11 +1,7 @@
 use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
-
 use my_http_server_swagger::http_route;
-
 use std::sync::Arc;
-
 use super::*;
-
 use crate::app::AppContext;
 
 #[http_route(
@@ -14,6 +10,7 @@ use crate::app::AppContext;
     controller: "Queues",
     description: "Queue is deleted",
     input_data: "DeleteQueueInputContract",
+    summary: "",
     result: [
         {status_code: 202, description: "Queue is deleted"},
              {status_code: 404, description: "Topic or Queue is not found"}

@@ -1,8 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
-
-use my_service_bus_shared::{validators::InvalidTopicName, MessageId};
+use my_service_bus_abstractions::MessageId;
+use my_service_bus_shared::{validators::InvalidTopicName};
 use tokio::sync::RwLock;
-
 use super::topic::Topic;
 
 pub struct TopicListData {

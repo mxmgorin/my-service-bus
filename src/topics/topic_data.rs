@@ -1,18 +1,16 @@
 use std::collections::HashMap;
-
-use my_service_bus_shared::page_id::get_page_id;
+use my_service_bus_abstractions::MessageId;
+use my_service_bus_abstractions::publisher::MessageToPublish;
+use my_service_bus_abstractions::queue_with_intervals::QueueWithIntervals;
 use my_service_bus_shared::MySbMessageContent;
-use my_service_bus_shared::{queue_with_intervals::QueueWithIntervals, MessageId};
-use my_service_bus_tcp_shared::MessageToPublishTcpContract;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
-
 use crate::messages_page::MessagesPageList;
 use crate::queue_subscribers::QueueSubscriber;
 use crate::queues::{TopicQueue, TopicQueuesList};
 use crate::sessions::SessionId;
 use crate::utils::MinMessageIdCalculator;
-
 use super::TopicMetrics;
+
 const BADGE_HIGHLIGHT_TIMOUT: u8 = 2;
 
 pub struct TopicData {
@@ -44,7 +42,7 @@ impl TopicData {
     pub fn publish_messages(
         &mut self,
         session_id: SessionId,
-        messages: Vec<MessageToPublishTcpContract>,
+        messages: Vec<MessageToPublish>,
     ) {
         self.set_publisher_as_active(session_id);
 

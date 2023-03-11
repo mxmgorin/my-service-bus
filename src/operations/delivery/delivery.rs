@@ -1,5 +1,6 @@
-use my_service_bus_shared::{page_id::get_page_id, sub_page::SubPageId};
+use my_service_bus_shared::{sub_page::SubPageId};
 use std::sync::Arc;
+use my_service_bus_shared::page_id::PageId;
 
 use crate::{
     app::AppContext,
@@ -158,7 +159,7 @@ fn start_loading(
     app: &Arc<AppContext>,
     topic: &Arc<Topic>,
     topic_data: &mut TopicData,
-    page_id: i64,
+    page_id: PageId,
     sub_page_id: SubPageId,
     package_builder: SubscriberPackageBuilder,
 ) {

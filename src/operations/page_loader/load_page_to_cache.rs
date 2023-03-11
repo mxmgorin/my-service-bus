@@ -18,8 +18,8 @@ pub async fn load_page_to_cache(
     let to_message_id = sub_page_id.get_first_message_id_of_next_sub_page() - 1;
 
     println!(
-        "Loading messages {}-{} for page {} with subpage {} for topic:{}",
-        from_message_id, to_message_id, page_id, sub_page_id.value, topic.topic_id
+        "Loading messages {:?}-{:?} for page {:?} with subpage {:?} for topic:{:?}",
+        from_message_id, to_message_id, page_id, sub_page_id, topic.topic_id
     );
 
     let sub_page = super::operations::load_page(

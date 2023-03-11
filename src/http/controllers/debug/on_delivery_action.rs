@@ -1,9 +1,6 @@
 use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
-
 use std::sync::Arc;
-
 use crate::app::AppContext;
-
 use super::models::GetOnDeliveryInputModel;
 
 #[my_http_server_swagger::http_route(
@@ -12,6 +9,7 @@ use super::models::GetOnDeliveryInputModel;
     input_data: "GetOnDeliveryInputModel",
     description: "Show messages on delivery",
     controller: "Debug",
+    summary: "",
     result:[
         {status_code: 200, description: "Ids of subscribers on delivery"},
     ]

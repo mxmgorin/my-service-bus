@@ -1,3 +1,3 @@
 mod contracts;
-mod publisher_action;
-pub use publisher_action::PublisherController;
+mod publis_action;
+pub use publis_action::PublishAction;

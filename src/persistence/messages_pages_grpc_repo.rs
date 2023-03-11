@@ -1,22 +1,20 @@
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
-
 use futures_util::stream;
-
+use my_service_bus_abstractions::MessageId;
 use my_service_bus_shared::page_id::PageId;
 use my_service_bus_shared::protobuf_models::MessageProtobufModel;
-use my_service_bus_shared::{MessageId, MySbMessageContent};
+use my_service_bus_shared::{MySbMessageContent};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tokio_stream::StreamExt;
 use tonic::transport::Channel;
-
 use crate::persistence_grpc::my_service_bus_messages_persistence_grpc_service_client::MyServiceBusMessagesPersistenceGrpcServiceClient;
 use crate::persistence_grpc::*;
-
 use super::protobuf_models::NewMessagesProtobufContract;
 use super::PersistenceError;
 
 const PAYLOAD_SIZE: usize = 1024 * 1024 * 4;
+
 pub struct MessagesPagesGrpcRepo {
     channel: Channel,
     time_out: Duration,
@@ -68,7 +66,7 @@ impl MessagesPagesGrpcRepo {
             self.time_out,
             grpc_client.save_messages(stream::iter(grpc_chunks)),
         )
-        .await?;
+            .await?;
 
         if let Err(status) = result {
             return Err(PersistenceError::TonicError(status));
@@ -107,7 +105,7 @@ impl MessagesPagesGrpcRepo {
             self.time_out,
             grpc_client.save_messages_uncompressed(stream::iter(grpc_chunks)),
         )
-        .await?;
+            .await?;
 
         if let Err(status) = result {
             return Err(PersistenceError::TonicError(status));
@@ -129,14 +127,14 @@ impl MessagesPagesGrpcRepo {
             self.time_out,
             grpc_client.get_page(GetMessagesPageGrpcRequest {
                 topic_id: topic_id.to_string(),
-                page_no: page_id,
+                page_no: page_id.get_value(),
                 from_message_id,
                 to_message_id,
                 version: 1,
             }),
         )
-        .await??
-        .into_inner();
+            .await??
+            .into_inner();
 
         let mut messages: BTreeMap<MessageId, MySbMessageContent> = BTreeMap::new();
 
@@ -156,7 +154,7 @@ impl MessagesPagesGrpcRepo {
         }
 
         println!(
-            "Read Page {} with messages amount: {}",
+            "Read Page {:?} with messages amount: {}",
             page_id,
             messages.len()
         );

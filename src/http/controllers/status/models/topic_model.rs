@@ -75,7 +75,7 @@ impl TopicJsonContract {
                 .map(|(page_id, page)| {
                     let metrics = page.get_page_size_metrics();
                     TopicPageJsonContract {
-                        id: *page_id,
+                        id: page_id.get_value(),
                         amount: metrics.messages_amount,
                         size: metrics.data_size,
                         persist_size: metrics.persist_size,

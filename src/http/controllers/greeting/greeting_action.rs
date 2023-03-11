@@ -1,10 +1,7 @@
 use std::sync::Arc;
-
 use my_http_server::{HttpContext, HttpFailResult, HttpOkResult, HttpOutput};
 use my_http_server_swagger::http_route;
-
 use crate::{app::AppContext, sessions::HttpConnectionData};
-
 use super::models::{GreetingInputModel, GreetingJsonResult};
 
 #[http_route(
@@ -13,6 +10,7 @@ use super::models::{GreetingInputModel, GreetingJsonResult};
     controller: "Greeting",
     description: "Issue new Http Session",
     input_data: "GreetingInputModel",
+    summary: "",
     result: [
         {status_code: 200, description: "Session description", model: "GreetingJsonResult"},
         {status_code: 400, description: "Bad request"}, 
