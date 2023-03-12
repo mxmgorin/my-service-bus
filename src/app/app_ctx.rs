@@ -14,7 +14,7 @@ use crate::{
 
 use super::{logs::Logs, prometheus_metrics::PrometheusMetrics};
 
-pub const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Clone)]
 pub struct DebugTopicAndQueue {

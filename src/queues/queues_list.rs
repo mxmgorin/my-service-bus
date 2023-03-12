@@ -2,11 +2,10 @@ use std::collections::{
     hash_map::{Values, ValuesMut},
     HashMap,
 };
-
+use my_service_bus_abstractions::queue_with_intervals::QueueWithIntervals;
+use my_service_bus_abstractions::subscriber::TopicQueueType;
 use my_service_bus_shared::{queue::TopicQueueType, queue_with_intervals::QueueWithIntervals};
-
 use crate::{queue_subscribers::QueueSubscriber, sessions::SessionId, topics::TopicQueueSnapshot};
-
 use super::queue::TopicQueue;
 
 pub struct TopicQueuesList {

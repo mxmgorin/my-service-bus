@@ -1,3 +1,4 @@
+use my_service_bus_abstractions::subscriber::TopicQueueType;
 use my_service_bus_shared::queue::TopicQueueType;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 

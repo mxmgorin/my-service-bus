@@ -1,5 +1,7 @@
+use my_service_bus_abstractions::MessageId;
+use my_service_bus_abstractions::queue_with_intervals::{QueueIndexRange, QueueWithIntervals};
+use my_service_bus_abstractions::subscriber::TopicQueueType;
 use my_service_bus_shared::{
-    queue::TopicQueueType,
     queue_with_intervals::{QueueIndexRange, QueueWithIntervals},
     MessageId,
 };

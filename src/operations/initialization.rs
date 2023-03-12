@@ -1,4 +1,5 @@
 use std::{sync::Arc, time::Duration};
+use my_service_bus_abstractions::queue_with_intervals::QueueWithIntervals;
 
 use my_service_bus_shared::queue_with_intervals::QueueWithIntervals;
 use rust_extensions::StopWatch;

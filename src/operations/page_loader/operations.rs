@@ -1,4 +1,5 @@
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
+use my_service_bus_abstractions::MessageId;
 
 use my_service_bus_shared::{
     page_id::PageId,

@@ -186,7 +186,8 @@ fn start_loading(
 
 #[cfg(test)]
 mod tests {
-
+    use my_service_bus_abstractions::queue_with_intervals::QueueWithIntervals;
+    use my_service_bus_abstractions::subscriber::TopicQueueType;
     use my_service_bus_shared::{
         protobuf_models::MessageProtobufModel, queue::TopicQueueType,
         queue_with_intervals::QueueWithIntervals,

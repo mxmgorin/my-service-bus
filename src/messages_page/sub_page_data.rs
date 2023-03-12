@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use my_service_bus_abstractions::queue_with_intervals::QueueWithIntervals;
 
 use my_service_bus_shared::{
     protobuf_models::MessageProtobufModel, queue_with_intervals::QueueWithIntervals,

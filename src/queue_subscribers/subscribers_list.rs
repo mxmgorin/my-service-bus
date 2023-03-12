@@ -1,4 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
+use my_service_bus_abstractions::MessageId;
+use my_service_bus_abstractions::subscriber::TopicQueueType;
 
 use my_service_bus_shared::{queue::TopicQueueType, MessageId};
 use rust_extensions::date_time::DateTimeAsMicroseconds;

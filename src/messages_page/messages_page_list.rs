@@ -2,6 +2,7 @@ use std::collections::{
     btree_map::{Values, ValuesMut},
     BTreeMap,
 };
+use my_service_bus_abstractions::MessageId;
 
 use my_service_bus_shared::{
     page_id::{get_page_id, PageId},
